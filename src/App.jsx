@@ -5,6 +5,8 @@ const SUPABASE_URL = "https://qrmbtlkjfvokkxdwoxrg.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFybWJ0bGtqZnZva2t4ZHdveHJnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgwNzUyNTAsImV4cCI6MjA5MzY1MTI1MH0.F93wzDpSzFibcyO5PSWyPpyO50QQt570FoHQDoNFnEM";
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
+const ALLOWED_DOMAIN = "amidays.com";
+
 const C = {
   bg:"#31353D", panel:"#3C4149", input:"#2A2E35",
   ash:"#4A5059", greyOlive:"#A4A599", sandrift:"#AF8E72",
@@ -16,7 +18,6 @@ const STATUS_COLORS = { red:"#C48374", yellow:"#AF8E72", green:"#6A6D62" };
 const RESOURCES = [{ id:"r1", name:"Robin Askevold", initials:"RA" }];
 const HUNCH_FEE = 0.05;
 
-// ── Channel structure ─────────────────────────────────────────────
 const CHANNEL_COHORTS = {
   "Paid Search": {
     "Google Ads":    ["Søk","Display","Performance Max","Demand Gen","YouTube","Local campaign","Shopping"],
@@ -44,11 +45,7 @@ const CHANNEL_COHORTS = {
 };
 
 const isHunch = key => key.toLowerCase().includes("hunch");
-
-// Flat list of all channels across cohorts
 const ALL_CHANNELS_FLAT = Object.values(CHANNEL_COHORTS).flatMap(g => Object.keys(g));
-
-// Get sub-channels for a given channel
 const getSubChannels = ch => {
   for (const cohort of Object.values(CHANNEL_COHORTS)) {
     if (ch in cohort) return cohort[ch];
@@ -56,7 +53,6 @@ const getSubChannels = ch => {
   return null;
 };
 
-// ── Helpers ───────────────────────────────────────────────────────
 const fmtNOK = v => new Intl.NumberFormat("nb-NO",{style:"currency",currency:"NOK",maximumFractionDigits:0}).format(v||0);
 const today = () => new Date().toISOString().split("T")[0];
 const daysBetween = (a,b) => Math.max(0,Math.round((new Date(b)-new Date(a))/(1000*60*60*24)));
@@ -74,7 +70,6 @@ const pacing = (spent,budget,start,end) => {
 const uid = () => Math.random().toString(36).slice(2,8);
 const monthLabel = dateStr => { if(!dateStr) return ""; const d=new Date(dateStr); return d.toLocaleString("nb-NO",{month:"long",year:"numeric"}); };
 
-// ── DB converters ─────────────────────────────────────────────────
 const rowToCustomer = r => ({ id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, bank:r.bank||0 });
 const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
@@ -105,8 +100,80 @@ const campaignToRow = t => ({
   from_brief_id:t.fromBriefId||null,
 });
 
+// ══ Login Screen ═══════════════════════════════════════════════════
+function LoginScreen({ error }) {
+  const handleLogin = async () => {
+    await sb.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: window.location.origin,
+        queryParams: { hd: ALLOWED_DOMAIN },
+      },
+    });
+  };
+
+  return (
+    <div style={{
+      display:"flex", alignItems:"center", justifyContent:"center",
+      height:"100vh", width:"100%", background:C.bg, fontFamily:"'Cormorant Garamond',serif",
+    }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+        html,body,#root{height:100%;width:100%;margin:0;padding:0}
+        *{box-sizing:border-box;margin:0;padding:0}
+        .btn{cursor:pointer;border:none;transition:all .2s}
+        .btn:hover{opacity:.85;transform:translateY(-1px)}
+        .btn:active{transform:translateY(0)}
+      `}</style>
+      <div style={{
+        background:C.panel, borderRadius:8, padding:"52px 48px",
+        border:`1px solid ${C.ash}`, textAlign:"center", maxWidth:400, width:"90%",
+      }}>
+        <div style={{
+          fontFamily:"'Cormorant Garamond',serif", fontSize:32,
+          fontWeight:600, color:C.text, marginBottom:8,
+        }}>AmiDesk</div>
+        <div style={{
+          fontFamily:"'Jost',sans-serif", fontSize:12,
+          color:C.nickel, letterSpacing:".08em", textTransform:"uppercase",
+          marginBottom:40,
+        }}>Kampanjeadministrasjon</div>
+
+        {error && (
+          <div style={{
+            background:`${C.brandyRose}20`, border:`1px solid ${C.brandyRose}`,
+            borderRadius:4, padding:"10px 14px", marginBottom:20,
+            fontFamily:"'Jost',sans-serif", fontSize:12, color:C.brandyRose,
+          }}>{error}</div>
+        )}
+
+        <button className="btn" onClick={handleLogin} style={{
+          display:"flex", alignItems:"center", justifyContent:"center", gap:12,
+          width:"100%", padding:"14px", borderRadius:4,
+          background:C.sandrift, color:"#fff",
+          fontFamily:"'Jost',sans-serif", fontSize:13, letterSpacing:".04em",
+        }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fff"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#fff"/>
+          </svg>
+          Logg inn med Google
+        </button>
+        <div style={{
+          fontFamily:"'Jost',sans-serif", fontSize:11,
+          color:C.nickel, marginTop:16,
+        }}>Kun @amidays.com kontoer har tilgang</div>
+      </div>
+    </div>
+  );
+}
+
 // ── App ───────────────────────────────────────────────────────────
 export default function App() {
+  const [session, setSession] = useState(undefined); // undefined = loading
+  const [authError, setAuthError] = useState(null);
   const [page, setPage] = useState("dashboard");
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
@@ -119,7 +186,43 @@ export default function App() {
   const [showCreateBrief, setShowCreateBrief] = useState(false);
   const [briefToConvert, setBriefToConvert] = useState(null);
 
+  // ── Auth listener ──
   useEffect(() => {
+    sb.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        const email = session.user.email || "";
+        if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+          sb.auth.signOut();
+          setAuthError(`Kun @${ALLOWED_DOMAIN} kontoer har tilgang.`);
+          setSession(null);
+        } else {
+          setSession(session);
+        }
+      } else {
+        setSession(null);
+      }
+    });
+
+    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        const email = session.user.email || "";
+        if (!email.endsWith(`@${ALLOWED_DOMAIN}`)) {
+          sb.auth.signOut();
+          setAuthError(`Kun @${ALLOWED_DOMAIN} kontoer har tilgang.`);
+          setSession(null);
+          return;
+        }
+        setAuthError(null);
+      }
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ── Load data (only when authenticated) ──
+  useEffect(() => {
+    if (!session) return;
     async function load() {
       const [{ data:cData },{ data:bData },{ data:tData }] = await Promise.all([
         sb.from("customers").select("*"),
@@ -132,7 +235,16 @@ export default function App() {
       setLoading(false);
     }
     load();
-  }, []);
+  }, [session]);
+
+  // ── Show login if no session ──
+  if (session === undefined) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>
+      Laster AmiDesk…
+    </div>
+  );
+
+  if (!session) return <LoginScreen error={authError} />;
 
   const activeTask     = tasks.find(t=>t.id===selectedTaskId);
   const activeCustomer = customers.find(c=>c.id===selectedCustomerId);
@@ -141,12 +253,11 @@ export default function App() {
   const navigate = (p, extra={}) => {
     setPage(p);
     if(extra.customerId!==undefined) setSelectedCustomerId(extra.customerId);
-    else if(p==="customers") setSelectedCustomerId(null); // fix: clear on list nav
+    else if(p==="customers") setSelectedCustomerId(null);
     if(extra.taskId!==undefined)     setSelectedTaskId(extra.taskId);
     if(extra.briefId!==undefined)    setSelectedBriefId(extra.briefId);
   };
 
-  // ── Customer bank helpers ──
   const adjustBank = async (customerId, delta) => {
     setCustomers(prev => {
       const next = prev.map(c => c.id===customerId ? {...c, bank:(c.bank||0)+delta} : c);
@@ -198,7 +309,7 @@ export default function App() {
 
   if(loading) return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>
-      Laster MediaDesk…
+      Laster AmiDesk…
     </div>
   );
 
@@ -231,7 +342,7 @@ export default function App() {
         .cohort-header{font-family:'Jost',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:${C.nickel};padding:8px 0 4px;margin-top:6px}
       `}</style>
 
-      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief}/>
+      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session}/>
 
       <main style={{flex:1,overflow:"auto",padding:"32px 36px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
@@ -248,7 +359,6 @@ export default function App() {
         onSave={async b=>{
           setBriefs(p=>[...p,b]);
           await sb.from("briefs").upsert(briefToRow(b));
-          // Add brief total budget to customer bank
           const briefTotal = Object.values(b.channelBudgets||{}).reduce((a,v)=>a+v,0);
           if(briefTotal>0) await adjustBank(b.customerId, briefTotal);
           setShowCreateBrief(false);
@@ -258,7 +368,6 @@ export default function App() {
       {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers}
         onClose={()=>setBriefToConvert(null)}
         onSave={async (campaign,briefId)=>{
-          // Deduct budget from customer bank
           const cust = customers.find(c=>c.id===campaign.customerId);
           if(cust) await adjustBank(campaign.customerId, -campaign.budget);
           setTasks(p=>[...p,campaign]);
@@ -271,18 +380,41 @@ export default function App() {
 }
 
 // ══ Sidebar ══════════════════════════════════════════════════════
-function Sidebar({page, navigate, setShowCreateBrief}) {
+function Sidebar({page, navigate, setShowCreateBrief, session}) {
+  const user = session?.user;
+  const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Bruker";
+  const avatar = user?.user_metadata?.avatar_url;
+  const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+
+  const handleSignOut = async () => {
+    await sb.auth.signOut();
+  };
+
   return (
     <aside style={{width:220,background:"#272B32",display:"flex",flexDirection:"column",padding:"28px 16px",borderRight:`1px solid ${C.ash}`,gap:4,flexShrink:0}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>MediaDesk</div>
+      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>AmiDesk</div>
       {[{id:"dashboard",label:"Dashboard"},{id:"campaigns",label:"Kampanjelinjer"},{id:"briefs",label:"Oppgaver"},{id:"customers",label:"Kunder"}].map(item=>(
         <div key={item.id} className={`nav-item${page===item.id||page===item.id+"-detail"?" active":""}`} onClick={()=>navigate(item.id)}>{item.label}</div>
       ))}
       <div style={{flex:1}}/>
       <button className="btn" onClick={()=>setShowCreateBrief(true)}
-        style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:8}}>
+        style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
         <span style={{fontSize:16,lineHeight:1}}>+</span> Ny oppgave
       </button>
+      {/* User info + sign out */}
+      <div style={{borderTop:`1px solid ${C.ash}`,paddingTop:14,display:"flex",alignItems:"center",gap:10}}>
+        {avatar
+          ? <img src={avatar} alt={name} style={{width:30,height:30,borderRadius:"50%",flexShrink:0}}/>
+          : <div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{initials}</div>
+        }
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+          <button className="btn" onClick={handleSignOut}
+            style={{background:"none",color:C.nickel,fontFamily:"'Jost',sans-serif",fontSize:10,padding:0,letterSpacing:".04em",marginTop:2}}>
+            Logg ut
+          </button>
+        </div>
+      </div>
     </aside>
   );
 }
@@ -582,7 +714,6 @@ function getChannelLines(task) {
       const flatKey=sub?`${ch} · ${sub}`:ch;
       const budget=task.channelBudgets?.[flatKey]??0;
       const spent=task.spent?.[flatKey]??0;
-      // Per-channel end date, fallback to campaign end
       const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
       const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
       const dl=daysLeft(chEnd);
@@ -596,7 +727,7 @@ function getChannelLines(task) {
 }
 
 function CampaignLineRow({line, task, updateCampaign}) {
-  const [mode,setMode]=useState(null); // null | spent | budget | date
+  const [mode,setMode]=useState(null);
   const [spentVal,setSpentVal]=useState(line.spent);
   const [budgetVal,setBudgetVal]=useState(line.budget);
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
@@ -755,7 +886,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   const activeBriefs=briefs.filter(b=>b.customerId===customer.id&&!b.archived);
   const archivedBriefs=briefs.filter(b=>b.customerId===customer.id&&b.archived);
 
-  // Collect all Hunch line items across all campaigns for this customer
   const hunchEntries = [...activeTasks,...archivedTasks].flatMap(task=>
     getChannelLines(task)
       .filter(l=>l.hunch&&l.spent>0)
@@ -768,7 +898,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       }))
   );
 
-  // Group Hunch entries by month
   const hunchByMonth = hunchEntries.reduce((acc,e)=>{
     if(!acc[e.month]) acc[e.month]=[];
     acc[e.month].push(e);
@@ -784,7 +913,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
         </div>
-        {/* Bank display */}
         <div style={{textAlign:"right"}}>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
           {editingBank?(
@@ -896,7 +1024,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   );
 }
 
-// ══ Channel selector — compact dropdown ══════════════════════════
+// ══ Channel selector ══════════════════════════════════════════════
 function ChannelDropdown({channels, onChange}) {
   const [openCohort, setOpenCohort] = useState(null);
 
@@ -915,7 +1043,6 @@ function ChannelDropdown({channels, onChange}) {
 
   return (
     <div>
-      {/* Summary of selected */}
       {selectedCount>0&&(
         <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
           {Object.entries(channels).map(([ch,subs])=>{
@@ -930,7 +1057,6 @@ function ChannelDropdown({channels, onChange}) {
           })}
         </div>
       )}
-      {/* Cohort dropdowns */}
       {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
         <div key={cohort} style={{marginBottom:6}}>
           <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
@@ -974,7 +1100,6 @@ function ChannelDropdown({channels, onChange}) {
   );
 }
 
-// ── Flat channel lines from selected channels ──
 function getSelectedLines(channels) {
   return Object.entries(channels).flatMap(([ch,subs])=>{
     const items=(subs&&subs.length>0)?subs:[null];
@@ -982,26 +1107,21 @@ function getSelectedLines(channels) {
   });
 }
 
-// ══ Create Brief Modal — with multi-campaign lines per channel ════
+// ══ Create Brief Modal ════════════════════════════════════════════
 function CreateBriefModal({customers, onClose, onSave}) {
-  // campaignLines: array of {id, channel, name, budget}
-  // channel is a flatKey from getSelectedLines
   const [form, setForm] = useState({
     customerId:"", title:"", description:"",
     start:today(), end:"", assignedTo:"",
     channels:{},
   });
-  const [campaignLines, setCampaignLines] = useState([]); // [{id,flatKey,name,budget}]
+  const [campaignLines, setCampaignLines] = useState([]);
 
   const selectedLines = getSelectedLines(form.channels);
 
-  // When channels change, sync campaignLines: add missing, keep existing
   const handleChannelChange = newChannels => {
     const newLines = getSelectedLines(newChannels);
     setCampaignLines(prev => {
-      // Keep existing lines for channels still selected
       const kept = prev.filter(cl => newLines.some(l=>l.flatKey===cl.flatKey));
-      // Add default line for any new channel not yet present
       const existing = new Set(kept.map(cl=>cl.flatKey));
       const added = newLines.filter(l=>!existing.has(l.flatKey)).map(l=>({id:uid(),flatKey:l.flatKey,name:"Kampanje 1",budget:0,hunch:l.hunch}));
       return [...kept,...added];
@@ -1015,18 +1135,13 @@ function CreateBriefModal({customers, onClose, onSave}) {
   };
 
   const removeLine = id => setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
-
   const updateLine = (id, changes) => setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
-
   const total = campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
 
   const save = () => {
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
     if(!form.end) return alert("Fyll inn sluttdato");
-    // Build channelBudgets from campaignLines — sum per flatKey (since multiple lines per channel become separate rows in campaign)
-    // We store each named line as its own key: "Google Ads · Søk — Kampanje 1"
     const channelBudgets = {};
-    const channelNames = {}; // for display
     campaignLines.forEach(cl => {
       const key = `${cl.flatKey} — ${cl.name}`;
       channelBudgets[key] = cl.budget||0;
@@ -1071,12 +1186,9 @@ function CreateBriefModal({customers, onClose, onSave}) {
         <div style={{marginBottom:14}}><label>Brief / Beskrivelse</label>
           <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} style={{width:"100%",minHeight:70,resize:"vertical"}} placeholder="Mål, målgruppe, budskap..."/>
         </div>
-
         <div style={{marginBottom:16}}><label>Kanaler</label>
           <ChannelDropdown channels={form.channels} onChange={handleChannelChange}/>
         </div>
-
-        {/* Campaign lines grouped by channel */}
         {selectedLines.length>0&&(
           <div style={{marginBottom:18}}>
             <label>Kampanjelinjer og budsjett</label>
