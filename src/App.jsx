@@ -6,6 +6,7 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ALLOWED_DOMAIN = "amidays.com";
+const ADMIN_EMAILS = ["robin@amidays.com","kaja@amidays.com","elisabeth@amidays.com","jorgen@amidays.com","marops@amidays.com"];
 
 const C = {
   bg:"#31353D", panel:"#3C4149", input:"#2A2E35",
@@ -15,7 +16,6 @@ const C = {
 };
 const CUSTOMER_COLORS = ["#AF8E72","#C48374","#A4A599","#6A6D62","#707677","#8A7968"];
 const STATUS_COLORS = { red:"#C48374", yellow:"#AF8E72", green:"#6A6D62" };
-const RESOURCES = [{ id:"r1", name:"Robin Askevold", initials:"RA" }];
 const HUNCH_FEE = 0.05;
 
 const CHANNEL_COHORTS = {
@@ -45,14 +45,6 @@ const CHANNEL_COHORTS = {
 };
 
 const isHunch = key => key.toLowerCase().includes("hunch");
-const ALL_CHANNELS_FLAT = Object.values(CHANNEL_COHORTS).flatMap(g => Object.keys(g));
-const getSubChannels = ch => {
-  for (const cohort of Object.values(CHANNEL_COHORTS)) {
-    if (ch in cohort) return cohort[ch];
-  }
-  return null;
-};
-
 const fmtNOK = v => new Intl.NumberFormat("nb-NO",{style:"currency",currency:"NOK",maximumFractionDigits:0}).format(v||0);
 const today = () => new Date().toISOString().split("T")[0];
 const daysBetween = (a,b) => Math.max(0,Math.round((new Date(b)-new Date(a))/(1000*60*60*24)));
@@ -68,14 +60,18 @@ const pacing = (spent,budget,start,end) => {
   return {label:"Pacing OK",ok:true};
 };
 const uid = () => Math.random().toString(36).slice(2,8);
-const monthLabel = dateStr => { if(!dateStr) return ""; const d=new Date(dateStr); return d.toLocaleString("nb-NO",{month:"long",year:"numeric"}); };
+const monthLabel = dateStr => {
+  if(!dateStr) return "";
+  const d=new Date(dateStr);
+  return d.toLocaleString("nb-NO",{month:"long",year:"numeric"});
+};
 
 const rowToCustomer = r => ({ id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, bank:r.bank||0 });
 const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
   start:r.start_date, end:r.end_date, assignedTo:r.assigned_to?[r.assigned_to]:[],
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
-  status:r.status, archived:r.archived,
+  status:r.status, archived:r.archived, ownerId:r.owner_id,
 });
 const rowToCampaign = r => ({
   id:r.id, customerId:r.customer_id, title:r.title,
@@ -83,21 +79,22 @@ const rowToCampaign = r => ({
   status:r.status, archived:r.archived,
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   spent:r.spent||{}, channelDates:r.channel_dates||{},
-  fromBriefId:r.from_brief_id,
+  fromBriefId:r.from_brief_id, ownerId:r.owner_id,
 });
 const customerToRow = c => ({ id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, bank:c.bank||0 });
 const briefToRow = b => ({
   id:b.id, customer_id:b.customerId, title:b.title, description:b.description,
   start_date:b.start, end_date:b.end, assigned_to:b.assignedTo?.[0]||null,
-  channels:b.channels, channel_budgets:b.channelBudgets, status:b.status, archived:b.archived,
+  channels:b.channels, channel_budgets:b.channelBudgets,
+  status:b.status, archived:b.archived, owner_id:b.ownerId||null,
 });
 const campaignToRow = t => ({
   id:t.id, customer_id:t.customerId, title:t.title,
   start_date:t.start, end_date:t.end, budget:t.budget,
   status:t.status, archived:t.archived,
-  channels:t.channels, channel_budgets:t.channelBudgets, spent:t.spent,
-  channel_dates:t.channelDates||{},
-  from_brief_id:t.fromBriefId||null,
+  channels:t.channels, channel_budgets:t.channelBudgets,
+  spent:t.spent, channel_dates:t.channelDates||{},
+  from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
 });
 
 // ══ Login Screen ═══════════════════════════════════════════════════
@@ -111,49 +108,19 @@ function LoginScreen({ error }) {
       },
     });
   };
-
   return (
-    <div style={{
-      display:"flex", alignItems:"center", justifyContent:"center",
-      height:"100vh", width:"100%", background:C.bg, fontFamily:"'Cormorant Garamond',serif",
-    }}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",width:"100%",background:C.bg}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
-        html,body,#root{height:100%;width:100%;margin:0;padding:0}
-        *{box-sizing:border-box;margin:0;padding:0}
-        .btn{cursor:pointer;border:none;transition:all .2s}
-        .btn:hover{opacity:.85;transform:translateY(-1px)}
-        .btn:active{transform:translateY(0)}
+        html,body,#root{height:100%;width:100%;margin:0;padding:0}*{box-sizing:border-box;margin:0;padding:0}
+        .btn{cursor:pointer;border:none;transition:all .2s}.btn:hover{opacity:.85;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
       `}</style>
-      <div style={{
-        background:C.panel, borderRadius:8, padding:"52px 48px",
-        border:`1px solid ${C.ash}`, textAlign:"center", maxWidth:400, width:"90%",
-      }}>
-        <div style={{
-          fontFamily:"'Cormorant Garamond',serif", fontSize:32,
-          fontWeight:600, color:C.text, marginBottom:8,
-        }}>AmiDesk</div>
-        <div style={{
-          fontFamily:"'Jost',sans-serif", fontSize:12,
-          color:C.nickel, letterSpacing:".08em", textTransform:"uppercase",
-          marginBottom:40,
-        }}>Kampanjeadministrasjon</div>
-
-        {error && (
-          <div style={{
-            background:`${C.brandyRose}20`, border:`1px solid ${C.brandyRose}`,
-            borderRadius:4, padding:"10px 14px", marginBottom:20,
-            fontFamily:"'Jost',sans-serif", fontSize:12, color:C.brandyRose,
-          }}>{error}</div>
-        )}
-
-        <button className="btn" onClick={handleLogin} style={{
-          display:"flex", alignItems:"center", justifyContent:"center", gap:12,
-          width:"100%", padding:"14px", borderRadius:4,
-          background:C.sandrift, color:"#fff",
-          fontFamily:"'Jost',sans-serif", fontSize:13, letterSpacing:".04em",
-        }}>
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+      <div style={{background:C.panel,borderRadius:8,padding:"52px 48px",border:`1px solid ${C.ash}`,textAlign:"center",maxWidth:400,width:"90%"}}>
+        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:600,color:C.text,marginBottom:8}}>AmiDesk</div>
+        <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,letterSpacing:".08em",textTransform:"uppercase",marginBottom:40}}>Kampanjeadministrasjon</div>
+        {error&&<div style={{background:`${C.brandyRose}20`,border:`1px solid ${C.brandyRose}`,borderRadius:4,padding:"10px 14px",marginBottom:20,fontFamily:"'Jost',sans-serif",fontSize:12,color:C.brandyRose}}>{error}</div>}
+        <button className="btn" onClick={handleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,width:"100%",padding:"14px",borderRadius:4,background:C.sandrift,color:"#fff",fontFamily:"'Jost',sans-serif",fontSize:13,letterSpacing:".04em"}}>
+          <svg width="18" height="18" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
             <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#fff"/>
@@ -161,23 +128,23 @@ function LoginScreen({ error }) {
           </svg>
           Logg inn med Google
         </button>
-        <div style={{
-          fontFamily:"'Jost',sans-serif", fontSize:11,
-          color:C.nickel, marginTop:16,
-        }}>Kun @amidays.com kontoer har tilgang</div>
+        <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,marginTop:16}}>Kun @amidays.com kontoer har tilgang</div>
       </div>
     </div>
   );
 }
 
-// ── App ───────────────────────────────────────────────────────────
+// ══ App ═══════════════════════════════════════════════════════════
 export default function App() {
-  const [session, setSession] = useState(undefined); // undefined = loading
+  const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [page, setPage] = useState("dashboard");
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedBriefId, setSelectedBriefId] = useState(null);
+  const [viewingUserId, setViewingUserId] = useState(null);
+  const [teamMembers, setTeamMembers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [tasks, setTasks] = useState([]);
   const [briefs, setBriefs] = useState([]);
@@ -186,7 +153,7 @@ export default function App() {
   const [showCreateBrief, setShowCreateBrief] = useState(false);
   const [briefToConvert, setBriefToConvert] = useState(null);
 
-  // ── Auth listener ──
+  // Auth listener
   useEffect(() => {
     sb.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -196,13 +163,13 @@ export default function App() {
           setAuthError(`Kun @${ALLOWED_DOMAIN} kontoer har tilgang.`);
           setSession(null);
         } else {
+          setIsAdmin(ADMIN_EMAILS.includes(email));
           setSession(session);
         }
       } else {
         setSession(null);
       }
     });
-
     const { data: { subscription } } = sb.auth.onAuthStateChange((_event, session) => {
       if (session) {
         const email = session.user.email || "";
@@ -212,38 +179,51 @@ export default function App() {
           setSession(null);
           return;
         }
+        setIsAdmin(ADMIN_EMAILS.includes(email));
         setAuthError(null);
       }
-      setSession(session);
+      setSession(session ?? null);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  // ── Load data (only when authenticated) ──
+  // Upsert profile on login
+  useEffect(() => {
+    if (!session) return;
+    const u = session.user;
+    sb.from("profiles").upsert({
+      id: u.id,
+      email: u.email,
+      display_name: u.user_metadata?.full_name || u.email.split("@")[0],
+      avatar_url: u.user_metadata?.avatar_url || null,
+    }, { onConflict: "id" });
+  }, [session]);
+
+  // Load data
   useEffect(() => {
     if (!session) return;
     async function load() {
-      const [{ data:cData },{ data:bData },{ data:tData }] = await Promise.all([
+      const userId = session.user.id;
+      const [{ data: cData }, { data: bData }, { data: tData }] = await Promise.all([
         sb.from("customers").select("*"),
-        sb.from("briefs").select("*"),
-        sb.from("campaigns").select("*"),
+        sb.from("briefs").select("*").eq("owner_id", userId),
+        sb.from("campaigns").select("*").eq("owner_id", userId),
       ]);
-      if(cData) setCustomers(cData.map(rowToCustomer));
-      if(bData) setBriefs(bData.map(rowToBrief));
-      if(tData) setTasks(tData.map(rowToCampaign));
+      if (cData) setCustomers(cData.map(rowToCustomer));
+      if (bData) setBriefs(bData.map(rowToBrief));
+      if (tData) setTasks(tData.map(rowToCampaign));
+      if (ADMIN_EMAILS.includes(session.user.email)) {
+        const { data: members } = await sb.from("profiles").select("*");
+        if (members) setTeamMembers(members);
+      }
       setLoading(false);
     }
     load();
   }, [session]);
 
-  // ── Show login if no session ──
   if (session === undefined) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>
-      Laster AmiDesk…
-    </div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
   );
-
   if (!session) return <LoginScreen error={authError} />;
 
   const activeTask     = tasks.find(t=>t.id===selectedTaskId);
@@ -252,17 +232,18 @@ export default function App() {
 
   const navigate = (p, extra={}) => {
     setPage(p);
-    if(extra.customerId!==undefined) setSelectedCustomerId(extra.customerId);
-    else if(p==="customers") setSelectedCustomerId(null);
-    if(extra.taskId!==undefined)     setSelectedTaskId(extra.taskId);
-    if(extra.briefId!==undefined)    setSelectedBriefId(extra.briefId);
+    if (extra.customerId !== undefined) setSelectedCustomerId(extra.customerId);
+    else if (p === "customers") setSelectedCustomerId(null);
+    if (extra.taskId !== undefined) setSelectedTaskId(extra.taskId);
+    if (extra.briefId !== undefined) setSelectedBriefId(extra.briefId);
+    if (extra.viewingUserId !== undefined) setViewingUserId(extra.viewingUserId);
   };
 
   const adjustBank = async (customerId, delta) => {
     setCustomers(prev => {
       const next = prev.map(c => c.id===customerId ? {...c, bank:(c.bank||0)+delta} : c);
       const updated = next.find(c=>c.id===customerId);
-      if(updated) sb.from("customers").upsert(customerToRow(updated));
+      if (updated) sb.from("customers").upsert(customerToRow(updated));
       return next;
     });
   };
@@ -271,7 +252,7 @@ export default function App() {
     setCustomers(prev => {
       const next = prev.map(c => c.id===id ? {...c,...changes} : c);
       const updated = next.find(c=>c.id===id);
-      if(updated) sb.from("customers").upsert(customerToRow(updated));
+      if (updated) sb.from("customers").upsert(customerToRow(updated));
       return next;
     });
   };
@@ -280,7 +261,7 @@ export default function App() {
     setBriefs(prev => {
       const next = prev.map(b => b.id===id ? {...b,...changes} : b);
       const updated = next.find(b=>b.id===id);
-      if(updated) sb.from("briefs").upsert(briefToRow(updated));
+      if (updated) sb.from("briefs").upsert(briefToRow(updated));
       return next;
     });
   };
@@ -289,7 +270,7 @@ export default function App() {
     setTasks(prev => {
       const next = prev.map(t => t.id===id ? {...t,...changes} : t);
       const updated = next.find(t=>t.id===id);
-      if(updated) sb.from("campaigns").upsert(campaignToRow(updated));
+      if (updated) sb.from("campaigns").upsert(campaignToRow(updated));
       return next;
     });
   };
@@ -299,7 +280,7 @@ export default function App() {
     setBriefs(prev=>prev.filter(b=>b.id!==id));
     setTasks(prev=>prev.filter(t=>t.fromBriefId!==id));
     await sb.from("briefs").delete().eq("id",id);
-    for(const t of linked) await sb.from("campaigns").delete().eq("id",t.id);
+    for (const t of linked) await sb.from("campaigns").delete().eq("id",t.id);
   };
 
   const deleteCampaign = async (id) => {
@@ -307,10 +288,8 @@ export default function App() {
     await sb.from("campaigns").delete().eq("id",id);
   };
 
-  if(loading) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>
-      Laster AmiDesk…
-    </div>
+  if (loading) return (
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
   );
 
   return (
@@ -339,39 +318,42 @@ export default function App() {
         .tab{cursor:pointer;padding:8px 16px;font-family:'Jost',sans-serif;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;color:${C.nickel}}
         .tab.active{border-bottom-color:${C.sandrift};color:${C.text}}.tab:hover:not(.active){border-bottom-color:${C.ash}}
         select option{background:${C.input};color:${C.text}}
-        .cohort-header{font-family:'Jost',sans-serif;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:${C.nickel};padding:8px 0 4px;margin-top:6px}
       `}</style>
 
-      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session}/>
+      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin}/>
 
       <main style={{flex:1,overflow:"auto",padding:"32px 36px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)}/>}
+        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null}/>}
         {(page==="customers"&&selectedCustomerId&&activeCustomer)||(page==="customer-detail"&&activeCustomer)
-          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={updateCustomer} navigate={navigate}/>:null}
+          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
+        {page==="team"&&isAdmin&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
+        {page==="team-member"&&isAdmin&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate}/>}
       </main>
 
       {showCreateBrief&&<CreateBriefModal customers={customers} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
-          setBriefs(p=>[...p,b]);
-          await sb.from("briefs").upsert(briefToRow(b));
+          const withOwner = {...b, ownerId: session.user.id};
+          setBriefs(p=>[...p,withOwner]);
+          await sb.from("briefs").upsert(briefToRow(withOwner));
           const briefTotal = Object.values(b.channelBudgets||{}).reduce((a,v)=>a+v,0);
-          if(briefTotal>0) await adjustBank(b.customerId, briefTotal);
+          if (briefTotal>0) await adjustBank(b.customerId, briefTotal);
           setShowCreateBrief(false);
         }}/>}
-      {showCreateCustomer&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
+      {showCreateCustomer&&isAdmin&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
         onSave={async c=>{setCustomers(p=>[...p,c]);await sb.from("customers").upsert(customerToRow(c));setShowCreateCustomer(false);}}/>}
       {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers}
         onClose={()=>setBriefToConvert(null)}
         onSave={async (campaign,briefId)=>{
+          const withOwner = {...campaign, ownerId: session.user.id};
           const cust = customers.find(c=>c.id===campaign.customerId);
-          if(cust) await adjustBank(campaign.customerId, -campaign.budget);
-          setTasks(p=>[...p,campaign]);
-          await sb.from("campaigns").upsert(campaignToRow(campaign));
+          if (cust) await adjustBank(campaign.customerId, -campaign.budget);
+          setTasks(p=>[...p,withOwner]);
+          await sb.from("campaigns").upsert(campaignToRow(withOwner));
           await updateBrief(briefId,{status:"startet"});
           setBriefToConvert(null);
         }}/>}
@@ -379,37 +361,41 @@ export default function App() {
   );
 }
 
-// ══ Sidebar ══════════════════════════════════════════════════════
-function Sidebar({page, navigate, setShowCreateBrief, session}) {
+// ══ Sidebar ════════════════════════════════════════════════════════
+function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
   const user = session?.user;
   const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Bruker";
   const avatar = user?.user_metadata?.avatar_url;
   const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-
-  const handleSignOut = async () => {
-    await sb.auth.signOut();
-  };
-
+  const navItems = [
+    {id:"dashboard",label:"Dashboard"},
+    {id:"campaigns",label:"Kampanjelinjer"},
+    {id:"briefs",label:"Oppgaver"},
+    {id:"customers",label:"Kunder"},
+    ...(isAdmin?[{id:"team",label:"Team"}]:[]),
+  ];
   return (
     <aside style={{width:220,background:"#272B32",display:"flex",flexDirection:"column",padding:"28px 16px",borderRight:`1px solid ${C.ash}`,gap:4,flexShrink:0}}>
       <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>AmiDesk</div>
-      {[{id:"dashboard",label:"Dashboard"},{id:"campaigns",label:"Kampanjelinjer"},{id:"briefs",label:"Oppgaver"},{id:"customers",label:"Kunder"}].map(item=>(
-        <div key={item.id} className={`nav-item${page===item.id||page===item.id+"-detail"?" active":""}`} onClick={()=>navigate(item.id)}>{item.label}</div>
+      {navItems.map(item=>(
+        <div key={item.id}
+          className={`nav-item${page===item.id||page===item.id+"-detail"||page==="team-member"&&item.id==="team"?" active":""}`}
+          onClick={()=>navigate(item.id)}>{item.label}</div>
       ))}
       <div style={{flex:1}}/>
       <button className="btn" onClick={()=>setShowCreateBrief(true)}
         style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
         <span style={{fontSize:16,lineHeight:1}}>+</span> Ny oppgave
       </button>
-      {/* User info + sign out */}
       <div style={{borderTop:`1px solid ${C.ash}`,paddingTop:14,display:"flex",alignItems:"center",gap:10}}>
         {avatar
-          ? <img src={avatar} alt={name} style={{width:30,height:30,borderRadius:"50%",flexShrink:0}}/>
-          : <div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{initials}</div>
+          ?<img src={avatar} alt={name} style={{width:30,height:30,borderRadius:"50%",flexShrink:0}}/>
+          :<div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{initials}</div>
         }
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
-          <button className="btn" onClick={handleSignOut}
+          {isAdmin&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.sandrift,letterSpacing:".04em"}}>Admin</div>}
+          <button className="btn" onClick={()=>sb.auth.signOut()}
             style={{background:"none",color:C.nickel,fontFamily:"'Jost',sans-serif",fontSize:10,padding:0,letterSpacing:".04em",marginTop:2}}>
             Logg ut
           </button>
@@ -419,12 +405,120 @@ function Sidebar({page, navigate, setShowCreateBrief, session}) {
   );
 }
 
-// ══ Dashboard ═════════════════════════════════════════════════════
-function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate, setBriefToConvert}) {
-  const activeBriefs = briefs.filter(b=>!b.archived&&b.status!=="avsluttet");
-  const activeTasks  = tasks.filter(t=>!t.archived);
-  const pendingCampaign = activeBriefs.filter(b=>!activeTasks.some(t=>t.fromBriefId===b.id));
+// ══ Team Page (admin only) ═════════════════════════════════════════
+function TeamPage({teamMembers, navigate}) {
+  return (
+    <div>
+      <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500,marginBottom:28}}>Team</h1>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+        {teamMembers.map(member=>{
+          const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+          const adminMember=ADMIN_EMAILS.includes(member.email);
+          return (
+            <div key={member.id} className="card" style={{padding:"24px",cursor:"pointer"}} onClick={()=>navigate("team-member",{viewingUserId:member.id})}>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+                {member.avatar_url
+                  ?<img src={member.avatar_url} alt={member.display_name} style={{width:44,height:44,borderRadius:"50%"}}/>
+                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+                }
+                <div>
+                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</div>
+                  <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{member.email}</div>
+                </div>
+              </div>
+              {adminMember&&<span style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.sandrift,background:`${C.sandrift}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
+// ══ Team Member Detail (admin only) ════════════════════════════════
+function TeamMemberPage({userId, teamMembers, customers, navigate}) {
+  const [memberBriefs, setMemberBriefs] = useState([]);
+  const [memberTasks, setMemberTasks] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const member = teamMembers.find(m=>m.id===userId);
+
+  useEffect(()=>{
+    if(!userId) return;
+    async function load() {
+      const [{ data: bData },{ data: tData }] = await Promise.all([
+        sb.from("briefs").select("*").eq("owner_id",userId),
+        sb.from("campaigns").select("*").eq("owner_id",userId),
+      ]);
+      if(bData) setMemberBriefs(bData.map(rowToBrief));
+      if(tData) setMemberTasks(tData.map(rowToCampaign));
+      setLoading(false);
+    }
+    load();
+  },[userId]);
+
+  if(!member) return null;
+  const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const activeBriefs=memberBriefs.filter(b=>!b.archived&&b.status!=="avsluttet");
+  const activeTasks=memberTasks.filter(t=>!t.archived);
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
+        <button className="btn" onClick={()=>navigate("team")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
+        {member.avatar_url
+          ?<img src={member.avatar_url} style={{width:44,height:44,borderRadius:"50%"}}/>
+          :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+        }
+        <div>
+          <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</h1>
+          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{member.email}</div>
+        </div>
+      </div>
+      {loading?<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel}}>Laster…</div>:(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+          <div>
+            <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Oppgaver ({activeBriefs.length})</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {activeBriefs.length===0&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive oppgaver.</div>}
+              {activeBriefs.map(b=>{
+                const cust=customers.find(c=>c.id===b.customerId);
+                return (
+                  <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:`3px solid ${C.sandrift}`}}>
+                    <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
+                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{cust?.name} · {b.start} → {b.end}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <div>
+            <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {activeTasks.length===0&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive kampanjer.</div>}
+              {activeTasks.map(t=>{
+                const cust=customers.find(c=>c.id===t.customerId);
+                const totalSpent=Object.values(t.spent||{}).reduce((a,b)=>a+b,0);
+                return (
+                  <div key={t.id} className="card" style={{padding:"12px 16px"}}>
+                    <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
+                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
+                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ══ Dashboard ══════════════════════════════════════════════════════
+function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate, setBriefToConvert}) {
+  const activeBriefs=briefs.filter(b=>!b.archived&&b.status!=="avsluttet");
+  const activeTasks=tasks.filter(t=>!t.archived);
+  const pendingCampaign=activeBriefs.filter(b=>!activeTasks.some(t=>t.fromBriefId===b.id));
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
@@ -452,7 +546,6 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
               const cust=customers.find(c=>c.id===brief.customerId);
               const isStarted=brief.status==="startet";
               const hasCampaign=activeTasks.some(t=>t.fromBriefId===brief.id);
-              const res=RESOURCES.find(r=>brief.assignedTo?.includes(r.id));
               return (
                 <div key={brief.id} className="card"
                   style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${isStarted?C.greyOlive:C.sandrift}`}}
@@ -461,7 +554,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:500,fontSize:14,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{brief.title}</div>
                     <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:10,flexWrap:"wrap"}}>
-                      <span>{cust?.name}</span>{res&&<span>· {res.name}</span>}
+                      <span>{cust?.name}</span>
                       {brief.start&&brief.end&&<span>· {brief.start} → {brief.end}</span>}
                     </div>
                   </div>
@@ -564,7 +657,6 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
 function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setBriefToConvert}) {
   const cust=customers.find(c=>c.id===brief.customerId);
   const isStarted=brief.status==="startet";
-  const assignedRes=RESOURCES.filter(r=>brief.assignedTo?.includes(r.id));
   const totalBudget=Object.values(brief.channelBudgets||{}).reduce((a,b)=>a+b,0);
   return (
     <div>
@@ -604,17 +696,6 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
                 <div style={{fontFamily:"'Jost',sans-serif",fontSize:13}}>{row.value}</div>
               </div>
             ))}
-            {assignedRes.length>0&&(
-              <div>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:6}}>Ressurs</div>
-                {assignedRes.map(r=>(
-                  <div key={r.id} style={{display:"flex",alignItems:"center",gap:8}}>
-                    <div style={{width:26,height:26,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:10,fontWeight:500}}>{r.initials}</div>
-                    <span style={{fontFamily:"'Jost',sans-serif",fontSize:12}}>{r.name}</span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
           <button className="btn" onClick={()=>updateBrief(brief.id,{status:isStarted?"ny":"startet"})}
             style={{padding:"10px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
@@ -660,8 +741,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate}) {
   const [editingMeta,setEditingMeta]=useState(false);
   const [meta,setMeta]=useState({start:task.start,end:task.end,budget:task.budget});
-  const isEnded = task.end && task.end <= today();
-
+  const isEnded=task.end&&task.end<=today();
   const saveMeta=()=>{
     if(!meta.end) return;
     updateCampaign(task.id,{start:meta.start,end:meta.end,budget:+meta.budget||task.budget});
@@ -672,7 +752,6 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
       updateCampaign(task.id,{end:today(),archived:true});
     }
   };
-
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"9px 20px 8px",borderBottom:`1px solid ${C.ash}`,borderLeft:`3px solid ${accent}`}}>
@@ -733,13 +812,11 @@ function CampaignLineRow({line, task, updateCampaign}) {
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
   const pct=line.budget>0?Math.min(100,Math.round((line.spent/line.budget)*100)):0;
   const isEnded=line.chEnd&&line.chEnd<=today();
-
   const saveSpent=()=>{updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:spentVal}});setMode(null);};
   const saveBudget=()=>{updateCampaign(task.id,{channelBudgets:{...task.channelBudgets,[line.flatKey]:budgetVal}});setMode(null);};
   const saveDate=()=>{
     const nd={...(task.channelDates||{}),[line.flatKey]:{start:dateVal.start,end:dateVal.end}};
-    updateCampaign(task.id,{channelDates:nd});
-    setMode(null);
+    updateCampaign(task.id,{channelDates:nd});setMode(null);
   };
   const endChannel=()=>{
     if(confirm(`Avslutt kanalen "${line.flatKey}" nå?`)){
@@ -747,7 +824,6 @@ function CampaignLineRow({line, task, updateCampaign}) {
       updateCampaign(task.id,{channelDates:nd});
     }
   };
-
   return (
     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,.03)",borderRadius:4,border:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
       <div style={{width:180,flexShrink:0}}>
@@ -768,7 +844,6 @@ function CampaignLineRow({line, task, updateCampaign}) {
         <div>{line.dl} dager igjen</div>
       </div>
       <span className={line.p.ok?"pacing-ok":"pacing-bad"}>{line.p.label}</span>
-
       {mode==="spent"?(
         <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
           <input type="number" value={spentVal} onChange={e=>setSpentVal(+e.target.value)} style={{width:90}} placeholder="Brukt NOK"/>
@@ -847,7 +922,7 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
         <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500}}>Kunder</h1>
-        <button className="btn" onClick={setShowCreateCustomer} style={{background:C.panel,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny kunde</button>
+        {setShowCreateCustomer&&<button className="btn" onClick={setShowCreateCustomer} style={{background:C.panel,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny kunde</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {customers.map(c=>{
@@ -885,23 +960,15 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   const archivedTasks=tasks.filter(t=>t.customerId===customer.id&&t.archived);
   const activeBriefs=briefs.filter(b=>b.customerId===customer.id&&!b.archived);
   const archivedBriefs=briefs.filter(b=>b.customerId===customer.id&&b.archived);
-
-  const hunchEntries = [...activeTasks,...archivedTasks].flatMap(task=>
-    getChannelLines(task)
-      .filter(l=>l.hunch&&l.spent>0)
-      .map(l=>({
-        month: monthLabel(task.start),
-        channel: l.flatKey,
-        spent: l.spent,
-        fee: Math.round(l.spent*HUNCH_FEE),
-        taskTitle: task.title,
-      }))
+  const hunchEntries=[...activeTasks,...archivedTasks].flatMap(task=>
+    getChannelLines(task).filter(l=>l.hunch&&l.spent>0).map(l=>({
+      month:monthLabel(task.start),channel:l.flatKey,spent:l.spent,
+      fee:Math.round(l.spent*HUNCH_FEE),taskTitle:task.title,
+    }))
   );
-
-  const hunchByMonth = hunchEntries.reduce((acc,e)=>{
+  const hunchByMonth=hunchEntries.reduce((acc,e)=>{
     if(!acc[e.month]) acc[e.month]=[];
-    acc[e.month].push(e);
-    return acc;
+    acc[e.month].push(e);return acc;
   },{});
 
   return (
@@ -913,21 +980,29 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
         </div>
-        <div style={{textAlign:"right"}}>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
-          {editingBank?(
-            <div style={{display:"flex",gap:6,alignItems:"center"}}>
-              <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
-              <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lagre</button>
-              <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>✕</button>
-            </div>
-          ):(
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
-              <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Sett inn</button>
-            </div>
-          )}
-        </div>
+        {updateCustomer&&(
+          <div style={{textAlign:"right"}}>
+            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+            {editingBank?(
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
+                <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lagre</button>
+                <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>✕</button>
+              </div>
+            ):(
+              <div style={{display:"flex",alignItems:"center",gap:8}}>
+                <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+                <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Sett inn</button>
+              </div>
+            )}
+          </div>
+        )}
+        {!updateCustomer&&(
+          <div style={{textAlign:"right"}}>
+            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+            <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+          </div>
+        )}
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
@@ -979,7 +1054,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
         </>
       )}
-
       {tab==="history"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
           {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
@@ -997,7 +1071,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           ))}
         </div>
       )}
-
       {tab==="hunch"&&(
         <div>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
@@ -1024,34 +1097,30 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   );
 }
 
-// ══ Channel selector ══════════════════════════════════════════════
+// ══ Channel Dropdown ══════════════════════════════════════════════
 function ChannelDropdown({channels, onChange}) {
   const [openCohort, setOpenCohort] = useState(null);
-
   const toggleChannel = ch => {
-    const nc = {...channels};
-    if(nc[ch]) delete nc[ch]; else nc[ch] = [];
+    const nc={...channels};
+    if(nc[ch]) delete nc[ch]; else nc[ch]=[];
     onChange(nc);
   };
-  const toggleSub = (ch, sub) => {
-    const cur = channels[ch]||[];
-    const next = cur.includes(sub) ? cur.filter(s=>s!==sub) : [...cur,sub];
+  const toggleSub = (ch,sub) => {
+    const cur=channels[ch]||[];
+    const next=cur.includes(sub)?cur.filter(s=>s!==sub):[...cur,sub];
     onChange({...channels,[ch]:next});
   };
-
-  const selectedCount = Object.keys(channels).length;
-
+  const selectedCount=Object.keys(channels).length;
   return (
     <div>
       {selectedCount>0&&(
         <div style={{display:"flex",flexWrap:"wrap",gap:5,marginBottom:10}}>
           {Object.entries(channels).map(([ch,subs])=>{
-            const items = (subs&&subs.length>0)?subs:[null];
+            const items=(subs&&subs.length>0)?subs:[null];
             return items.map(sub=>{
-              const key = sub?`${ch} · ${sub}`:ch;
+              const key=sub?`${ch} · ${sub}`:ch;
               return <span key={key} style={{fontFamily:"'Jost',sans-serif",fontSize:11,background:`${C.sandrift}30`,color:C.sandrift,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
-                {key}
-                <span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}>✕</span>
+                {key}<span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}>✕</span>
               </span>;
             });
           })}
@@ -1074,7 +1143,7 @@ function ChannelDropdown({channels, onChange}) {
           {openCohort===cohort&&(
             <div style={{border:`1px solid ${C.ash}`,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"8px",display:"flex",flexDirection:"column",gap:4,background:C.input}}>
               {Object.entries(chans).map(([ch,subs])=>{
-                const selected = !!channels[ch];
+                const selected=!!channels[ch];
                 return (
                   <div key={ch} style={{borderRadius:3,border:`1px solid ${selected?C.sandrift:C.ash}`,background:selected?`${C.sandrift}10`:"transparent"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",cursor:"pointer"}} onClick={()=>toggleChannel(ch)}>
@@ -1109,52 +1178,33 @@ function getSelectedLines(channels) {
 
 // ══ Create Brief Modal ════════════════════════════════════════════
 function CreateBriefModal({customers, onClose, onSave}) {
-  const [form, setForm] = useState({
-    customerId:"", title:"", description:"",
-    start:today(), end:"", assignedTo:"",
-    channels:{},
-  });
-  const [campaignLines, setCampaignLines] = useState([]);
-
-  const selectedLines = getSelectedLines(form.channels);
-
-  const handleChannelChange = newChannels => {
-    const newLines = getSelectedLines(newChannels);
-    setCampaignLines(prev => {
-      const kept = prev.filter(cl => newLines.some(l=>l.flatKey===cl.flatKey));
-      const existing = new Set(kept.map(cl=>cl.flatKey));
-      const added = newLines.filter(l=>!existing.has(l.flatKey)).map(l=>({id:uid(),flatKey:l.flatKey,name:"Kampanje 1",budget:0,hunch:l.hunch}));
+  const [form,setForm]=useState({customerId:"",title:"",description:"",start:today(),end:"",assignedTo:"",channels:{}});
+  const [campaignLines,setCampaignLines]=useState([]);
+  const selectedLines=getSelectedLines(form.channels);
+  const handleChannelChange=newChannels=>{
+    const newLines=getSelectedLines(newChannels);
+    setCampaignLines(prev=>{
+      const kept=prev.filter(cl=>newLines.some(l=>l.flatKey===cl.flatKey));
+      const existing=new Set(kept.map(cl=>cl.flatKey));
+      const added=newLines.filter(l=>!existing.has(l.flatKey)).map(l=>({id:uid(),flatKey:l.flatKey,name:"Kampanje 1",budget:0,hunch:l.hunch}));
       return [...kept,...added];
     });
     setForm(f=>({...f,channels:newChannels}));
   };
-
-  const addLine = flatKey => {
-    const count = campaignLines.filter(cl=>cl.flatKey===flatKey).length;
+  const addLine=flatKey=>{
+    const count=campaignLines.filter(cl=>cl.flatKey===flatKey).length;
     setCampaignLines(prev=>[...prev,{id:uid(),flatKey,name:`Kampanje ${count+1}`,budget:0,hunch:isHunch(flatKey)}]);
   };
-
-  const removeLine = id => setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
-  const updateLine = (id, changes) => setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
-  const total = campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
-
-  const save = () => {
+  const removeLine=id=>setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
+  const updateLine=(id,changes)=>setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
+  const total=campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
+  const save=()=>{
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
     if(!form.end) return alert("Fyll inn sluttdato");
-    const channelBudgets = {};
-    campaignLines.forEach(cl => {
-      const key = `${cl.flatKey} — ${cl.name}`;
-      channelBudgets[key] = cl.budget||0;
-    });
-    onSave({
-      id:uid(), ...form,
-      assignedTo: form.assignedTo?[form.assignedTo]:[],
-      channels: form.channels,
-      channelBudgets,
-      status:"ny", archived:false,
-    });
+    const channelBudgets={};
+    campaignLines.forEach(cl=>{channelBudgets[`${cl.flatKey} — ${cl.name}`]=cl.budget||0;});
+    onSave({id:uid(),...form,assignedTo:form.assignedTo?[form.assignedTo]:[],channels:form.channels,channelBudgets,status:"ny",archived:false});
   };
-
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
@@ -1172,7 +1222,7 @@ function CreateBriefModal({customers, onClose, onSave}) {
           <div><label>Ressurs</label>
             <select value={form.assignedTo} onChange={e=>setForm(f=>({...f,assignedTo:e.target.value}))} style={{width:"100%"}}>
               <option value="">Ikke tildelt</option>
-              {RESOURCES.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}
+              <option value="r1">Robin Askevold</option>
             </select>
           </div>
         </div>
@@ -1194,30 +1244,22 @@ function CreateBriefModal({customers, onClose, onSave}) {
             <label>Kampanjelinjer og budsjett</label>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
               {selectedLines.map(line=>{
-                const linesForChannel = campaignLines.filter(cl=>cl.flatKey===line.flatKey);
+                const linesForChannel=campaignLines.filter(cl=>cl.flatKey===line.flatKey);
                 return (
                   <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`,padding:"10px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
                       <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,color:C.text}}>
                         {line.label}{line.hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
                       </span>
-                      <button className="btn" onClick={()=>addLine(line.flatKey)}
-                        style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>
-                        + Legg til kampanje
-                      </button>
+                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>+ Legg til kampanje</button>
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:5}}>
                       {linesForChannel.map(cl=>(
                         <div key={cl.id} style={{display:"flex",alignItems:"center",gap:8}}>
-                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})}
-                            style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Kampanjenavn"/>
-                          <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})}
-                            style={{width:120,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="0"/>
+                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Kampanjenavn"/>
+                          <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{width:120,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="0"/>
                           <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,width:30}}>NOK</span>
-                          {linesForChannel.length>1&&(
-                            <button className="btn" onClick={()=>removeLine(cl.id)}
-                              style={{background:"none",color:C.nickel,fontSize:13,padding:"2px 4px"}}>✕</button>
-                          )}
+                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.nickel,fontSize:13,padding:"2px 4px"}}>✕</button>}
                         </div>
                       ))}
                     </div>
@@ -1247,7 +1289,6 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
   const allLines=getSelectedLines(brief.channels||{});
   const total=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
   const bankAfter=(cust?.bank||0)-total;
-
   const distribute=()=>{
     if(!allLines.length) return;
     const each=Math.round(total/allLines.length);
