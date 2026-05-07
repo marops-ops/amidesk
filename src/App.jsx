@@ -359,7 +359,7 @@ export default function App() {
 
       <main style={{flex:1,overflow:"auto",padding:"32px 36px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null}/>}
@@ -805,7 +805,7 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank}) {
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
   return (
@@ -817,12 +817,12 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
         return (
           <div key={customer.id} style={{marginBottom:4,background:C.panel,borderRadius:6,border:`1px solid ${C.ash}`,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 20px",background:accent,borderBottom:`2px solid rgba(0,0,0,.2)`}}>
-              <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.25)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{customer.logo}</div>
+              <CustomerAvatar customer={customer} size={28} fontSize={11}/>
               <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,cursor:"pointer",color:"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.2)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{custTasks.length} kampanje{custTasks.length!==1?"r":""}</div>
             </div>
             {custTasks.map((task,taskIdx)=>(
-              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>
+              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank}/>
             ))}
           </div>
         );
@@ -831,30 +831,49 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   );
 }
 
-function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate}) {
+function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank}) {
   const [editingMeta,setEditingMeta]=useState(false);
   const [meta,setMeta]=useState({start:task.start,end:task.end,budget:task.budget});
+  const [showEndConfirm,setShowEndConfirm]=useState(false);
   const isEnded=task.end&&task.end<=today();
+
   const saveMeta=()=>{
     if(!meta.end) return;
     updateCampaign(task.id,{start:meta.start,end:meta.end,budget:+meta.budget||task.budget});
     setEditingMeta(false);
   };
-  const endCampaign=()=>{
-    if(confirm(`Avslutt kampanjen "${task.title}" nå?\nDato settes til i dag.`)){
-      updateCampaign(task.id,{end:today(),archived:true});
+
+  const handleEndCampaign=async ()=>{
+    const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
+    const diff=task.budget-totalSpent; // positive = rest tilbake, negative = merforbruk
+    if(adjustBank) await adjustBank(task.customerId, diff);
+    await updateCampaign(task.id,{end:today(),archived:true});
+    setShowEndConfirm(false);
+  };
+
+  const handleEndChannel=(line)=>{
+    const lineDiff = line.budget - line.spent;
+    if(confirm(`Avslutt "${line.label}"?\nRestbudsjett ${fmtNOK(lineDiff)} ${lineDiff>=0?"returneres til bank":"trekkes fra bank"}.`)){
+      if(adjustBank) adjustBank(task.customerId, lineDiff);
+      const nd={...(task.channelDates||{}),[line.flatKey]:{start:line.chStart,end:today()}};
+      updateCampaign(task.id,{channelDates:nd});
     }
   };
+
+  const lines=getChannelLines(task);
+  const grouped=groupLinesByChannel(lines);
+
   return (
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"9px 20px 8px",borderBottom:`1px solid ${C.ash}`,borderLeft:`3px solid ${accent}`}}>
-        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:500,cursor:"pointer",color:C.text,marginRight:2}} onClick={()=>navigate("task-detail",{taskId:task.id})}>{task.title}</div>
+      {/* Campaign header */}
+      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"10px 20px",borderBottom:`1px solid ${C.ash}`,borderLeft:`3px solid ${accent}`}}>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:14,fontWeight:600,cursor:"pointer",color:C.text}} onClick={()=>navigate("task-detail",{taskId:task.id})}>{task.title}</div>
         {editingMeta?(
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <input type="date" value={meta.start} onChange={e=>setMeta(f=>({...f,start:e.target.value}))} style={{width:132,padding:"3px 7px",fontSize:11}}/>
             <span style={{color:C.nickel,fontSize:11}}>→</span>
             <input type="date" value={meta.end} onChange={e=>setMeta(f=>({...f,end:e.target.value}))} style={{width:132,padding:"3px 7px",fontSize:11}}/>
-            <input type="number" value={meta.budget} onChange={e=>setMeta(f=>({...f,budget:e.target.value}))} style={{width:110,padding:"3px 7px",fontSize:11,textAlign:"right"}} placeholder="Budsjett"/>
+            <input type="number" value={meta.budget} onChange={e=>setMeta(f=>({...f,budget:e.target.value}))} style={{width:110,padding:"3px 7px",fontSize:11,textAlign:"right"}}/>
             <span style={{color:C.nickel,fontSize:11}}>NOK</span>
             <button className="btn" onClick={saveMeta} style={{background:C.sandrift,color:"#fff",padding:"3px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
             <button className="btn" onClick={()=>setEditingMeta(false)} style={{background:C.ash,color:C.text,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
@@ -864,108 +883,180 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
             <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</span>
             <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>· {fmtNOK(task.budget)}</span>
             <button className="btn" onClick={()=>{setMeta({start:task.start,end:task.end,budget:task.budget});setEditingMeta(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Rediger</button>
-            {isEnded&&<button className="btn" onClick={endCampaign} style={{background:`${C.greyOlive}30`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt kampanje</button>}
-            <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}50`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
+            {isEnded&&!showEndConfirm&&(
+              <button className="btn" onClick={()=>setShowEndConfirm(true)} style={{background:`${C.brandyRose}20`,border:`1px solid ${C.brandyRose}`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt kampanje</button>
+            )}
+            {showEndConfirm&&(
+              <div style={{display:"flex",alignItems:"center",gap:6,background:C.input,padding:"4px 10px",borderRadius:4,border:`1px solid ${C.brandyRose}`}}>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.brandyRose}}>
+                  Gjøre opp bank og arkivere?
+                </span>
+                <button className="btn" onClick={handleEndCampaign} style={{background:C.brandyRose,color:"#fff",padding:"3px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Ja, avslutt</button>
+                <button className="btn" onClick={()=>setShowEndConfirm(false)} style={{background:C.ash,color:C.text,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Avbryt</button>
+              </div>
+            )}
+            <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
           </div>
         )}
       </div>
-      <div style={{padding:"8px 14px",display:"flex",flexDirection:"column",gap:5}}>
-        {getChannelLines(task).map(line=>(
-          <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign}/>
-        ))}
+
+      {/* Grouped channel lines */}
+      <div style={{padding:"10px 16px",display:"flex",flexDirection:"column",gap:12}}>
+        {Object.entries(grouped).map(([channelName, channelLines])=>{
+          const icon=getChannelIcon(channelName);
+          return (
+            <div key={channelName}>
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+                {icon&&<img src={icon} alt="" style={{width:14,height:14,borderRadius:2,objectFit:"contain",background:"#fff",padding:1}}/>}
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,fontWeight:500,letterSpacing:".06em",textTransform:"uppercase",color:C.nickel}}>{channelName}</span>
+              </div>
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                {channelLines.map(line=>(
+                  <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel}/>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
-      {taskIdx<custTasks.length-1&&<div style={{height:1,background:C.ash,margin:"0 14px"}}/>}
+
+      {taskIdx<custTasks.length-1&&<div style={{height:1,background:C.ash,margin:"0 16px"}}/>}
     </div>
   );
 }
 
 function getChannelLines(task) {
-  return Object.entries(task.channels||{}).flatMap(([ch,subs])=>{
-    const items=(subs&&subs.length>0)?subs:[null];
-    return items.map(sub=>{
-      const flatKey=sub?`${ch} · ${sub}`:ch;
-      const budget=task.channelBudgets?.[flatKey]??0;
-      const spent=task.spent?.[flatKey]??0;
-      const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
-      const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
-      const dl=daysLeft(chEnd);
-      const dayBudget=dl>0?Math.round((budget-spent)/dl):0;
-      const p=pacing(spent,budget,chStart,chEnd);
-      const hunch=isHunch(flatKey);
-      const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-      return{flatKey,label:flatKey,budget,netBudget,spent,dayBudget,dl,p,hunch,chStart,chEnd};
+  // Use channelBudgets as source of truth — these have the actual named lines
+  const budgets = task.channelBudgets || {};
+  if (Object.keys(budgets).length === 0) {
+    // Fallback: derive from channels structure
+    return Object.entries(task.channels||{}).flatMap(([ch,subs])=>{
+      const items=(subs&&subs.length>0)?subs:[null];
+      return items.map(sub=>{
+        const flatKey=sub?`${ch} · ${sub}`:ch;
+        const budget=0;
+        const spent=task.spent?.[flatKey]??0;
+        const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
+        const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
+        const dl=daysLeft(chEnd);
+        const dayBudget=dl>0?Math.round((budget-spent)/dl):0;
+        const p=pacing(spent,budget,chStart,chEnd);
+        const hunch=isHunch(flatKey);
+        const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
+        return{flatKey,label:flatKey,budget,netBudget,spent,dayBudget,dl,p,hunch,chStart,chEnd,baseChannel:ch};
+      });
     });
+  }
+  return Object.entries(budgets).map(([flatKey, budget])=>{
+    // baseChannel is everything before " — "
+    const baseChannel = flatKey.split(" — ")[0].split(" · ")[0];
+    const spent=task.spent?.[flatKey]??0;
+    const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
+    const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
+    const dl=daysLeft(chEnd);
+    const dayBudget=dl>0?Math.round((budget-spent)/dl):0;
+    const p=pacing(spent,budget,chStart,chEnd);
+    const hunch=isHunch(flatKey);
+    const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
+    return{flatKey,label:flatKey,budget,netBudget,spent,dayBudget,dl,p,hunch,chStart,chEnd,baseChannel};
   });
 }
 
-function CampaignLineRow({line, task, updateCampaign}) {
+// Group lines by base channel for display
+function groupLinesByChannel(lines) {
+  const groups = {};
+  lines.forEach(line => {
+    const ch = line.baseChannel || line.flatKey;
+    if (!groups[ch]) groups[ch] = [];
+    groups[ch].push(line);
+  });
+  return groups;
+}
+
+function CampaignLineRow({line, task, updateCampaign, onEndChannel}) {
   const [mode,setMode]=useState(null);
   const [spentVal,setSpentVal]=useState(line.spent);
   const [budgetVal,setBudgetVal]=useState(line.budget);
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
   const pct=line.budget>0?Math.min(100,Math.round((line.spent/line.budget)*100)):0;
   const isEnded=line.chEnd&&line.chEnd<=today();
+
   const saveSpent=()=>{updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:spentVal}});setMode(null);};
   const saveBudget=()=>{updateCampaign(task.id,{channelBudgets:{...task.channelBudgets,[line.flatKey]:budgetVal}});setMode(null);};
   const saveDate=()=>{
     const nd={...(task.channelDates||{}),[line.flatKey]:{start:dateVal.start,end:dateVal.end}};
     updateCampaign(task.id,{channelDates:nd});setMode(null);
   };
-  const endChannel=()=>{
-    if(confirm(`Avslutt kanalen "${line.flatKey}" nå?`)){
-      const nd={...(task.channelDates||{}),[line.flatKey]:{start:line.chStart,end:today()}};
-      updateCampaign(task.id,{channelDates:nd});
-    }
-  };
+
+  const lineName = line.label.includes(" — ") ? line.label.split(" — ").slice(1).join(" — ") : line.label;
+
   return (
-    <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,.03)",borderRadius:4,border:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
-      <div style={{width:180,flexShrink:0}}>
-        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text,display:"flex",alignItems:"center",gap:6}}>
-          {getChannelIcon(line.label)&&<img src={getChannelIcon(line.label)} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
-          {line.label}
+    <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
+      {/* Main row */}
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",flexWrap:"wrap"}}>
+        <div style={{minWidth:160,flex:1}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text}}>{lineName}</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
+          {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch fee −5% = {fmtNOK(line.netBudget)}</div>}
         </div>
-        {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch fee −5% = {fmtNOK(line.netBudget)}</div>}
-        <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
+
+        {/* Progress bar + amounts */}
+        <div style={{flex:2,minWidth:140}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:3}}>
+            <span>{fmtNOK(line.spent)}</span>
+            <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
+          </div>
+          <div style={{height:2,background:C.ash,borderRadius:1,overflow:"hidden"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:1,transition:"width .4s"}}/>
+          </div>
+        </div>
+
+        {/* NOK/dag + dager */}
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,textAlign:"right",minWidth:80,flexShrink:0}}>
+          <div style={{fontWeight:500,color:C.text,fontSize:12}}>{fmtNOK(line.dayBudget)}/dag</div>
+          <div style={{fontSize:10}}>{line.dl}d igjen</div>
+        </div>
+
+        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 6px"}}>{line.p.label}</span>
+
+        {/* Action buttons */}
+        <div style={{display:"flex",gap:4,flexShrink:0}}>
+          <button className="btn" onClick={()=>setMode(mode==="spent"?null:"spent")}
+            style={{background:mode==="spent"?C.sandrift:"none",border:`1px solid ${mode==="spent"?C.sandrift:C.ash}`,color:mode==="spent"?"#fff":C.nickel,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Forbruk</button>
+          <button className="btn" onClick={()=>setMode(mode==="budget"?null:"budget")}
+            style={{background:mode==="budget"?C.sandrift:"none",border:`1px solid ${mode==="budget"?C.sandrift:C.ash}`,color:mode==="budget"?"#fff":C.nickel,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Budsjett</button>
+          <button className="btn" onClick={()=>setMode(mode==="date"?null:"date")}
+            style={{background:mode==="date"?C.sandrift:"none",border:`1px solid ${mode==="date"?C.sandrift:C.ash}`,color:mode==="date"?"#fff":C.nickel,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Dato</button>
+          {isEnded&&<button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
+            style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
+        </div>
       </div>
-      <div style={{flex:1,minWidth:120}}>
-        <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>
-          <span>{fmtNOK(line.spent)}</span><span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
+
+      {/* Inline edit panels */}
+      {mode==="spent"&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Oppdater forbruk:</span>
+          <input type="number" value={spentVal} onChange={e=>setSpentVal(+e.target.value)} style={{flex:1,maxWidth:160}} placeholder="NOK"/>
+          <button className="btn" onClick={saveSpent} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
-        <div style={{height:4,background:C.ash,borderRadius:2,overflow:"hidden"}}>
-          <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:2,transition:"width .4s"}}/>
+      )}
+      {mode==="budget"&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Oppdater budsjett:</span>
+          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(+e.target.value)} style={{flex:1,maxWidth:160}} placeholder="NOK"/>
+          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
-      </div>
-      <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,textAlign:"right",minWidth:90,flexShrink:0}}>
-        <div style={{fontWeight:500,color:C.text}}>{fmtNOK(line.dayBudget)}/dag</div>
-        <div>{line.dl} dager igjen</div>
-      </div>
-      <span className={line.p.ok?"pacing-ok":"pacing-bad"}>{line.p.label}</span>
-      {mode==="spent"?(
-        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-          <input type="number" value={spentVal} onChange={e=>setSpentVal(+e.target.value)} style={{width:90}} placeholder="Brukt NOK"/>
-          <button className="btn" onClick={saveSpent} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
-        </div>
-      ):mode==="budget"?(
-        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
-          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(+e.target.value)} style={{width:110}} placeholder="Budsjett NOK"/>
-          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
-        </div>
-      ):mode==="date"?(
-        <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
-          <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))} style={{width:130,padding:"3px 7px",fontSize:11}}/>
+      )}
+      {mode==="date"&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Datoer:</span>
+          <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}}/>
           <span style={{color:C.nickel,fontSize:11}}>→</span>
-          <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))} style={{width:130,padding:"3px 7px",fontSize:11}}/>
-          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
-        </div>
-      ):(
-        <div style={{display:"flex",gap:5,flexShrink:0,flexWrap:"wrap"}}>
-          <button className="btn" onClick={()=>{setSpentVal(line.spent);setMode("spent");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Forbruk</button>
-          <button className="btn" onClick={()=>{setBudgetVal(line.budget);setMode("budget");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Budsjett</button>
-          <button className="btn" onClick={()=>{setDateVal({start:line.chStart,end:line.chEnd});setMode("date");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Dato</button>
-          {isEnded&&<button className="btn" onClick={endChannel} style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
+          <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}}/>
+          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
       )}
     </div>
