@@ -8,6 +8,30 @@ const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 const ALLOWED_DOMAIN = "amidays.com";
 const ADMIN_EMAILS = ["robin@amidays.com","kaja@amidays.com","elisabeth@amidays.com","jorgen@amidays.com","marops@amidays.com"];
 
+const AMIDAYS_STAFF = [
+  {id:"arvid",    name:"Arvid Cedergren",            email:"arvid@amidays.com"},
+  {id:"christina",name:"Christina Veliz",             email:"christina@amidays.com"},
+  {id:"elisabeth",name:"Elisabeth Gullikstad Albech", email:"elisabeth@amidays.com"},
+  {id:"jakob",    name:"Jakob Skåltveit",             email:"jakob@amidays.com"},
+  {id:"jenny",    name:"Jenny Duers",                 email:"jenny@amidays.com"},
+  {id:"jonas",    name:"Jonas Aam",                   email:"jonas@amidays.com"},
+  {id:"jorgen",   name:"Jørgen Aasbrein Vågen",       email:"jorgen@amidays.com"},
+  {id:"kaja",     name:"Kaja Augestad Sølvesen",      email:"kaja@amidays.com"},
+  {id:"lina",     name:"Lina Agdestein",              email:"lina@amidays.com"},
+  {id:"magnus",   name:"Magnus Leirfall",             email:"magnus@amidays.com"},
+  {id:"marianne", name:"Marianne Eskeland",           email:"marianne@amidays.com"},
+  {id:"markus",   name:"Markus Syljusveen",           email:"markus@amidays.com"},
+  {id:"marte",    name:"Marte Økland",                email:"marte@amidays.com"},
+  {id:"mikael",   name:"Mikael Strand Blomquist",     email:"mikael@amidays.com"},
+  {id:"trine",    name:"Trine Kvam Hviding",          email:"trine@amidays.com"},
+  {id:"naritsa",  name:"Naritsa Larsen Risbø",        email:"naritsa@amidays.com"},
+  {id:"ole",      name:"Ole Kristian Ullereng",       email:"ole@amidays.com"},
+  {id:"rebecca",  name:"Rebecca Økland",              email:"rebecca@amidays.com"},
+  {id:"robin",    name:"Robin Askevold",              email:"robin@amidays.com"},
+  {id:"signe",    name:"Signe Bjerke Thon Brekke",   email:"signe@amidays.com"},
+  {id:"simen",    name:"Simen Kronvall",              email:"simen@amidays.com"},
+];
+
 const C = {
   bg:"#31353D", panel:"#3C4149", input:"#2A2E35",
   ash:"#4A5059", greyOlive:"#A4A599", sandrift:"#AF8E72",
@@ -95,7 +119,12 @@ const monthLabel = dateStr => {
   return d.toLocaleString("nb-NO",{month:"long",year:"numeric"});
 };
 
-const rowToCustomer = r => ({ id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, logoUrl:r.logo_url||null, bank:r.bank||0 });
+const rowToCustomer = r => ({
+  id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, logoUrl:r.logo_url||null, bank:r.bank||0,
+  colorPrimary:r.color_primary||null, colorSecondary:r.color_secondary||null,
+  contactName:r.contact_name||"", contactPhone:r.contact_phone||"", contactEmail:r.contact_email||"",
+  advisorId:r.advisor_id||null, resources:r.resources||[],
+});
 const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
   start:r.start_date, end:r.end_date, assignedTo:r.assigned_to?[r.assigned_to]:[],
@@ -110,7 +139,12 @@ const rowToCampaign = r => ({
   spent:r.spent||{}, channelDates:r.channel_dates||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
 });
-const customerToRow = c => ({ id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0 });
+const customerToRow = c => ({
+  id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
+  color_primary:c.colorPrimary||null, color_secondary:c.colorSecondary||null,
+  contact_name:c.contactName||null, contact_phone:c.contactPhone||null, contact_email:c.contactEmail||null,
+  advisor_id:c.advisorId||null, resources:c.resources||[],
+});
 const briefToRow = b => ({
   id:b.id, customer_id:b.customerId, title:b.title, description:b.description,
   start_date:b.start, end_date:b.end, assigned_to:b.assignedTo?.[0]||null,
@@ -553,55 +587,151 @@ function CustomerAvatar({customer, size=44, fontSize=14}) {
   return <div style={{width:size,height:size,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize,fontWeight:500,flexShrink:0}}>{customer?.logo||"?"}</div>;
 }
 
+// ══ ColorPicker ═══════════════════════════════════════════════════
+function ColorSwatch({color, label, onChange}) {
+  const [editing,setEditing]=useState(false);
+  const [val,setVal]=useState(color||"");
+  const isValid=v=>(/^#[0-9A-Fa-f]{6}$/).test(v);
+  const save=()=>{
+    if(isValid(val)){onChange(val);setEditing(false);}
+    else if(val===""){onChange(null);setEditing(false);}
+  };
+  return (
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
+      <div
+        onClick={()=>setEditing(!editing)}
+        style={{width:32,height:32,borderRadius:"50%",background:color||"transparent",border:`2px solid ${color?color:C.ash}`,cursor:"pointer",position:"relative",flexShrink:0,transition:"transform .15s"}}
+        title={label}
+      >
+        {!color&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:C.nickel,fontSize:16}}>+</div>}
+      </div>
+      <div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.nickel,letterSpacing:".04em",textTransform:"uppercase"}}>{label}</div>
+      {editing&&(
+        <div style={{display:"flex",gap:4,alignItems:"center",marginTop:2}}>
+          <input value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();if(e.key==="Escape")setEditing(false);}}
+            placeholder="#000000" style={{width:88,padding:"3px 6px",fontSize:11}} autoFocus/>
+          <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ══ EditCustomerModal (admin only) ════════════════════════════════
 function EditCustomerModal({customer, onClose, onSave}) {
-  const [form,setForm]=useState({name:customer.name||"",industry:customer.industry||"",contact:customer.contact||"",logo:customer.logo||""});
+  const [form,setForm]=useState({
+    name:customer.name||"", industry:customer.industry||"",
+    contact:customer.contact||"", logo:customer.logo||"",
+    colorPrimary:customer.colorPrimary||null,
+    colorSecondary:customer.colorSecondary||null,
+    contactName:customer.contactName||"",
+    contactPhone:customer.contactPhone||"",
+    contactEmail:customer.contactEmail||"",
+    advisorId:customer.advisorId||"",
+    resources:customer.resources||[],
+  });
   const [uploading,setUploading]=useState(false);
   const [previewUrl,setPreviewUrl]=useState(customer.logoUrl||null);
 
   const handleFile = async e => {
-    const file = e.target.files[0];
+    const file=e.target.files[0];
     if(!file) return;
     setUploading(true);
-    const ext = file.name.split(".").pop();
-    const path = `${customer.id}.${ext}`;
-    const { error } = await sb.storage.from("logos").upload(path, file, {upsert:true});
-    if(error) { alert("Feil ved opplasting: "+error.message); setUploading(false); return; }
-    const { data } = sb.storage.from("logos").getPublicUrl(path);
+    const ext=file.name.split(".").pop();
+    const path=`${customer.id}.${ext}`;
+    const {error}=await sb.storage.from("logos").upload(path,file,{upsert:true});
+    if(error){alert("Feil ved opplasting: "+error.message);setUploading(false);return;}
+    const {data}=sb.storage.from("logos").getPublicUrl(path);
     setPreviewUrl(data.publicUrl+"?t="+Date.now());
     setUploading(false);
-    onSave({...form, logoUrl: data.publicUrl});
   };
 
-  const save = () => onSave({...form, logoUrl: previewUrl});
+  const addResource=()=>setForm(f=>({...f,resources:[...f.resources,{staffId:"",department:""}]}));
+  const updateResource=(i,changes)=>setForm(f=>({...f,resources:f.resources.map((r,idx)=>idx===i?{...r,...changes}:r)}));
+  const removeResource=i=>setForm(f=>({...f,resources:f.resources.filter((_,idx)=>idx!==i)}));
+
+  const save=()=>onSave({...form,logoUrl:previewUrl});
 
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Rediger kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Rediger kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
-        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          {previewUrl
-            ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
-            :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
-          }
-          <div>
-            <label style={{marginBottom:6}}>Logo</label>
-            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12,cursor:"pointer"}}>
-              {uploading?"Laster opp…":"Last opp bilde"}
+
+        {/* Logo + farger */}
+        <div style={{display:"flex",alignItems:"flex-start",gap:20,marginBottom:20,padding:"16px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+            {previewUrl
+              ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
+              :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
+            }
+            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,cursor:"pointer",textAlign:"center"}}>
+              {uploading?"Laster…":"Last opp"}
               <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} disabled={uploading}/>
             </label>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginTop:4}}>JPG, PNG, WebP · maks 1MB</div>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Merkevarefarger</div>
+            <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
+              <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
+              <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
+            </div>
           </div>
         </div>
-        {[{key:"name",label:"Kundenavn"},{key:"industry",label:"Bransje"},{key:"contact",label:"Nettside"},{key:"logo",label:"Initialer (fallback)"}].map(f=>(
-          <div key={f.key} style={{marginBottom:14}}><label>{f.label}</label>
-            <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}}/>
+
+        {/* Grunninfo */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+          {[{key:"name",label:"Kundenavn"},{key:"industry",label:"Bransje"},{key:"contact",label:"Nettside"},{key:"logo",label:"Initialer (fallback)"}].map(f=>(
+            <div key={f.key}><label>{f.label}</label>
+              <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}}/>
+            </div>
+          ))}
+        </div>
+
+        {/* Kundekontakt */}
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div><label>Navn</label><input value={form.contactName} onChange={e=>setForm(f=>({...f,contactName:e.target.value}))} style={{width:"100%"}} placeholder="Kontaktperson"/></div>
+            <div><label>Telefon</label><input value={form.contactPhone} onChange={e=>setForm(f=>({...f,contactPhone:e.target.value}))} style={{width:"100%"}} placeholder="+47 xxx xx xxx"/></div>
+            <div><label>E-post</label><input value={form.contactEmail} onChange={e=>setForm(f=>({...f,contactEmail:e.target.value}))} style={{width:"100%"}} placeholder="navn@selskap.no"/></div>
           </div>
-        ))}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Lagre endringer</button>
+        </div>
+
+        {/* Rådgiver */}
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
+          <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
+            <option value="">Velg rådgiver...</option>
+            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          {form.advisorId&&(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===form.advisorId);return s?<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginTop:6}}>{s.email}</div>:null;})()}
+        </div>
+
+        {/* Ressurser */}
+        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
+            <button className="btn" onClick={addResource} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {form.resources.map((r,i)=>(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"center"}}>
+                <select value={r.staffId} onChange={e=>updateResource(i,{staffId:e.target.value})} style={{width:"100%"}}>
+                  <option value="">Velg person...</option>
+                  {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+              </div>
+            ))}
+            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser lagt til.</div>}
+          </div>
+        </div>
+
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Lagre endringer</button>
       </div>
     </div>
   );
@@ -813,7 +943,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
       {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
-        const accent=CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
+        const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         return (
           <div key={customer.id} style={{marginBottom:4,background:C.panel,borderRadius:6,border:`1px solid ${C.ash}`,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 20px",background:accent,borderBottom:`2px solid rgba(0,0,0,.2)`}}>
@@ -1279,13 +1409,65 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
-        {["active","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
+        {["active","info","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
-            {t==="active"?"Aktive":t==="history"?"Historikk":"Hunch fees"}
+            {t==="active"?"Aktive":t==="info"?"Info":t==="history"?"Historikk":"Hunch fees"}
           </div>
         ))}
       </div>
 
+      {tab==="info"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
+          {/* Merkevarefarger */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:14}}>Merkevarefarger</div>
+            <div style={{display:"flex",gap:20}}>
+              <ColorSwatch color={customer.colorPrimary} label="Primær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorPrimary:v})}/>
+              <ColorSwatch color={customer.colorSecondary} label="Sekundær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorSecondary:v})}/>
+            </div>
+          </div>
+          {/* Kundekontakt */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kundekontakt</div>
+            {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{customer.contactName}</div>}
+            {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:2}}>📞 {customer.contactPhone}</div>}
+            {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {customer.contactEmail}</div>}
+            {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen kontakt registrert.</div>}
+          </div>
+          {/* Rådgiver */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Rådgiver</div>
+            {customer.advisorId?(()=>{
+              const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);
+              return s?<div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {s.email}</div>
+              </div>:null;
+            })():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen rådgiver tildelt.</div>}
+          </div>
+          {/* Ressurser */}
+          <div className="card" style={{padding:"18px 20px"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Ressurser</div>
+            {(customer.resources||[]).length===0
+              ?<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser tildelt.</div>
+              :(customer.resources||[]).map((r,i)=>{
+                const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);
+                return s?(
+                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                    <div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>
+                      {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                    </div>
+                    <div>
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>
+                      {r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{r.department}</div>}
+                    </div>
+                  </div>
+                ):null;
+              })
+            }
+          </div>
+        </div>
+      )}
       {tab==="active"&&(
         <>
           {activeBriefs.length>0&&(
@@ -1637,28 +1819,91 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
 
 // ══ Create Customer Modal ══════════════════════════════════════════
 function CreateCustomerModal({onClose, onSave}) {
-  const [form,setForm]=useState({name:"",industry:"",contact:"",logo:"",bank:0});
+  const [form,setForm]=useState({
+    name:"",industry:"",contact:"",logo:"",bank:0,
+    colorPrimary:null,colorSecondary:null,
+    contactName:"",contactPhone:"",contactEmail:"",
+    advisorId:"",resources:[],
+  });
+
+  const addResource=()=>setForm(f=>({...f,resources:[...f.resources,{staffId:"",department:""}]}));
+  const updateResource=(i,changes)=>setForm(f=>({...f,resources:f.resources.map((r,idx)=>idx===i?{...r,...changes}:r)}));
+  const removeResource=i=>setForm(f=>({...f,resources:f.resources.filter((_,idx)=>idx!==i)}));
+
   const save=()=>{
     if(!form.name) return alert("Fyll inn kundenavn");
     const logo=form.logo||form.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
     onSave({id:uid(),...form,logo,bank:+form.bank||0});
   };
+
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Ny kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
-        {[{key:"name",label:"Kundenavn",placeholder:"f.eks. Oris Dental"},{key:"industry",label:"Bransje",placeholder:"f.eks. Tannhelse"},{key:"contact",label:"Nettside",placeholder:"f.eks. orisdental.no"},{key:"logo",label:"Logo-initialer (valgfritt)",placeholder:"f.eks. OD"}].map(f=>(
-          <div key={f.key} style={{marginBottom:14}}><label>{f.label}</label>
-            <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}} placeholder={f.placeholder}/>
-          </div>
-        ))}
-        <div style={{marginBottom:14}}><label>Startkapital i bank (NOK)</label>
-          <input type="number" value={form.bank} onChange={e=>setForm(p=>({...p,bank:e.target.value}))} style={{width:"100%"}} placeholder="0"/>
+
+        {/* Farger */}
+        <div style={{display:"flex",gap:20,alignItems:"flex-start",marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase",width:100,paddingTop:4}}>Merkevarefarger</div>
+          <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
+          <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
         </div>
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett kunde</button>
+
+        {/* Grunninfo */}
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
+          {[{key:"name",label:"Kundenavn",placeholder:"f.eks. Oris Dental"},{key:"industry",label:"Bransje",placeholder:"f.eks. Tannhelse"},{key:"contact",label:"Nettside",placeholder:"f.eks. orisdental.no"},{key:"logo",label:"Initialer (valgfritt)",placeholder:"f.eks. OD"}].map(f=>(
+            <div key={f.key}><label>{f.label}</label>
+              <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}} placeholder={f.placeholder}/>
+            </div>
+          ))}
+          <div><label>Startkapital i bank (NOK)</label>
+            <input type="number" value={form.bank} onChange={e=>setForm(p=>({...p,bank:e.target.value}))} style={{width:"100%"}} placeholder="0"/>
+          </div>
+        </div>
+
+        {/* Kundekontakt */}
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
+            <div><label>Navn</label><input value={form.contactName} onChange={e=>setForm(f=>({...f,contactName:e.target.value}))} style={{width:"100%"}} placeholder="Kontaktperson"/></div>
+            <div><label>Telefon</label><input value={form.contactPhone} onChange={e=>setForm(f=>({...f,contactPhone:e.target.value}))} style={{width:"100%"}} placeholder="+47 xxx xx xxx"/></div>
+            <div><label>E-post</label><input value={form.contactEmail} onChange={e=>setForm(f=>({...f,contactEmail:e.target.value}))} style={{width:"100%"}} placeholder="navn@selskap.no"/></div>
+          </div>
+        </div>
+
+        {/* Rådgiver */}
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
+          <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
+            <option value="">Velg rådgiver...</option>
+            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+        </div>
+
+        {/* Ressurser */}
+        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
+            <button className="btn" onClick={addResource} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            {form.resources.map((r,i)=>(
+              <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"center"}}>
+                <select value={r.staffId} onChange={e=>updateResource(i,{staffId:e.target.value})} style={{width:"100%"}}>
+                  <option value="">Velg person...</option>
+                  {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+                <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+              </div>
+            ))}
+            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser lagt til.</div>}
+          </div>
+        </div>
+
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kunde</button>
       </div>
     </div>
   );
