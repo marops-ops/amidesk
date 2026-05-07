@@ -1071,7 +1071,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   },{});
 
   return (
-    <div>
+    <>
+      <div>
       <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
         <button className="btn" onClick={()=>navigate("customers")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <CustomerAvatar customer={customer} size={48} fontSize={15}/>
@@ -1198,6 +1199,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     </div>
       {showEdit&&updateCustomer&&<EditCustomerModal customer={customer} onClose={()=>setShowEdit(false)}
         onSave={changes=>{updateCustomer(customer.id,changes);setShowEdit(false);}}/>}
+    </>
   );
 }
 function ChannelDropdown({channels, onChange}) {
