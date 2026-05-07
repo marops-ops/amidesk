@@ -392,7 +392,7 @@ export default function App() {
 
       <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin}/>
 
-      <main style={{flex:1,overflow:"auto",padding:"32px 36px"}}>
+      <main style={{flex:1,overflow:"auto",padding:"32px 64px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
@@ -966,10 +966,11 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
           <div key={customer.id} style={{marginBottom:8,background:C.panel,borderRadius:6,border:`1px solid ${C.ash}`,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 20px",background:accent,borderBottom:`2px solid rgba(0,0,0,.2)`}}>
               <CustomerAvatar customer={customer} size={28} fontSize={11}/>
-              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||"#fff",flex:1}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.2)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{lineCount} kampanje{lineCount!==1?"r":""}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:17,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
+              <div style={{flex:1}}/>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:customer.colorSecondary||"rgba(255,255,255,.8)",background:"rgba(0,0,0,.15)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{lineCount} kampanje{lineCount!==1?"r":""}</div>
               <button className="btn" onClick={()=>onAddCampaign(customer,null)}
-                style={{background:"rgba(255,255,255,.2)",color:"#fff",border:"1px solid rgba(255,255,255,.4)",padding:"4px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,flexShrink:0}}>
+                style={{background:"rgba(0,0,0,.15)",color:customer.colorSecondary||"#fff",border:`1px solid ${customer.colorSecondary||"rgba(255,255,255,.4)"}`,padding:"4px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,flexShrink:0}}>
                 + Lag kampanje
               </button>
             </div>
@@ -1212,7 +1213,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px"}}>
 
         {/* Name + pencil + dates */}
-        <div style={{width:220,flexShrink:0}}>
+        <div style={{width:280,flexShrink:0}}>
           {editingName?(
             <div style={{display:"flex",alignItems:"center",gap:4}}>
               <input value={nameVal} onChange={e=>setNameVal(e.target.value)}
@@ -1223,7 +1224,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
             </div>
           ):(
             <div style={{display:"flex",alignItems:"center",gap:5}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lineName}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.text}}>{lineName}</div>
               <span onClick={()=>{setNameVal(lineName);setEditingName(true);}} style={{cursor:"pointer",color:C.nickel,fontSize:12,opacity:.6,flexShrink:0}}>✏️</span>
             </div>
           )}
@@ -1231,9 +1232,9 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
         </div>
 
-        {/* Progress bar */}
-        <div style={{flex:1,minWidth:100}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>
+        {/* Progress bar — fixed narrow width */}
+        <div style={{width:120,flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:4}}>
             <span>{fmtNOK(line.spent)}</span>
             <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
           </div>
@@ -1443,7 +1444,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       </div>
 
       {tab==="active"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:20,alignItems:"start"}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 260px",gap:20,alignItems:"start"}}>
           <div>
             {activeBriefs.length>0&&(
               <div style={{marginBottom:20}}>
