@@ -130,6 +130,7 @@ const rowToBrief = r => ({
   start:r.start_date, end:r.end_date, assignedTo:r.assigned_to?[r.assigned_to]:[],
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   status:r.status, archived:r.archived, ownerId:r.owner_id,
+  sharedWith:r.shared_with||[],
 });
 const rowToCampaign = r => ({
   id:r.id, customerId:r.customer_id, title:r.title,
@@ -150,6 +151,7 @@ const briefToRow = b => ({
   start_date:b.start, end_date:b.end, assigned_to:b.assignedTo?.[0]||null,
   channels:b.channels, channel_budgets:b.channelBudgets,
   status:b.status, archived:b.archived, owner_id:b.ownerId||null,
+  shared_with:b.sharedWith||[],
 });
 const campaignToRow = t => ({
   id:t.id, customer_id:t.customerId, title:t.title,
@@ -215,7 +217,8 @@ export default function App() {
   const [showCreateCustomer, setShowCreateCustomer] = useState(false);
   const [showCreateBrief, setShowCreateBrief] = useState(false);
   const [briefToConvert, setBriefToConvert] = useState(null);
-  const [addCampaignTarget, setAddCampaignTarget] = useState(null); // {customer, presetChannel}
+  const [addCampaignTarget, setAddCampaignTarget] = useState(null);
+  const [notifications, setNotifications] = useState([]);
 
   // Auth listener
   useEffect(() => {
@@ -268,14 +271,21 @@ export default function App() {
     if (!session) return;
     async function load() {
       const userId = session.user.id;
-      const [{ data: cData }, { data: bData }, { data: tData }] = await Promise.all([
+      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tData }, { data: nData }] = await Promise.all([
         sb.from("customers").select("*"),
         sb.from("briefs").select("*").eq("owner_id", userId),
+        sb.from("briefs").select("*").contains("shared_with", [userId]),
         sb.from("campaigns").select("*").eq("owner_id", userId),
+        sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
       if (cData) setCustomers(cData.map(rowToCustomer));
-      if (bData) setBriefs(bData.map(rowToBrief));
+      // Merge owned + shared briefs, deduplicate
+      const allBriefs = [...(bOwned||[]), ...(bShared||[])];
+      const seen = new Set();
+      const deduped = allBriefs.filter(b => { if(seen.has(b.id)) return false; seen.add(b.id); return true; });
+      setBriefs(deduped.map(rowToBrief));
       if (tData) setTasks(tData.map(rowToCampaign));
+      if (nData) setNotifications(nData);
       if (ADMIN_EMAILS.includes(session.user.email)) {
         const { data: members } = await sb.from("profiles").select("*");
         if (members) setTeamMembers(members);
@@ -390,14 +400,17 @@ export default function App() {
         input[type=number]{-moz-appearance:textfield}
       `}</style>
 
-      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin}/>
+      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin} notifications={notifications} onMarkRead={async(id)=>{
+        await sb.from("notifications").update({read:true}).eq("id",id);
+        setNotifications(p=>p.filter(n=>n.id!==id));
+      }}/>
 
       <main style={{flex:1,overflow:"auto",padding:"32px 64px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null}/>}
+        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
         {(page==="customers"&&selectedCustomerId&&activeCustomer)||(page==="customer-detail"&&activeCustomer)
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
@@ -418,7 +431,27 @@ export default function App() {
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
-          const withOwner = {...b, ownerId: session.user.id};
+          // Find if assigned resource maps to a known profile
+          const staffMember = b.assignedTo?.[0]
+            ? AMIDAYS_STAFF.find(s=>s.id===b.assignedTo[0])
+            : null;
+          let sharedWith = [];
+          if(staffMember) {
+            const {data:profile} = await sb.from("profiles").select("id").eq("email",staffMember.email).single();
+            if(profile && profile.id !== session.user.id) {
+              sharedWith = [profile.id];
+              // Create notification
+              await sb.from("notifications").insert({
+                id: uid(),
+                user_id: profile.id,
+                type: "brief_assigned",
+                message: `${session.user.user_metadata?.full_name||session.user.email} la deg til på "${b.title}"`,
+                brief_id: b.id,
+                read: false,
+              });
+            }
+          }
+          const withOwner = {...b, ownerId: session.user.id, sharedWith};
           setBriefs(p=>[...p,withOwner]);
           await sb.from("briefs").upsert(briefToRow(withOwner));
           setShowCreateBrief(false);
@@ -441,11 +474,14 @@ export default function App() {
 }
 
 // ══ Sidebar ════════════════════════════════════════════════════════
-function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
+function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifications=[], onMarkRead}) {
   const user = session?.user;
   const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Bruker";
   const avatar = user?.user_metadata?.avatar_url;
   const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+  const [showNotifs,setShowNotifs]=useState(false);
+  const unread=notifications.length;
+
   const navItems = [
     {id:"dashboard",label:"Dashboard"},
     {id:"campaigns",label:"Kampanjelinjer"},
@@ -454,7 +490,7 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
     ...(isAdmin?[{id:"team",label:"Team"}]:[]),
   ];
   return (
-    <aside style={{width:220,background:"#272B32",display:"flex",flexDirection:"column",padding:"28px 16px",borderRight:`1px solid ${C.ash}`,gap:4,flexShrink:0}}>
+    <aside style={{width:220,background:"#272B32",display:"flex",flexDirection:"column",padding:"28px 16px",borderRight:`1px solid ${C.ash}`,gap:4,flexShrink:0,position:"relative"}}>
       <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>AmiDesk</div>
       {navItems.map(item=>(
         <div key={item.id}
@@ -466,6 +502,31 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
         style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
         <span style={{fontSize:16,lineHeight:1}}>+</span> Ny oppgave
       </button>
+
+      {/* Notification bell */}
+      <div style={{position:"relative",marginBottom:10}}>
+        <button className="btn" onClick={()=>setShowNotifs(!showNotifs)}
+          style={{background:"none",color:C.nickel,padding:"6px 8px",borderRadius:3,display:"flex",alignItems:"center",gap:6,fontFamily:"Roboto,sans-serif",fontSize:12,width:"100%"}}>
+          <span style={{fontSize:16}}>🔔</span>
+          <span>Varsler</span>
+          {unread>0&&<span style={{marginLeft:"auto",background:C.brandyRose,color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}}>{unread}</span>}
+        </button>
+        {showNotifs&&(
+          <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:6,padding:"8px",marginBottom:4,maxHeight:300,overflowY:"auto",zIndex:50,boxShadow:"0 -4px 20px rgba(0,0,0,.4)"}}>
+            {unread===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,padding:"8px",textAlign:"center"}}>Ingen nye varsler</div>}
+            {notifications.map(n=>(
+              <div key={n.id} style={{padding:"10px",borderRadius:4,background:C.input,marginBottom:6,cursor:"pointer",border:`1px solid ${C.ash}`}}
+                onClick={()=>{onMarkRead(n.id);if(n.brief_id)navigate("brief-detail",{briefId:n.brief_id});setShowNotifs(false);}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,marginBottom:4}}>{n.message}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>Trykk for å åpne oppgaven</div>
+              </div>
+            ))}
+            {unread>0&&<button className="btn" onClick={async()=>{for(const n of notifications)await onMarkRead(n.id);setShowNotifs(false);}}
+              style={{background:C.ash,color:C.nickel,padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,width:"100%",marginTop:4}}>Merk alle som lest</button>}
+          </div>
+        )}
+      </div>
+
       <div style={{borderTop:`1px solid ${C.ash}`,paddingTop:14,display:"flex",alignItems:"center",gap:10}}>
         {avatar
           ?<img src={avatar} alt={name} style={{width:30,height:30,borderRadius:"50%",flexShrink:0}}/>
@@ -1342,7 +1403,7 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
 }
 
 // ══ Customer List ══════════════════════════════════════════════════
-function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer}) {
+function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer, onAddCampaign}) {
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
@@ -1364,9 +1425,11 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
               </div>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:12}}>{c.contact}</div>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.greyOlive,marginBottom:10,fontWeight:500}}>Bank: {fmtNOK(c.bank||0)}</div>
-              <div style={{display:"flex",gap:6}}>
+              <div style={{display:"flex",gap:6,alignItems:"center"}}>
                 <span style={{background:C.ash,padding:"3px 10px",borderRadius:10,fontFamily:"Roboto,sans-serif",fontSize:11}}>{cTasks.length} kampanjer</span>
                 {cBriefs.length>0&&<span style={{background:`${C.sandrift}30`,padding:"3px 10px",borderRadius:10,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandrift}}>{cBriefs.length} oppgaver</span>}
+                {onAddCampaign&&<button className="btn" onClick={e=>{e.stopPropagation();onAddCampaign(c);}}
+                  style={{background:C.sandrift,color:"#fff",padding:"3px 10px",borderRadius:10,fontFamily:"Roboto,sans-serif",fontSize:11,marginLeft:"auto"}}>+ Kampanje</button>}
               </div>
             </div>
           );
