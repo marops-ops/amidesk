@@ -269,39 +269,43 @@ export default function App() {
   };
 
   const adjustBank = async (customerId, delta) => {
+    let updated;
     setCustomers(prev => {
       const next = prev.map(c => c.id===customerId ? {...c, bank:(c.bank||0)+delta} : c);
-      const updated = next.find(c=>c.id===customerId);
-      if (updated) sb.from("customers").upsert(customerToRow(updated));
+      updated = next.find(c=>c.id===customerId);
       return next;
     });
+    if (updated) await sb.from("customers").update({bank: updated.bank}).eq("id", customerId);
   };
 
   const updateCustomer = async (id, changes) => {
+    let updated;
     setCustomers(prev => {
       const next = prev.map(c => c.id===id ? {...c,...changes} : c);
-      const updated = next.find(c=>c.id===id);
-      if (updated) sb.from("customers").upsert(customerToRow(updated));
+      updated = next.find(c=>c.id===id);
       return next;
     });
+    if (updated) await sb.from("customers").update(customerToRow(updated)).eq("id", id);
   };
 
   const updateBrief = async (id, changes) => {
+    let updated;
     setBriefs(prev => {
       const next = prev.map(b => b.id===id ? {...b,...changes} : b);
-      const updated = next.find(b=>b.id===id);
-      if (updated) sb.from("briefs").upsert(briefToRow(updated));
+      updated = next.find(b=>b.id===id);
       return next;
     });
+    if (updated) await sb.from("briefs").update(briefToRow(updated)).eq("id", id);
   };
 
   const updateCampaign = async (id, changes) => {
+    let updated;
     setTasks(prev => {
       const next = prev.map(t => t.id===id ? {...t,...changes} : t);
-      const updated = next.find(t=>t.id===id);
-      if (updated) sb.from("campaigns").upsert(campaignToRow(updated));
+      updated = next.find(t=>t.id===id);
       return next;
     });
+    if (updated) await sb.from("campaigns").update(campaignToRow(updated)).eq("id", id);
   };
 
   const deleteBrief = async (id) => {
@@ -347,6 +351,8 @@ export default function App() {
         .tab{cursor:pointer;padding:8px 16px;font-family:Roboto,sans-serif;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;color:${C.nickel}}
         .tab.active{border-bottom-color:${C.sandrift};color:${C.text}}.tab:hover:not(.active){border-bottom-color:${C.ash}}
         select option{background:${C.input};color:${C.text}}
+        input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
+        input[type=number]{-moz-appearance:textfield}
       `}</style>
 
       <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin}/>
