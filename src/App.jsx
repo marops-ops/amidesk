@@ -44,6 +44,35 @@ const CHANNEL_COHORTS = {
   },
 };
 
+const ICON_BASE = "https://qrmbtlkjfvokkxdwoxrg.supabase.co/storage/v1/object/public/icons";
+const CHANNEL_ICONS = {
+  "Google Ads":        `${ICON_BASE}/google-ads.jpg`,
+  "Microsoft Ads":     `${ICON_BASE}/microsoft.jpg`,
+  "Apple Search Ads":  `${ICON_BASE}/apple-search.jpg`,
+  "TikTok Search Ads": `${ICON_BASE}/tiktok.jpg`,
+  "Meta":              `${ICON_BASE}/meta.jpg`,
+  "Hunch - Meta":      `${ICON_BASE}/hunch.jpg`,
+  "Snapchat":          `${ICON_BASE}/snapchat.jpg`,
+  "Hunch - Snapchat":  `${ICON_BASE}/hunch.jpg`,
+  "TikTok":            `${ICON_BASE}/tiktok.jpg`,
+  "LinkedIn":          `${ICON_BASE}/linkedin.jpg`,
+  "Pinterest":         `${ICON_BASE}/pinterest.jpg`,
+  "Reddit":            `${ICON_BASE}/reddit.jpg`,
+  "DV360":             `${ICON_BASE}/dv360.jpg`,
+  "Kobler":            `${ICON_BASE}/kobler.jpg`,
+  "ReadPeak":          `${ICON_BASE}/readpeak.jpg`,
+  "Adnuntius":         `${ICON_BASE}/adnuntius.jpg`,
+  "Hawk":              `${ICON_BASE}/hawk.jpg`,
+  "Facebook":          `${ICON_BASE}/facebook.jpg`,
+  "Instagram":         `${ICON_BASE}/instagram.jpg`,
+};
+
+const getChannelIcon = key => {
+  // Match on the base channel name (before · separator)
+  const base = key.split(" · ")[0];
+  return CHANNEL_ICONS[base] || null;
+};
+
 const isHunch = key => key.toLowerCase().includes("hunch");
 const fmtNOK = v => new Intl.NumberFormat("nb-NO",{style:"currency",currency:"NOK",maximumFractionDigits:0}).format(v||0);
 const today = () => new Date().toISOString().split("T")[0];
@@ -66,7 +95,7 @@ const monthLabel = dateStr => {
   return d.toLocaleString("nb-NO",{month:"long",year:"numeric"});
 };
 
-const rowToCustomer = r => ({ id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, bank:r.bank||0 });
+const rowToCustomer = r => ({ id:r.id, name:r.name, industry:r.industry, contact:r.contact, logo:r.logo, logoUrl:r.logo_url||null, bank:r.bank||0 });
 const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
   start:r.start_date, end:r.end_date, assignedTo:r.assigned_to?[r.assigned_to]:[],
@@ -81,7 +110,7 @@ const rowToCampaign = r => ({
   spent:r.spent||{}, channelDates:r.channel_dates||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
 });
-const customerToRow = c => ({ id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, bank:c.bank||0 });
+const customerToRow = c => ({ id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0 });
 const briefToRow = b => ({
   id:b.id, customer_id:b.customerId, title:b.title, description:b.description,
   start_date:b.start, end_date:b.end, assigned_to:b.assignedTo?.[0]||null,
@@ -514,6 +543,66 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
   );
 }
 
+// ══ CustomerAvatar ════════════════════════════════════════════════
+function CustomerAvatar({customer, size=44, fontSize=14}) {
+  if(customer?.logoUrl) return <img src={customer.logoUrl} alt={customer.name} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>;
+  return <div style={{width:size,height:size,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize,fontWeight:500,flexShrink:0}}>{customer?.logo||"?"}</div>;
+}
+
+// ══ EditCustomerModal (admin only) ════════════════════════════════
+function EditCustomerModal({customer, onClose, onSave}) {
+  const [form,setForm]=useState({name:customer.name||"",industry:customer.industry||"",contact:customer.contact||"",logo:customer.logo||""});
+  const [uploading,setUploading]=useState(false);
+  const [previewUrl,setPreviewUrl]=useState(customer.logoUrl||null);
+
+  const handleFile = async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    setUploading(true);
+    const ext = file.name.split(".").pop();
+    const path = `${customer.id}.${ext}`;
+    const { error } = await sb.storage.from("logos").upload(path, file, {upsert:true});
+    if(error) { alert("Feil ved opplasting: "+error.message); setUploading(false); return; }
+    const { data } = sb.storage.from("logos").getPublicUrl(path);
+    setPreviewUrl(data.publicUrl+"?t="+Date.now());
+    setUploading(false);
+    onSave({...form, logoUrl: data.publicUrl});
+  };
+
+  const save = () => onSave({...form, logoUrl: previewUrl});
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>Rediger kunde</h2>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          {previewUrl
+            ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
+            :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
+          }
+          <div>
+            <label style={{marginBottom:6}}>Logo</label>
+            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12,cursor:"pointer"}}>
+              {uploading?"Laster opp…":"Last opp bilde"}
+              <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} disabled={uploading}/>
+            </label>
+            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.nickel,marginTop:4}}>JPG, PNG, WebP · maks 1MB</div>
+          </div>
+        </div>
+        {[{key:"name",label:"Kundenavn"},{key:"industry",label:"Bransje"},{key:"contact",label:"Nettside"},{key:"logo",label:"Initialer (fallback)"}].map(f=>(
+          <div key={f.key} style={{marginBottom:14}}><label>{f.label}</label>
+            <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}}/>
+          </div>
+        ))}
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,width:"100%",marginTop:6}}>Lagre endringer</button>
+      </div>
+    </div>
+  );
+}
+
 // ══ Dashboard ══════════════════════════════════════════════════════
 function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate, setBriefToConvert}) {
   const activeBriefs=briefs.filter(b=>!b.archived&&b.status!=="avsluttet");
@@ -827,7 +916,10 @@ function CampaignLineRow({line, task, updateCampaign}) {
   return (
     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,.03)",borderRadius:4,border:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
       <div style={{width:180,flexShrink:0}}>
-        <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,color:C.text}}>{line.label}</div>
+        <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,color:C.text,display:"flex",alignItems:"center",gap:6}}>
+          {getChannelIcon(line.label)&&<img src={getChannelIcon(line.label)} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+          {line.label}
+        </div>
         {line.hunch&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.brandyRose}}>Hunch fee −5% = {fmtNOK(line.netBudget)}</div>}
         <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
       </div>
@@ -931,7 +1023,7 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
           return (
             <div key={c.id} className="card" style={{padding:"24px",cursor:"pointer"}} onClick={()=>navigate("customer-detail",{customerId:c.id})}>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
-                <div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:14,fontWeight:500}}>{c.logo}</div>
+                <CustomerAvatar customer={c} size={44} fontSize={14}/>
                 <div>
                   <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:500}}>{c.name}</div>
                   <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{c.industry}</div>
@@ -956,6 +1048,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   const [tab,setTab]=useState("active");
   const [editingBank,setEditingBank]=useState(false);
   const [bankInput,setBankInput]=useState(customer.bank||0);
+  const [showEdit,setShowEdit]=useState(false);
   const activeTasks=tasks.filter(t=>t.customerId===customer.id&&!t.archived);
   const archivedTasks=tasks.filter(t=>t.customerId===customer.id&&t.archived);
   const activeBriefs=briefs.filter(b=>b.customerId===customer.id&&!b.archived);
@@ -975,26 +1068,29 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     <div>
       <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
         <button className="btn" onClick={()=>navigate("customers")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
-        <div style={{width:48,height:48,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:15,fontWeight:500}}>{customer.logo}</div>
+        <CustomerAvatar customer={customer} size={48} fontSize={15}/>
         <div style={{flex:1}}>
           <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
           <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
         </div>
         {updateCustomer&&(
-          <div style={{textAlign:"right"}}>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
-            {editingBank?(
-              <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
-                <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lagre</button>
-                <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>✕</button>
-              </div>
-            ):(
-              <div style={{display:"flex",alignItems:"center",gap:8}}>
-                <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
-                <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Sett inn</button>
-              </div>
-            )}
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+              {editingBank?(
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
+                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lagre</button>
+                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>✕</button>
+                </div>
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Sett inn</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
         {!updateCustomer&&(
@@ -1094,10 +1190,10 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         </div>
       )}
     </div>
+      {showEdit&&updateCustomer&&<EditCustomerModal customer={customer} onClose={()=>setShowEdit(false)}
+        onSave={changes=>{updateCustomer(customer.id,changes);setShowEdit(false);}}/>}
   );
 }
-
-// ══ Channel Dropdown ══════════════════════════════════════════════
 function ChannelDropdown({channels, onChange}) {
   const [openCohort, setOpenCohort] = useState(null);
   const toggleChannel = ch => {
@@ -1150,7 +1246,10 @@ function ChannelDropdown({channels, onChange}) {
                       <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${selected?C.sandrift:C.ash}`,background:selected?C.sandrift:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {selected&&<span style={{color:"#fff",fontSize:9}}>✓</span>}
                       </div>
-                      <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,flex:1}}>{ch}</span>
+                      <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,flex:1,display:"flex",alignItems:"center",gap:6}}>
+                        {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+                        {ch}
+                      </span>
                       {isHunch(ch)&&<span style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
                     </div>
                     {selected&&subs&&(
