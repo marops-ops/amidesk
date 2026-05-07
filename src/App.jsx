@@ -1011,6 +1011,10 @@ function groupLinesByChannel(lines) {
 
 function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
+  const [editingName,setEditingName]=useState(false);
+  const [nameVal,setNameVal]=useState(
+    line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label
+  );
   const [mode,setMode]=useState(null);
   const [budgetVal,setBudgetVal]=useState(line.budget||"");
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
@@ -1020,6 +1024,21 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const saveSpent=()=>{
     const v=spentVal===""?0:+spentVal;
     updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:v}});
+  };
+  const saveName=()=>{
+    if(!nameVal.trim()){setEditingName(false);return;}
+    // Rename the key in channelBudgets, spent, channelDates
+    const base=line.flatKey.split(" — ")[0];
+    const newKey=`${base} — ${nameVal.trim()}`;
+    if(newKey===line.flatKey){setEditingName(false);return;}
+    const newBudgets={...task.channelBudgets};
+    const newSpent={...task.spent};
+    const newDates={...task.channelDates||{}};
+    newBudgets[newKey]=newBudgets[line.flatKey]; delete newBudgets[line.flatKey];
+    if(newSpent[line.flatKey]!==undefined){newSpent[newKey]=newSpent[line.flatKey]; delete newSpent[line.flatKey];}
+    if(newDates[line.flatKey]){newDates[newKey]=newDates[line.flatKey]; delete newDates[line.flatKey];}
+    updateCampaign(task.id,{channelBudgets:newBudgets,spent:newSpent,channelDates:newDates});
+    setEditingName(false);
   };
   const saveBudget=()=>{
     updateCampaign(task.id,{channelBudgets:{...task.channelBudgets,[line.flatKey]:budgetVal===""?0:+budgetVal}});
@@ -1031,6 +1050,99 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   };
 
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
+
+  return (
+    <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px"}}>
+
+        {/* Name + pencil + dates */}
+        <div style={{width:220,flexShrink:0}}>
+          {editingName?(
+            <div style={{display:"flex",alignItems:"center",gap:4}}>
+              <input value={nameVal} onChange={e=>setNameVal(e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")saveName();if(e.key==="Escape")setEditingName(false);}}
+                style={{flex:1,padding:"3px 6px",fontSize:12,fontWeight:500}} autoFocus/>
+              <button className="btn" onClick={saveName} style={{background:C.sandrift,color:"#fff",padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+              <button className="btn" onClick={()=>setEditingName(false)} style={{background:C.ash,color:C.text,padding:"3px 6px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
+            </div>
+          ):(
+            <div style={{display:"flex",alignItems:"center",gap:5}}>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lineName}</div>
+              <span onClick={()=>{setNameVal(lineName);setEditingName(true);}} style={{cursor:"pointer",color:C.nickel,fontSize:12,opacity:.6,flexShrink:0}}>✏️</span>
+            </div>
+          )}
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginTop:2}}>{line.chStart} → {line.chEnd}</div>
+          {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
+        </div>
+
+        {/* Progress bar */}
+        <div style={{flex:1,minWidth:100}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>
+            <span>{fmtNOK(line.spent)}</span>
+            <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
+          </div>
+          <div style={{height:3,background:C.ash,borderRadius:2,overflow:"hidden"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:2,transition:"width .4s"}}/>
+          </div>
+        </div>
+
+        {/* Spend input + label */}
+        <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+          <input
+            type="number"
+            value={spentVal}
+            onChange={e=>setSpentVal(e.target.value)}
+            onBlur={saveSpent}
+            onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
+            placeholder="0"
+            style={{width:80,padding:"5px 8px",fontSize:12,textAlign:"right",fontWeight:500}}
+          />
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Brukt</span>
+        </div>
+
+        {/* NOK/dag + dager */}
+        <div style={{fontFamily:"Roboto,sans-serif",textAlign:"right",width:90,flexShrink:0}}>
+          <div style={{fontWeight:700,color:C.text,fontSize:13,whiteSpace:"nowrap"}}>{fmtNOK(line.dayBudget)}/dag</div>
+          <div style={{fontSize:10,color:C.nickel}}>{line.dl}d igjen</div>
+        </div>
+
+        {/* Pacing */}
+        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:10,padding:"3px 8px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
+
+        {/* Action buttons */}
+        <div style={{display:"flex",gap:4,flexShrink:0}}>
+          {isEnded&&<button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
+            style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Avslutt</button>}
+          <button className="btn" onClick={()=>setMode(mode==="budget"?null:"budget")}
+            style={{background:mode==="budget"?C.sandrift:"none",border:`1px solid ${mode==="budget"?C.sandrift:C.ash}`,color:mode==="budget"?"#fff":C.nickel,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Budsjett</button>
+          <button className="btn" onClick={()=>setMode(mode==="date"?null:"date")}
+            style={{background:mode==="date"?C.sandrift:"none",border:`1px solid ${mode==="date"?C.sandrift:C.ash}`,color:mode==="date"?"#fff":C.nickel,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Dato</button>
+          <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
+            style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+        </div>
+      </div>
+
+      {mode==="budget"&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Budsjett:</span>
+          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(e.target.value)} style={{flex:1,maxWidth:160}} placeholder="NOK" autoFocus/>
+          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
+        </div>
+      )}
+      {mode==="date"&&(
+        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Datoer:</span>
+          <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}} autoFocus/>
+          <span style={{color:C.nickel,fontSize:11}}>→</span>
+          <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}}/>
+          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
   return (
     <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
