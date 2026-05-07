@@ -865,13 +865,16 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   };
   const handleDeleteLine=(flatKey)=>{
     if(!confirm(`Slett linjen "${flatKey}" permanent?`)) return;
+    const lineBudget=task.channelBudgets?.[flatKey]||0;
+    const lineSpent=task.spent?.[flatKey]||0;
+    const diff=lineBudget-lineSpent; // rest tilbake til bank
+    if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
     const newBudgets={...task.channelBudgets};
     const newSpent={...task.spent};
     const newDates={...task.channelDates};
     delete newBudgets[flatKey];
     delete newSpent[flatKey];
     delete newDates[flatKey];
-    // Remove from channels if no more lines for that base channel
     const base=flatKey.split(" — ")[0].split(" · ")[0];
     const remaining=Object.keys(newBudgets).filter(k=>k.split(" — ")[0].split(" · ")[0]===base);
     const newChannels={...task.channels};
@@ -1031,50 +1034,49 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
 
   return (
     <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
-      <div style={{display:"grid",gridTemplateColumns:"200px 1fr 100px auto auto",alignItems:"center",gap:10,padding:"8px 12px"}}>
+      {/* Single row */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px"}}>
+
         {/* Name + dates */}
-        <div>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text}}>{lineName}</div>
+        <div style={{width:180,flexShrink:0}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{lineName}</div>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
           {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
         </div>
 
-        {/* Progress + always-open spend input */}
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div style={{flex:1}}>
-            <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:3}}>
-              <span>{fmtNOK(line.spent)}</span>
-              <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
-            </div>
-            <div style={{height:2,background:C.ash,borderRadius:1,overflow:"hidden"}}>
-              <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:1,transition:"width .4s"}}/>
-            </div>
+        {/* Progress bar */}
+        <div style={{flex:1,minWidth:80}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:3}}>
+            <span>{fmtNOK(line.spent)}</span>
+            <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
           </div>
-          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-            <input
-              type="number"
-              value={spentVal}
-              onChange={e=>setSpentVal(e.target.value)}
-              onBlur={saveSpent}
-              onKeyDown={e=>e.key==="Enter"&&saveSpent()}
-              placeholder="Forbruk"
-              style={{width:90,padding:"4px 8px",fontSize:11,textAlign:"right"}}
-            />
-            <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>NOK</span>
+          <div style={{height:2,background:C.ash,borderRadius:1,overflow:"hidden"}}>
+            <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:1,transition:"width .4s"}}/>
           </div>
         </div>
 
-        {/* NOK/dag + dager */}
-        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,textAlign:"right"}}>
-          <div style={{fontWeight:500,color:C.text,fontSize:12}}>{fmtNOK(line.dayBudget)}/dag</div>
-          <div style={{fontSize:10}}>{line.dl}d igjen</div>
+        {/* Spend input — always visible inline */}
+        <input
+          type="number"
+          value={spentVal}
+          onChange={e=>setSpentVal(e.target.value)}
+          onBlur={saveSpent}
+          onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
+          placeholder="Forbruk"
+          style={{width:80,padding:"4px 8px",fontSize:11,textAlign:"right",flexShrink:0}}
+        />
+
+        {/* NOK/dag */}
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,textAlign:"right",width:76,flexShrink:0}}>
+          <div style={{fontWeight:500,color:C.text,fontSize:12,whiteSpace:"nowrap"}}>{fmtNOK(line.dayBudget)}/dag</div>
+          <div style={{fontSize:10,color:C.nickel}}>{line.dl}d igjen</div>
         </div>
 
         {/* Pacing */}
-        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 6px",whiteSpace:"nowrap"}}>{line.p.label}</span>
+        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 6px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
 
-        {/* Action buttons */}
-        <div style={{display:"flex",gap:4,flexShrink:0}}>
+        {/* Buttons */}
+        <div style={{display:"flex",gap:3,flexShrink:0}}>
           <button className="btn" onClick={()=>setMode(mode==="budget"?null:"budget")}
             style={{background:mode==="budget"?C.sandrift:"none",border:`1px solid ${mode==="budget"?C.sandrift:C.ash}`,color:mode==="budget"?"#fff":C.nickel,padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Budsjett</button>
           <button className="btn" onClick={()=>setMode(mode==="date"?null:"date")}
@@ -1082,7 +1084,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           {isEnded&&<button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
             style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
           <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
-            style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"3px 6px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>🗑</button>
+            style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"3px 6px",borderRadius:3,fontSize:11}}>🗑</button>
         </div>
       </div>
 
