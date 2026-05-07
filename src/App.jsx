@@ -140,15 +140,15 @@ function LoginScreen({ error }) {
   return (
     <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",width:"100%",background:C.bg}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Roboto:wght@300;400;500&display=swap');
         html,body,#root{height:100%;width:100%;margin:0;padding:0}*{box-sizing:border-box;margin:0;padding:0}
         .btn{cursor:pointer;border:none;transition:all .2s}.btn:hover{opacity:.85;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
       `}</style>
       <div style={{background:C.panel,borderRadius:8,padding:"52px 48px",border:`1px solid ${C.ash}`,textAlign:"center",maxWidth:400,width:"90%"}}>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:600,color:C.text,marginBottom:8}}>AmiDesk</div>
-        <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,letterSpacing:".08em",textTransform:"uppercase",marginBottom:40}}>Kampanjeadministrasjon</div>
-        {error&&<div style={{background:`${C.brandyRose}20`,border:`1px solid ${C.brandyRose}`,borderRadius:4,padding:"10px 14px",marginBottom:20,fontFamily:"'Jost',sans-serif",fontSize:12,color:C.brandyRose}}>{error}</div>}
-        <button className="btn" onClick={handleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,width:"100%",padding:"14px",borderRadius:4,background:C.sandrift,color:"#fff",fontFamily:"'Jost',sans-serif",fontSize:13,letterSpacing:".04em"}}>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,color:C.text,marginBottom:8}}>AmiDesk</div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,letterSpacing:".08em",textTransform:"uppercase",marginBottom:40}}>Kampanjeadministrasjon</div>
+        {error&&<div style={{background:`${C.brandyRose}20`,border:`1px solid ${C.brandyRose}`,borderRadius:4,padding:"10px 14px",marginBottom:20,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.brandyRose}}>{error}</div>}
+        <button className="btn" onClick={handleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,width:"100%",padding:"14px",borderRadius:4,background:C.sandrift,color:"#fff",fontFamily:"Roboto,sans-serif",fontSize:13,letterSpacing:".04em"}}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
@@ -157,7 +157,7 @@ function LoginScreen({ error }) {
           </svg>
           Logg inn med Google
         </button>
-        <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,marginTop:16}}>Kun @amidays.com kontoer har tilgang</div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginTop:16}}>Kun @amidays.com kontoer har tilgang</div>
       </div>
     </div>
   );
@@ -251,7 +251,7 @@ export default function App() {
   }, [session]);
 
   if (session === undefined) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
   );
   if (!session) return <LoginScreen error={authError} />;
 
@@ -318,33 +318,33 @@ export default function App() {
   };
 
   if (loading) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Cormorant Garamond',serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
   );
 
   return (
-    <div style={{display:"flex",height:"100vh",width:"100%",fontFamily:"'Cormorant Garamond',Georgia,serif",background:C.bg,color:C.text,overflow:"hidden"}}>
+    <div style={{display:"flex",height:"100vh",width:"100%",fontFamily:"'Montserrat',sans-serif",background:C.bg,color:C.text,overflow:"hidden"}}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600&family=Jost:wght@300;400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Roboto:wght@300;400;500&display=swap');
         html,body,#root{height:100%;width:100%;margin:0;padding:0}
         *{box-sizing:border-box;margin:0;padding:0}
         ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:${C.ash};border-radius:3px}
         .btn{cursor:pointer;border:none;transition:all .2s}.btn:hover{opacity:.85;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
         .card{background:${C.panel};border-radius:4px;transition:box-shadow .2s}.card:hover{box-shadow:0 4px 20px rgba(0,0,0,.3)}
-        .nav-item{cursor:pointer;padding:10px 18px;border-radius:3px;transition:background .15s;font-family:'Jost',sans-serif;font-size:13px;letter-spacing:.04em;color:${C.textDim}}
+        .nav-item{cursor:pointer;padding:10px 18px;border-radius:3px;transition:background .15s;font-family:Roboto,sans-serif;font-size:13px;letter-spacing:.04em;color:${C.textDim}}
         .nav-item:hover{background:rgba(255,255,255,.07)}.nav-item.active{background:rgba(255,255,255,.12);color:${C.text}}
-        input,select,textarea{font-family:'Jost',sans-serif;font-size:13px;background:${C.input};border:1px solid ${C.ash};border-radius:3px;padding:8px 10px;color:${C.text};outline:none;transition:border .15s}
+        input,select,textarea{font-family:Roboto,sans-serif;font-size:13px;background:${C.input};border:1px solid ${C.ash};border-radius:3px;padding:8px 10px;color:${C.text};outline:none;transition:border .15s}
         input:focus,select:focus,textarea:focus{border-color:${C.sandrift}}
         input::placeholder,textarea::placeholder{color:${C.nickel}}
-        label{font-family:'Jost',sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:${C.nickel};display:block;margin-bottom:4px}
+        label{font-family:Roboto,sans-serif;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:${C.nickel};display:block;margin-bottom:4px}
         .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);z-index:100;display:flex;align-items:center;justify-content:center}
         .modal{background:${C.input};border-radius:6px;padding:32px;width:620px;max-height:90vh;overflow-y:auto;border:1px solid ${C.ash}}
         .modal-lg{width:780px}
-        .channel-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-family:'Jost',sans-serif;cursor:pointer;border:1px solid ${C.ash};background:transparent;color:${C.textDim};transition:all .15s}
+        .channel-chip{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:10px;font-size:11px;font-family:Roboto,sans-serif;cursor:pointer;border:1px solid ${C.ash};background:transparent;color:${C.textDim};transition:all .15s}
         .channel-chip.selected{background:${C.sandrift};color:#fff;border-color:${C.sandrift}}
         .channel-chip:hover{border-color:${C.sandrift}}
-        .pacing-ok{color:#fff;background:#3D5C35;padding:3px 8px;border-radius:10px;font-size:10px;font-family:'Jost',sans-serif}
-        .pacing-bad{color:#fff;background:#6B3328;padding:3px 8px;border-radius:10px;font-size:10px;font-family:'Jost',sans-serif}
-        .tab{cursor:pointer;padding:8px 16px;font-family:'Jost',sans-serif;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;color:${C.nickel}}
+        .pacing-ok{color:#fff;background:#3D5C35;padding:3px 8px;border-radius:10px;font-size:10px;font-family:Roboto,sans-serif}
+        .pacing-bad{color:#fff;background:#6B3328;padding:3px 8px;border-radius:10px;font-size:10px;font-family:Roboto,sans-serif}
+        .tab{cursor:pointer;padding:8px 16px;font-family:Roboto,sans-serif;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;color:${C.nickel}}
         .tab.active{border-bottom-color:${C.sandrift};color:${C.text}}.tab:hover:not(.active){border-bottom-color:${C.ash}}
         select option{background:${C.input};color:${C.text}}
       `}</style>
@@ -405,7 +405,7 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
   ];
   return (
     <aside style={{width:220,background:"#272B32",display:"flex",flexDirection:"column",padding:"28px 16px",borderRight:`1px solid ${C.ash}`,gap:4,flexShrink:0}}>
-      <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>AmiDesk</div>
+      <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.text,padding:"0 8px 28px"}}>AmiDesk</div>
       {navItems.map(item=>(
         <div key={item.id}
           className={`nav-item${page===item.id||page===item.id+"-detail"||page==="team-member"&&item.id==="team"?" active":""}`}
@@ -413,19 +413,19 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
       ))}
       <div style={{flex:1}}/>
       <button className="btn" onClick={()=>setShowCreateBrief(true)}
-        style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
+        style={{background:C.sandrift,color:"#fff",padding:"11px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,letterSpacing:".06em",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:16}}>
         <span style={{fontSize:16,lineHeight:1}}>+</span> Ny oppgave
       </button>
       <div style={{borderTop:`1px solid ${C.ash}`,paddingTop:14,display:"flex",alignItems:"center",gap:10}}>
         {avatar
           ?<img src={avatar} alt={name} style={{width:30,height:30,borderRadius:"50%",flexShrink:0}}/>
-          :<div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{initials}</div>
+          :<div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{initials}</div>
         }
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
-          {isAdmin&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.sandrift,letterSpacing:".04em"}}>Admin</div>}
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{name}</div>
+          {isAdmin&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sandrift,letterSpacing:".04em"}}>Admin</div>}
           <button className="btn" onClick={()=>sb.auth.signOut()}
-            style={{background:"none",color:C.nickel,fontFamily:"'Jost',sans-serif",fontSize:10,padding:0,letterSpacing:".04em",marginTop:2}}>
+            style={{background:"none",color:C.nickel,fontFamily:"Roboto,sans-serif",fontSize:10,padding:0,letterSpacing:".04em",marginTop:2}}>
             Logg ut
           </button>
         </div>
@@ -438,7 +438,7 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin}) {
 function TeamPage({teamMembers, navigate}) {
   return (
     <div>
-      <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500,marginBottom:28}}>Team</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Team</h1>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {teamMembers.map(member=>{
           const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
@@ -448,14 +448,14 @@ function TeamPage({teamMembers, navigate}) {
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
                 {member.avatar_url
                   ?<img src={member.avatar_url} alt={member.display_name} style={{width:44,height:44,borderRadius:"50%"}}/>
-                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
                 }
                 <div>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</div>
-                  <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{member.email}</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{member.email}</div>
                 </div>
               </div>
-              {adminMember&&<span style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.sandrift,background:`${C.sandrift}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
+              {adminMember&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sandrift,background:`${C.sandrift}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
             </div>
           );
         })}
@@ -493,45 +493,45 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("team")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("team")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         {member.avatar_url
           ?<img src={member.avatar_url} style={{width:44,height:44,borderRadius:"50%"}}/>
-          :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+          :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
         }
         <div>
-          <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</h1>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{member.email}</div>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</h1>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>{member.email}</div>
         </div>
       </div>
-      {loading?<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel}}>Laster…</div>:(
+      {loading?<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel}}>Laster…</div>:(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
           <div>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Oppgaver ({activeBriefs.length})</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Oppgaver ({activeBriefs.length})</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {activeBriefs.length===0&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive oppgaver.</div>}
+              {activeBriefs.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive oppgaver.</div>}
               {activeBriefs.map(b=>{
                 const cust=customers.find(c=>c.id===b.customerId);
                 return (
                   <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:`3px solid ${C.sandrift}`}}>
                     <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{cust?.name} · {b.start} → {b.end}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{cust?.name} · {b.start} → {b.end}</div>
                   </div>
                 );
               })}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {activeTasks.length===0&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive kampanjer.</div>}
+              {activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive kampanjer.</div>}
               {activeTasks.map(t=>{
                 const cust=customers.find(c=>c.id===t.customerId);
                 const totalSpent=Object.values(t.spent||{}).reduce((a,b)=>a+b,0);
                 return (
                   <div key={t.id} className="card" style={{padding:"12px 16px"}}>
                     <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
                   </div>
                 );
               })}
@@ -546,7 +546,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
 // ══ CustomerAvatar ════════════════════════════════════════════════
 function CustomerAvatar({customer, size=44, fontSize=14}) {
   if(customer?.logoUrl) return <img src={customer.logoUrl} alt={customer.name} style={{width:size,height:size,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>;
-  return <div style={{width:size,height:size,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize,fontWeight:500,flexShrink:0}}>{customer?.logo||"?"}</div>;
+  return <div style={{width:size,height:size,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize,fontWeight:500,flexShrink:0}}>{customer?.logo||"?"}</div>;
 }
 
 // ══ EditCustomerModal (admin only) ════════════════════════════════
@@ -575,21 +575,21 @@ function EditCustomerModal({customer, onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>Rediger kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Rediger kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
         <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
           {previewUrl
             ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
-            :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
+            :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
           }
           <div>
             <label style={{marginBottom:6}}>Logo</label>
-            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12,cursor:"pointer"}}>
+            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12,cursor:"pointer"}}>
               {uploading?"Laster opp…":"Last opp bilde"}
               <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} disabled={uploading}/>
             </label>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.nickel,marginTop:4}}>JPG, PNG, WebP · maks 1MB</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginTop:4}}>JPG, PNG, WebP · maks 1MB</div>
           </div>
         </div>
         {[{key:"name",label:"Kundenavn"},{key:"industry",label:"Bransje"},{key:"contact",label:"Nettside"},{key:"logo",label:"Initialer (fallback)"}].map(f=>(
@@ -597,7 +597,7 @@ function EditCustomerModal({customer, onClose, onSave}) {
             <input value={form[f.key]} onChange={e=>setForm(p=>({...p,[f.key]:e.target.value}))} style={{width:"100%"}}/>
           </div>
         ))}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,width:"100%",marginTop:6}}>Lagre endringer</button>
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Lagre endringer</button>
       </div>
     </div>
   );
@@ -611,25 +611,25 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
-        <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500}}>Dashboard</h1>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Dashboard</h1>
         {pendingCampaign.length>0&&(
           <div style={{display:"flex",alignItems:"center",gap:8,background:`${C.sandrift}20`,border:`1px solid ${C.sandrift}`,borderRadius:6,padding:"8px 14px"}}>
             <div style={{width:7,height:7,borderRadius:"50%",background:C.sandrift}}/>
-            <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.sandrift}}>{pendingCampaign.length} oppgave{pendingCampaign.length!==1?"r":""} venter på kampanje</span>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.sandrift}}>{pendingCampaign.length} oppgave{pendingCampaign.length!==1?"r":""} venter på kampanje</span>
           </div>
         )}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
         {[{label:"Aktive oppgaver",value:activeBriefs.length},{label:"Kunder",value:customers.length},{label:"Aktive kampanjer",value:activeTasks.length}].map(card=>(
           <div key={card.label} className="card" style={{padding:"20px 24px"}}>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:6}}>{card.label}</div>
-            <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:28,fontWeight:500}}>{card.value}</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:6}}>{card.label}</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:500}}>{card.value}</div>
           </div>
         ))}
       </div>
       {activeBriefs.length>0?(
         <div>
-          <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:22,fontWeight:500,marginBottom:14}}>Oppgaver</div>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:500,marginBottom:14}}>Oppgaver</div>
           <div style={{display:"flex",flexDirection:"column",gap:9}}>
             {activeBriefs.map(brief=>{
               const cust=customers.find(c=>c.id===brief.customerId);
@@ -639,26 +639,26 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
                 <div key={brief.id} className="card"
                   style={{padding:"14px 18px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${isStarted?C.greyOlive:C.sandrift}`}}
                   onClick={()=>navigate("brief-detail",{briefId:brief.id})}>
-                  <div style={{width:34,height:34,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
+                  <div style={{width:34,height:34,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
                   <div style={{flex:1,minWidth:0}}>
                     <div style={{fontWeight:500,fontSize:14,marginBottom:2,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{brief.title}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:10,flexWrap:"wrap"}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:10,flexWrap:"wrap"}}>
                       <span>{cust?.name}</span>
                       {brief.start&&brief.end&&<span>· {brief.start} → {brief.end}</span>}
                     </div>
                   </div>
                   <div style={{display:"flex",gap:8,flexShrink:0,alignItems:"center"}}>
                     <button className="btn" onClick={e=>{e.stopPropagation();updateBrief(brief.id,{status:isStarted?"ny":"startet"});}}
-                      style={{padding:"5px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
+                      style={{padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
                       {isStarted?"● Startet":"Sett i gang"}
                     </button>
                     {!hasCampaign&&(
                       <button className="btn" onClick={e=>{e.stopPropagation();setBriefToConvert(brief);}}
-                        style={{padding:"5px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11,background:C.sandrift,color:"#fff",border:"none"}}>
+                        style={{padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,background:C.sandrift,color:"#fff",border:"none"}}>
                         Lag kampanje
                       </button>
                     )}
-                    {hasCampaign&&<span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.greyOlive,padding:"5px 10px",background:`${C.greyOlive}18`,borderRadius:3}}>✓ Kampanje opprettet</span>}
+                    {hasCampaign&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.greyOlive,padding:"5px 10px",background:`${C.greyOlive}18`,borderRadius:3}}>✓ Kampanje opprettet</span>}
                     <button className="btn" onClick={e=>{e.stopPropagation();if(confirm("Slett oppgaven permanent?\nTilknyttede kampanjelinjer slettes også."))deleteBrief(brief.id);}}
                       style={{background:"none",color:C.nickel,fontSize:14,padding:"4px 6px"}}>🗑</button>
                   </div>
@@ -668,7 +668,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
           </div>
         </div>
       ):(
-        <div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center",fontSize:14}}>Ingen aktive oppgaver. Opprett en oppgave for å komme i gang.</div>
+        <div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center",fontSize:14}}>Ingen aktive oppgaver. Opprett en oppgave for å komme i gang.</div>
       )}
     </div>
   );
@@ -685,7 +685,7 @@ function StatusDot({status, onChange}) {
           {Object.entries(STATUS_COLORS).map(([k,v])=>(
             <div key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",padding:"3px 6px",borderRadius:3}} onClick={()=>{onChange(k);setOpen(false);}}>
               <div style={{width:10,height:10,borderRadius:"50%",background:v}}/>
-              <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,whiteSpace:"nowrap",color:C.text}}>{k==="green"?"Aktiv":k==="yellow"?"Pågående":"Kritisk"}</span>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,whiteSpace:"nowrap",color:C.text}}>{k==="green"?"Aktiv":k==="yellow"?"Pågående":"Kritisk"}</span>
             </div>
           ))}
         </div>
@@ -703,8 +703,8 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
-        <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500}}>Oppgaver</h1>
-        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny oppgave</button>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Oppgaver</h1>
+        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny oppgave</button>
       </div>
       <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
         {["active","archived"].map(t=>(
@@ -722,16 +722,16 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
             <div key={brief.id} className="card"
               style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${brief.status==="avsluttet"?C.ash:isStarted?C.greyOlive:C.sandrift}`}}
               onClick={()=>navigate("brief-detail",{briefId:brief.id})}>
-              <div style={{width:36,height:36,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
+              <div style={{width:36,height:36,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:500,fontSize:15,marginBottom:3}}>{brief.title}</div>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:12,flexWrap:"wrap"}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:12,flexWrap:"wrap"}}>
                   <span>{cust?.name}</span>
                   {brief.start&&brief.end&&<span>{brief.start} → {brief.end}</span>}
                   {totalBudget>0&&<span>Budsjett: {fmtNOK(totalBudget)}</span>}
                 </div>
               </div>
-              <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,padding:"3px 10px",borderRadius:8,background:C.ash,color:C.text,flexShrink:0}}>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,padding:"3px 10px",borderRadius:8,background:C.ash,color:C.text,flexShrink:0}}>
                 {brief.status==="startet"?"Startet":brief.status==="avsluttet"?"Avsluttet":"Ny"}
               </span>
             </div>
@@ -750,28 +750,28 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("briefs")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
-        <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:500,flex:1}}>{brief.title}</h1>
-        <button className="btn" onClick={()=>setBriefToConvert(brief)} style={{background:C.sandrift,color:"#fff",padding:"9px 18px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lag kampanje →</button>
+        <button className="btn" onClick={()=>navigate("briefs")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,flex:1}}>{brief.title}</h1>
+        <button className="btn" onClick={()=>setBriefToConvert(brief)} style={{background:C.sandrift,color:"#fff",padding:"9px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lag kampanje →</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:24}}>
         <div>
           {brief.description&&(
             <div className="card" style={{padding:"20px 24px",marginBottom:16}}>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Brief</div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",color:C.textDim}}>{brief.description}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Brief</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",color:C.textDim}}>{brief.description}</div>
             </div>
           )}
           {Object.keys(brief.channelBudgets||{}).length>0&&(
             <div className="card" style={{padding:"20px 24px"}}>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanalbudsjett</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanalbudsjett</div>
               {Object.entries(brief.channelBudgets).map(([k,v])=>(
-                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.ash}`,fontFamily:"'Jost',sans-serif",fontSize:12}}>
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.ash}`,fontFamily:"Roboto,sans-serif",fontSize:12}}>
                   <span style={{color:C.textDim}}>{k}{isHunch(k)&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>-5% Hunch fee</span>}</span>
                   <span style={{fontWeight:500}}>{fmtNOK(v)}</span>
                 </div>
               ))}
-              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontFamily:"'Jost',sans-serif",fontSize:13,fontWeight:600}}>
+              <div style={{display:"flex",justifyContent:"space-between",padding:"10px 0 0",fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600}}>
                 <span>Totalt</span><span>{fmtNOK(totalBudget)}</span>
               </div>
             </div>
@@ -781,19 +781,19 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
           <div className="card" style={{padding:"16px 18px"}}>
             {[{label:"Kunde",value:cust?.name||"—"},{label:"Periode",value:brief.start&&brief.end?`${brief.start} → ${brief.end}`:"Ikke satt"},{label:"Status",value:brief.status==="startet"?"Startet":brief.status==="avsluttet"?"Avsluttet":"Ny"}].map(row=>(
               <div key={row.label} style={{marginBottom:12}}>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{row.label}</div>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:13}}>{row.value}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{row.label}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13}}>{row.value}</div>
               </div>
             ))}
           </div>
           <button className="btn" onClick={()=>updateBrief(brief.id,{status:isStarted?"ny":"startet"})}
-            style={{padding:"10px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
+            style={{padding:"10px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
             {isStarted?"● Startet — klikk for å reversere":"Sett i gang"}
           </button>
           <button className="btn" onClick={()=>{if(confirm("Avslutt og arkiver oppgaven?"))updateBrief(brief.id,{status:"avsluttet",archived:true});}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Avslutt oppgave</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Avslutt oppgave</button>
           <button className="btn" onClick={()=>{if(confirm("Slett oppgaven permanent?\nTilknyttede kampanjelinjer slettes også.")){deleteBrief(brief.id);navigate("briefs");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett oppgave permanent</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett oppgave permanent</button>
         </div>
       </div>
     </div>
@@ -806,16 +806,16 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
   return (
     <div>
-      <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
-      {grouped.length===0&&<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
+      {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         return (
           <div key={customer.id} style={{marginBottom:4,background:C.panel,borderRadius:6,border:`1px solid ${C.ash}`,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 20px",background:accent,borderBottom:`2px solid rgba(0,0,0,.2)`}}>
-              <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.25)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Jost',sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{customer.logo}</div>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:19,fontWeight:600,cursor:"pointer",color:"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.2)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{custTasks.length} kampanje{custTasks.length!==1?"r":""}</div>
+              <div style={{width:28,height:28,borderRadius:"50%",background:"rgba(0,0,0,.25)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>{customer.logo}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,cursor:"pointer",color:"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.2)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{custTasks.length} kampanje{custTasks.length!==1?"r":""}</div>
             </div>
             {custTasks.map((task,taskIdx)=>(
               <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>
@@ -844,7 +844,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"9px 20px 8px",borderBottom:`1px solid ${C.ash}`,borderLeft:`3px solid ${accent}`}}>
-        <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:15,fontWeight:500,cursor:"pointer",color:C.text,marginRight:2}} onClick={()=>navigate("task-detail",{taskId:task.id})}>{task.title}</div>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:500,cursor:"pointer",color:C.text,marginRight:2}} onClick={()=>navigate("task-detail",{taskId:task.id})}>{task.title}</div>
         {editingMeta?(
           <div style={{display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
             <input type="date" value={meta.start} onChange={e=>setMeta(f=>({...f,start:e.target.value}))} style={{width:132,padding:"3px 7px",fontSize:11}}/>
@@ -852,16 +852,16 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
             <input type="date" value={meta.end} onChange={e=>setMeta(f=>({...f,end:e.target.value}))} style={{width:132,padding:"3px 7px",fontSize:11}}/>
             <input type="number" value={meta.budget} onChange={e=>setMeta(f=>({...f,budget:e.target.value}))} style={{width:110,padding:"3px 7px",fontSize:11,textAlign:"right"}} placeholder="Budsjett"/>
             <span style={{color:C.nickel,fontSize:11}}>NOK</span>
-            <button className="btn" onClick={saveMeta} style={{background:C.sandrift,color:"#fff",padding:"3px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Lagre</button>
-            <button className="btn" onClick={()=>setEditingMeta(false)} style={{background:C.ash,color:C.text,padding:"3px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>✕</button>
+            <button className="btn" onClick={saveMeta} style={{background:C.sandrift,color:"#fff",padding:"3px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
+            <button className="btn" onClick={()=>setEditingMeta(false)} style={{background:C.ash,color:C.text,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
           </div>
         ):(
           <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}>
-            <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</span>
-            <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>· {fmtNOK(task.budget)}</span>
-            <button className="btn" onClick={()=>{setMeta({start:task.start,end:task.end,budget:task.budget});setEditingMeta(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Rediger</button>
-            {isEnded&&<button className="btn" onClick={endCampaign} style={{background:`${C.greyOlive}30`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"2px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Avslutt kampanje</button>}
-            <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}50`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Slett</button>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</span>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>· {fmtNOK(task.budget)}</span>
+            <button className="btn" onClick={()=>{setMeta({start:task.start,end:task.end,budget:task.budget});setEditingMeta(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Rediger</button>
+            {isEnded&&<button className="btn" onClick={endCampaign} style={{background:`${C.greyOlive}30`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt kampanje</button>}
+            <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}50`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
           </div>
         )}
       </div>
@@ -916,22 +916,22 @@ function CampaignLineRow({line, task, updateCampaign}) {
   return (
     <div style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12,background:"rgba(255,255,255,.03)",borderRadius:4,border:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
       <div style={{width:180,flexShrink:0}}>
-        <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,color:C.text,display:"flex",alignItems:"center",gap:6}}>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text,display:"flex",alignItems:"center",gap:6}}>
           {getChannelIcon(line.label)&&<img src={getChannelIcon(line.label)} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
           {line.label}
         </div>
-        {line.hunch&&<div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.brandyRose}}>Hunch fee −5% = {fmtNOK(line.netBudget)}</div>}
-        <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
+        {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch fee −5% = {fmtNOK(line.netBudget)}</div>}
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>{line.chStart} → {line.chEnd}</div>
       </div>
       <div style={{flex:1,minWidth:120}}>
-        <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>
+        <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>
           <span>{fmtNOK(line.spent)}</span><span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
         </div>
         <div style={{height:4,background:C.ash,borderRadius:2,overflow:"hidden"}}>
           <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:2,transition:"width .4s"}}/>
         </div>
       </div>
-      <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,textAlign:"right",minWidth:90,flexShrink:0}}>
+      <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,textAlign:"right",minWidth:90,flexShrink:0}}>
         <div style={{fontWeight:500,color:C.text}}>{fmtNOK(line.dayBudget)}/dag</div>
         <div>{line.dl} dager igjen</div>
       </div>
@@ -939,29 +939,29 @@ function CampaignLineRow({line, task, updateCampaign}) {
       {mode==="spent"?(
         <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
           <input type="number" value={spentVal} onChange={e=>setSpentVal(+e.target.value)} style={{width:90}} placeholder="Brukt NOK"/>
-          <button className="btn" onClick={saveSpent} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>✕</button>
+          <button className="btn" onClick={saveSpent} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
       ):mode==="budget"?(
         <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0}}>
           <input type="number" value={budgetVal} onChange={e=>setBudgetVal(+e.target.value)} style={{width:110}} placeholder="Budsjett NOK"/>
-          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>✕</button>
+          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
       ):mode==="date"?(
         <div style={{display:"flex",gap:5,alignItems:"center",flexShrink:0,flexWrap:"wrap"}}>
           <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))} style={{width:130,padding:"3px 7px",fontSize:11}}/>
           <span style={{color:C.nickel,fontSize:11}}>→</span>
           <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))} style={{width:130,padding:"3px 7px",fontSize:11}}/>
-          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>OK</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>✕</button>
+          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
         </div>
       ):(
         <div style={{display:"flex",gap:5,flexShrink:0,flexWrap:"wrap"}}>
-          <button className="btn" onClick={()=>{setSpentVal(line.spent);setMode("spent");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Forbruk</button>
-          <button className="btn" onClick={()=>{setBudgetVal(line.budget);setMode("budget");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Budsjett</button>
-          <button className="btn" onClick={()=>{setDateVal({start:line.chStart,end:line.chEnd});setMode("date");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Dato</button>
-          {isEnded&&<button className="btn" onClick={endChannel} style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"4px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>Avslutt</button>}
+          <button className="btn" onClick={()=>{setSpentVal(line.spent);setMode("spent");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Forbruk</button>
+          <button className="btn" onClick={()=>{setBudgetVal(line.budget);setMode("budget");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Budsjett</button>
+          <button className="btn" onClick={()=>{setDateVal({start:line.chStart,end:line.chEnd});setMode("date");}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Dato</button>
+          {isEnded&&<button className="btn" onClick={endChannel} style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"4px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
         </div>
       )}
     </div>
@@ -976,13 +976,13 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("campaigns")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
-        <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:30,fontWeight:500,flex:1}}>{task.title}</h1>
+        <button className="btn" onClick={()=>navigate("campaigns")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,flex:1}}>{task.title}</h1>
         <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 260px",gap:20}}>
         <div className="card" style={{padding:"20px 24px"}}>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanaler</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanaler</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {getChannelLines(task).map(line=>(
               <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign}/>
@@ -993,15 +993,15 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
           <div className="card" style={{padding:"16px 18px"}}>
             {[{label:"Kunde",value:cust?.name||"—"},{label:"Periode",value:`${task.start} → ${task.end}`},{label:"Totalt budsjett",value:fmtNOK(task.budget)},{label:"Totalt forbruk",value:fmtNOK(totalSpent)},{label:"Pacing",value:p.label}].map(r=>(
               <div key={r.label} style={{marginBottom:10}}>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{r.label}</div>
-                <div style={{fontFamily:"'Jost',sans-serif",fontSize:13}}>{r.value}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{r.label}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13}}>{r.value}</div>
               </div>
             ))}
           </div>
           <button className="btn" onClick={()=>{if(confirm("Arkiver kampanje?")){updateCampaign(task.id,{archived:true});navigate("campaigns");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Arkiver kampanje</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Arkiver kampanje</button>
           <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen permanent?`)){deleteCampaign(task.id);navigate("campaigns");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett kampanje</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett kampanje</button>
         </div>
       </div>
     </div>
@@ -1013,8 +1013,8 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
-        <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:36,fontWeight:500}}>Kunder</h1>
-        {setShowCreateCustomer&&<button className="btn" onClick={setShowCreateCustomer} style={{background:C.panel,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny kunde</button>}
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Kunder</h1>
+        {setShowCreateCustomer&&<button className="btn" onClick={setShowCreateCustomer} style={{background:C.panel,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny kunde</button>}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {customers.map(c=>{
@@ -1025,15 +1025,15 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:16}}>
                 <CustomerAvatar customer={c} size={44} fontSize={14}/>
                 <div>
-                  <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:500}}>{c.name}</div>
-                  <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{c.industry}</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500}}>{c.name}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{c.industry}</div>
                 </div>
               </div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,marginBottom:12}}>{c.contact}</div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.greyOlive,marginBottom:10,fontWeight:500}}>Bank: {fmtNOK(c.bank||0)}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:12}}>{c.contact}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.greyOlive,marginBottom:10,fontWeight:500}}>Bank: {fmtNOK(c.bank||0)}</div>
               <div style={{display:"flex",gap:6}}>
-                <span style={{background:C.ash,padding:"3px 10px",borderRadius:10,fontFamily:"'Jost',sans-serif",fontSize:11}}>{cTasks.length} kampanjer</span>
-                {cBriefs.length>0&&<span style={{background:`${C.sandrift}30`,padding:"3px 10px",borderRadius:10,fontFamily:"'Jost',sans-serif",fontSize:11,color:C.sandrift}}>{cBriefs.length} oppgaver</span>}
+                <span style={{background:C.ash,padding:"3px 10px",borderRadius:10,fontFamily:"Roboto,sans-serif",fontSize:11}}>{cTasks.length} kampanjer</span>
+                {cBriefs.length>0&&<span style={{background:`${C.sandrift}30`,padding:"3px 10px",borderRadius:10,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandrift}}>{cBriefs.length} oppgaver</span>}
               </div>
             </div>
           );
@@ -1067,27 +1067,27 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("customers")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("customers")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <CustomerAvatar customer={customer} size={48} fontSize={15}/>
         <div style={{flex:1}}>
-          <h1 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
         </div>
         {updateCustomer&&(
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>
+            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>
             <div style={{textAlign:"right"}}>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
               {editingBank?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
-                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>Lagre</button>
-                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:12}}>✕</button>
+                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lagre</button>
+                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>✕</button>
                 </div>
               ):(
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
-                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Sett inn</button>
+                  <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Sett inn</button>
                 </div>
               )}
             </div>
@@ -1095,8 +1095,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         )}
         {!updateCustomer&&(
           <div style={{textAlign:"right"}}>
-            <div style={{fontFamily:"'Jost',sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
-            <span style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
           </div>
         )}
       </div>
@@ -1113,15 +1113,15 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         <>
           {activeBriefs.length>0&&(
             <div style={{marginBottom:20}}>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Oppgaver</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Oppgaver</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {activeBriefs.map(b=>(
                   <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:`3px solid ${C.sandrift}`}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
                     <div style={{flex:1}}>
                       <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-                      <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{b.start&&b.end?`${b.start} → ${b.end}`:""}</div>
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{b.start&&b.end?`${b.start} → ${b.end}`:""}</div>
                     </div>
-                    <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,background:C.ash,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,background:C.ash,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
                   </div>
                 ))}
               </div>
@@ -1129,7 +1129,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           )}
           {activeTasks.length>0&&(
             <div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Kampanjer</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Kampanjer</div>
               <div style={{display:"flex",flexDirection:"column",gap:8}}>
                 {activeTasks.map(task=>{
                   const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
@@ -1137,9 +1137,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                     <div key={task.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>navigate("task-detail",{taskId:task.id})}>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:500,fontSize:14}}>{task.title}</div>
-                        <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</div>
                       </div>
-                      <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,textAlign:"right",color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
                       <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
                     </div>
                   );
@@ -1147,41 +1147,41 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
               </div>
             </div>
           )}
-          {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
+          {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
         </>
       )}
       {tab==="history"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"'Jost',sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
+          {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
           {archivedBriefs.map(b=>(
             <div key={b.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
               <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>Oppgave · Avsluttet</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Oppgave · Avsluttet</div>
             </div>
           ))}
           {archivedTasks.map(t=>(
             <div key={t.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
               <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-              <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>Kampanje · {t.start} → {t.end} · {fmtNOK(t.budget)}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Kampanje · {t.start} → {t.end} · {fmtNOK(t.budget)}</div>
             </div>
           ))}
         </div>
       )}
       {tab==="hunch"&&(
         <div>
-          <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
           {Object.entries(hunchByMonth).map(([month,entries])=>(
             <div key={month} style={{marginBottom:20}}>
-              <div style={{fontFamily:"'Cormorant Garamond',serif",fontSize:18,fontWeight:500,marginBottom:10,textTransform:"capitalize"}}>{month}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500,marginBottom:10,textTransform:"capitalize"}}>{month}</div>
               {entries.map((e,i)=>(
                 <div key={i} className="card" style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500}}>{e.channel}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>{e.taskTitle}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{e.channel}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{e.taskTitle}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.brandyRose}}>Hunch fee: {fmtNOK(e.fee)}</div>
-                    <div style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>av {fmtNOK(e.spent)} forbruk</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.brandyRose}}>Hunch fee: {fmtNOK(e.fee)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>av {fmtNOK(e.spent)} forbruk</div>
                   </div>
                 </div>
               ))}
@@ -1215,7 +1215,7 @@ function ChannelDropdown({channels, onChange}) {
             const items=(subs&&subs.length>0)?subs:[null];
             return items.map(sub=>{
               const key=sub?`${ch} · ${sub}`:ch;
-              return <span key={key} style={{fontFamily:"'Jost',sans-serif",fontSize:11,background:`${C.sandrift}30`,color:C.sandrift,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
+              return <span key={key} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:`${C.sandrift}30`,color:C.sandrift,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
                 {key}<span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}>✕</span>
               </span>;
             });
@@ -1226,10 +1226,10 @@ function ChannelDropdown({channels, onChange}) {
         <div key={cohort} style={{marginBottom:6}}>
           <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
             style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:C.bg,border:`1px solid ${C.ash}`,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
-            <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text}}>{cohort}</span>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{cohort}</span>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               {Object.keys(chans).filter(ch=>channels[ch]).length>0&&(
-                <span style={{fontFamily:"'Jost',sans-serif",fontSize:10,background:`${C.sandrift}30`,color:C.sandrift,padding:"1px 7px",borderRadius:8}}>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,background:`${C.sandrift}30`,color:C.sandrift,padding:"1px 7px",borderRadius:8}}>
                   {Object.keys(chans).filter(ch=>channels[ch]).length} valgt
                 </span>
               )}
@@ -1246,11 +1246,11 @@ function ChannelDropdown({channels, onChange}) {
                       <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${selected?C.sandrift:C.ash}`,background:selected?C.sandrift:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {selected&&<span style={{color:"#fff",fontSize:9}}>✓</span>}
                       </div>
-                      <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,color:C.text,flex:1,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,flex:1,display:"flex",alignItems:"center",gap:6}}>
                         {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
                         {ch}
                       </span>
-                      {isHunch(ch)&&<span style={{fontFamily:"'Jost',sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
+                      {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
                     </div>
                     {selected&&subs&&(
                       <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:"4px 10px 8px 32px"}}>
@@ -1308,7 +1308,7 @@ function CreateBriefModal({customers, onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>Ny oppgave</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Ny oppgave</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
@@ -1347,17 +1347,17 @@ function CreateBriefModal({customers, onClose, onSave}) {
                 return (
                   <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`,padding:"10px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontFamily:"'Jost',sans-serif",fontSize:12,fontWeight:500,color:C.text}}>
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text}}>
                         {line.label}{line.hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
                       </span>
-                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:10}}>+ Legg til kampanje</button>
+                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>+ Legg til kampanje</button>
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:5}}>
                       {linesForChannel.map(cl=>(
                         <div key={cl.id} style={{display:"flex",alignItems:"center",gap:8}}>
                           <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Kampanjenavn"/>
                           <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{width:120,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="0"/>
-                          <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel,width:30}}>NOK</span>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,width:30}}>NOK</span>
                           {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.nickel,fontSize:13,padding:"2px 4px"}}>✕</button>}
                         </div>
                       ))}
@@ -1367,14 +1367,14 @@ function CreateBriefModal({customers, onClose, onSave}) {
               })}
             </div>
             {total>0&&(
-              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"'Jost',sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.ash}`}}>
+              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.ash}`}}>
                 <span style={{color:C.nickel}}>Totalt budsjett</span>
                 <strong style={{color:C.text}}>{fmtNOK(total)}</strong>
               </div>
             )}
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett oppgave</button>
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett oppgave</button>
       </div>
     </div>
   );
@@ -1401,11 +1401,11 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>Lag kampanje fra oppgave</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Lag kampanje fra oppgave</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
         {cust&&(
-          <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"'Jost',sans-serif",fontSize:12}}>
+          <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
             <span style={{color:C.nickel}}>Kundebank: <strong style={{color:C.text}}>{fmtNOK(cust.bank||0)}</strong></span>
             <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
           </div>
@@ -1419,23 +1419,23 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
           <div style={{marginBottom:18}}>
             <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
               <label style={{marginBottom:0}}>Budsjett per kanal</label>
-              <button className="btn" onClick={distribute} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"'Jost',sans-serif",fontSize:11}}>Del likt</button>
+              <button className="btn" onClick={distribute} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Del likt</button>
             </div>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {allLines.map(line=>(
                 <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
-                  <div style={{flex:1,fontFamily:"'Jost',sans-serif",fontSize:12,color:C.textDim}}>
+                  <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim}}>
                     {line.label}{line.hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
                   </div>
                   <input type="number" value={channelBudgets[line.flatKey]||""} onChange={e=>setChannelBudgets(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
-                  <span style={{fontFamily:"'Jost',sans-serif",fontSize:11,color:C.nickel}}>NOK</span>
+                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>NOK</span>
                 </div>
               ))}
-              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"'Jost',sans-serif",fontSize:12,color:C.nickel,paddingRight:36}}>Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong></div>
+              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:36}}>Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong></div>
             </div>
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
     </div>
   );
@@ -1453,7 +1453,7 @@ function CreateCustomerModal({onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Cormorant Garamond',serif",fontSize:26,fontWeight:500}}>Ny kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Ny kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
         {[{key:"name",label:"Kundenavn",placeholder:"f.eks. Oris Dental"},{key:"industry",label:"Bransje",placeholder:"f.eks. Tannhelse"},{key:"contact",label:"Nettside",placeholder:"f.eks. orisdental.no"},{key:"logo",label:"Logo-initialer (valgfritt)",placeholder:"f.eks. OD"}].map(f=>(
@@ -1464,7 +1464,7 @@ function CreateCustomerModal({onClose, onSave}) {
         <div style={{marginBottom:14}}><label>Startkapital i bank (NOK)</label>
           <input type="number" value={form.bank} onChange={e=>setForm(p=>({...p,bank:e.target.value}))} style={{width:"100%"}} placeholder="0"/>
         </div>
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"'Jost',sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett kunde</button>
+        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett kunde</button>
       </div>
     </div>
   );
