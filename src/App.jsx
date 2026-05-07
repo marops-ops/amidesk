@@ -948,7 +948,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
           <div key={customer.id} style={{marginBottom:4,background:C.panel,borderRadius:6,border:`1px solid ${C.ash}`,overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"12px 20px",background:accent,borderBottom:`2px solid rgba(0,0,0,.2)`}}>
               <CustomerAvatar customer={customer} size={28} fontSize={11}/>
-              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,cursor:"pointer",color:"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:"rgba(255,255,255,.8)",background:"rgba(0,0,0,.2)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{custTasks.length} kampanje{custTasks.length!==1?"r":""}</div>
             </div>
             {custTasks.map((task,taskIdx)=>(
@@ -1409,105 +1409,81 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
-        {["active","info","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
+        {["active","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
-            {t==="active"?"Aktive":t==="info"?"Info":t==="history"?"Historikk":"Hunch fees"}
+            {t==="active"?"Aktive":t==="history"?"Historikk":"Hunch fees"}
           </div>
         ))}
       </div>
 
-      {tab==="info"&&(
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}>
-          {/* Merkevarefarger */}
-          <div className="card" style={{padding:"18px 20px"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:14}}>Merkevarefarger</div>
-            <div style={{display:"flex",gap:20}}>
-              <ColorSwatch color={customer.colorPrimary} label="Primær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorPrimary:v})}/>
-              <ColorSwatch color={customer.colorSecondary} label="Sekundær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorSecondary:v})}/>
+      {tab==="active"&&(
+        <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:20,alignItems:"start"}}>
+          <div>
+            {activeBriefs.length>0&&(
+              <div style={{marginBottom:20}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Oppgaver</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {activeBriefs.map(b=>(
+                    <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:"3px solid "+C.sandrift}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
+                      <div style={{flex:1}}>
+                        <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{b.start&&b.end?b.start+" → "+b.end:""}</div>
+                      </div>
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,background:C.ash,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {activeTasks.length>0&&(
+              <div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Kampanjer</div>
+                <div style={{display:"flex",flexDirection:"column",gap:8}}>
+                  {activeTasks.map(task=>{
+                    const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
+                    return (
+                      <div key={task.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>navigate("task-detail",{taskId:task.id})}>
+                        <div style={{flex:1}}>
+                          <div style={{fontWeight:500,fontSize:14}}>{task.title}</div>
+                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</div>
+                        </div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
+                        <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Merkevarefarger</div>
+              <div style={{display:"flex",gap:20}}>
+                <ColorSwatch color={customer.colorPrimary} label="Primær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorPrimary:v})}/>
+                <ColorSwatch color={customer.colorSecondary} label="Sekundær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorSecondary:v})}/>
+              </div>
             </div>
-          </div>
-          {/* Kundekontakt */}
-          <div className="card" style={{padding:"18px 20px"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kundekontakt</div>
-            {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{customer.contactName}</div>}
-            {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:2}}>📞 {customer.contactPhone}</div>}
-            {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {customer.contactEmail}</div>}
-            {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen kontakt registrert.</div>}
-          </div>
-          {/* Rådgiver */}
-          <div className="card" style={{padding:"18px 20px"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Rådgiver</div>
-            {customer.advisorId?(()=>{
-              const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);
-              return s?<div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {s.email}</div>
-              </div>:null;
-            })():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen rådgiver tildelt.</div>}
-          </div>
-          {/* Ressurser */}
-          <div className="card" style={{padding:"18px 20px"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Ressurser</div>
-            {(customer.resources||[]).length===0
-              ?<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser tildelt.</div>
-              :(customer.resources||[]).map((r,i)=>{
-                const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);
-                return s?(
-                  <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
-                    <div style={{width:30,height:30,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:11,fontWeight:500,flexShrink:0}}>
-                      {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
-                    </div>
-                    <div>
-                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>
-                      {r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{r.department}</div>}
-                    </div>
-                  </div>
-                ):null;
-              })
-            }
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kundekontakt</div>
+              {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{customer.contactName}</div>}
+              {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:2}}>📞 {customer.contactPhone}</div>}
+              {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {customer.contactEmail}</div>}
+              {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen kontakt registrert.</div>}
+            </div>
+            <div className="card" style={{padding:"16px 18px"}}>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Rådgiver</div>
+              {customer.advisorId?(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);return s?<div><div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {s.email}</div></div>:null;})():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen rådgiver tildelt.</div>}
+            </div>
+            {(customer.resources||[]).length>0&&(
+              <div className="card" style={{padding:"16px 18px"}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Ressurser</div>
+                {(customer.resources||[]).map((r,i)=>{const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);return s?(<div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:28,height:28,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:10,fontWeight:500,flexShrink:0}}>{s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</div><div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>{r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{r.department}</div>}</div></div>):null;})}
+              </div>
+            )}
           </div>
         </div>
-      )}
-      {tab==="active"&&(
-        <>
-          {activeBriefs.length>0&&(
-            <div style={{marginBottom:20}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Oppgaver</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {activeBriefs.map(b=>(
-                  <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:`3px solid ${C.sandrift}`}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
-                    <div style={{flex:1}}>
-                      <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{b.start&&b.end?`${b.start} → ${b.end}`:""}</div>
-                    </div>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,background:C.ash,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          {activeTasks.length>0&&(
-            <div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Kampanjer</div>
-              <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                {activeTasks.map(task=>{
-                  const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
-                  return (
-                    <div key={task.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>navigate("task-detail",{taskId:task.id})}>
-                      <div style={{flex:1}}>
-                        <div style={{fontWeight:500,fontSize:14}}>{task.title}</div>
-                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</div>
-                      </div>
-                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
-                      <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-          {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
-        </>
       )}
       {tab==="history"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
