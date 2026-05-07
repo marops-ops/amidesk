@@ -375,8 +375,6 @@ export default function App() {
           const withOwner = {...b, ownerId: session.user.id};
           setBriefs(p=>[...p,withOwner]);
           await sb.from("briefs").upsert(briefToRow(withOwner));
-          const briefTotal = Object.values(b.channelBudgets||{}).reduce((a,v)=>a+v,0);
-          if (briefTotal>0) await adjustBank(b.customerId, briefTotal);
           setShowCreateBrief(false);
         }}/>}
       {showCreateCustomer&&isAdmin&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
@@ -1391,20 +1389,25 @@ function CreateBriefModal({customers, onClose, onSave}) {
 // ══ Convert Brief → Campaign Modal ════════════════════════════════
 function ConvertBriefModal({brief, customers, onClose, onSave}) {
   const cust=customers.find(c=>c.id===brief.customerId);
+  // Use brief.channelBudgets directly — these have the named lines + amounts already set
   const [channelBudgets,setChannelBudgets]=useState({...brief.channelBudgets});
   const [form,setForm]=useState({title:brief.title,start:brief.start||today(),end:brief.end||""});
-  const allLines=getSelectedLines(brief.channels||{});
   const total=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
   const bankAfter=(cust?.bank||0)-total;
-  const distribute=()=>{
-    if(!allLines.length) return;
-    const each=Math.round(total/allLines.length);
-    const nb={};allLines.forEach(l=>{nb[l.flatKey]=each;});setChannelBudgets(nb);
-  };
+
   const save=()=>{
     if(!form.title||!form.end) return alert("Fyll inn tittel og sluttdato");
-    onSave({id:uid(),customerId:brief.customerId,title:form.title,start:form.start,end:form.end,budget:total,status:"green",channels:brief.channels||{},channelBudgets,spent:{},channelDates:{},archived:false,fromBriefId:brief.id},brief.id);
+    // Build channels object from brief
+    onSave({
+      id:uid(),customerId:brief.customerId,title:form.title,
+      start:form.start,end:form.end,budget:total,status:"green",
+      channels:brief.channels||{},channelBudgets,
+      spent:{},channelDates:{},archived:false,fromBriefId:brief.id
+    },brief.id);
   };
+
+  const lineEntries = Object.entries(channelBudgets);
+
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg">
@@ -1423,24 +1426,35 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
           <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{width:"100%"}}/></div>
           <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{width:"100%"}}/></div>
         </div>
-        {allLines.length>0&&(
+        {lineEntries.length>0&&(
           <div style={{marginBottom:18}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <label style={{marginBottom:0}}>Budsjett per kanal</label>
-              <button className="btn" onClick={distribute} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Del likt</button>
-            </div>
+            <label style={{marginBottom:8,display:"block"}}>Kampanjelinjer og budsjett</label>
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {allLines.map(line=>(
-                <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
-                  <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim}}>
-                    {line.label}{line.hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
+              {lineEntries.map(([key,val])=>{
+                const baseCh = key.split(" — ")[0];
+                const hunch = isHunch(baseCh);
+                const icon = getChannelIcon(baseCh);
+                return (
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
+                    <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim,display:"flex",alignItems:"center",gap:6}}>
+                      {icon&&<img src={icon} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+                      {key}
+                      {hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:4}}>−5% fee</span>}
+                    </div>
+                    <input type="number" value={val||""} onChange={e=>setChannelBudgets(p=>({...p,[key]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>NOK</span>
                   </div>
-                  <input type="number" value={channelBudgets[line.flatKey]||""} onChange={e=>setChannelBudgets(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
-                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>NOK</span>
-                </div>
-              ))}
-              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:36}}>Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong></div>
+                );
+              })}
+              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:36}}>
+                Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong>
+              </div>
             </div>
+          </div>
+        )}
+        {lineEntries.length===0&&(
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:18,padding:"12px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+            Ingen kampanjelinjer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt.
           </div>
         )}
         <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
