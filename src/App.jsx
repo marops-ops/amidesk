@@ -754,6 +754,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
   const activeBriefs=briefs.filter(b=>!b.archived&&b.status!=="avsluttet");
   const activeTasks=tasks.filter(t=>!t.archived);
   const pendingCampaign=activeBriefs.filter(b=>!activeTasks.some(t=>t.fromBriefId===b.id));
+      const activeCampaignLines=activeTasks.reduce((sum,t)=>sum+Math.max(1,Object.keys(t.channelBudgets||{}).length),0);
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
@@ -766,8 +767,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
         )}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16,marginBottom:32}}>
-        const activeCampaignLines=activeTasks.reduce((sum,t)=>sum+Math.max(1,Object.keys(t.channelBudgets||{}).length),0);
-      {[{label:"Aktive oppgaver",value:activeBriefs.length},{label:"Kunder",value:customers.length},{label:"Aktive kampanjer",value:activeCampaignLines}].map(card=>(
+        {[{label:"Aktive oppgaver",value:activeBriefs.length},{label:"Kunder",value:customers.length},{label:"Aktive kampanjer",value:activeCampaignLines}].map(card=>(
           <div key={card.label} className="card" style={{padding:"20px 24px"}}>
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:6}}>{card.label}</div>
             <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:500}}>{card.value}</div>
