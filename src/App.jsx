@@ -1265,16 +1265,17 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const saveDate=()=>{
     const nd={...(task.channelDates||{}),[line.flatKey]:{start:dateVal.start,end:dateVal.end}};
     updateCampaign(task.id,{channelDates:nd});
+    setMode(null);
   };
 
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
 
   return (
     <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",flexWrap:"nowrap"}}>
+      <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px"}}>
 
         {/* Name + pencil */}
-        <div style={{width:260,flexShrink:0}}>
+        <div style={{minWidth:200,flex:"0 0 200px"}}>
           {editingName?(
             <div style={{display:"flex",alignItems:"center",gap:4}}>
               <input value={nameVal} onChange={e=>setNameVal(e.target.value)}
@@ -1292,8 +1293,8 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.brandyRose,marginTop:1}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
         </div>
 
-        {/* Progress bar */}
-        <div style={{width:160,flexShrink:0}}>
+        {/* Progress bar — flex grows */}
+        <div style={{flex:1,minWidth:120}}>
           <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:3}}>
             <span>{fmtNOK(line.spent)}</span>
             <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
@@ -1311,25 +1312,42 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>Brukt</span>
         </div>
 
-        {/* Budget inline */}
-        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(e.target.value)}
-            onBlur={saveBudget} onKeyDown={e=>e.key==="Enter"&&saveBudget()}
-            placeholder="0" style={{width:80,padding:"4px 7px",fontSize:12,textAlign:"right"}}/>
-          <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>Budsjett</span>
-        </div>
+        {/* Budget — text, click to edit */}
+        {mode==="budget"?(
+          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+            <input type="number" value={budgetVal} onChange={e=>setBudgetVal(e.target.value)}
+              onBlur={saveBudget} onKeyDown={e=>e.key==="Enter"&&saveBudget()}
+              style={{width:80,padding:"4px 7px",fontSize:12,textAlign:"right"}} autoFocus/>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>NOK</span>
+            <button className="btn" onClick={()=>setMode(null)} style={{background:"none",color:C.nickel,padding:"2px 4px",fontSize:11}}>✕</button>
+          </div>
+        ):(
+          <div onClick={()=>{setBudgetVal(line.budget||"");setMode("budget");}}
+            style={{cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim,flexShrink:0,minWidth:70,textAlign:"right",borderBottom:`1px dashed ${C.ash}`,paddingBottom:1}}>
+            {fmtNOK(line.budget)}
+          </div>
+        )}
 
-        {/* Dates inline */}
-        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-          <input type="date" value={dateVal.start} onChange={e=>{setDateVal(f=>({...f,start:e.target.value}));}}
-            onBlur={saveDate} style={{width:120,padding:"3px 6px",fontSize:11}}/>
-          <span style={{color:C.nickel,fontSize:10}}>→</span>
-          <input type="date" value={dateVal.end} onChange={e=>{setDateVal(f=>({...f,end:e.target.value}));}}
-            onBlur={saveDate} style={{width:120,padding:"3px 6px",fontSize:11}}/>
-        </div>
+        {/* Dates — text, click to edit */}
+        {mode==="date"?(
+          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+            <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))}
+              style={{width:120,padding:"3px 6px",fontSize:11}} autoFocus/>
+            <span style={{color:C.nickel,fontSize:10}}>→</span>
+            <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))}
+              style={{width:120,padding:"3px 6px",fontSize:11}}/>
+            <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+            <button className="btn" onClick={()=>setMode(null)} style={{background:"none",color:C.nickel,padding:"2px 4px",fontSize:11}}>✕</button>
+          </div>
+        ):(
+          <div onClick={()=>{setDateVal({start:line.chStart,end:line.chEnd});setMode("date");}}
+            style={{cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0,borderBottom:`1px dashed ${C.ash}`,paddingBottom:1,whiteSpace:"nowrap"}}>
+            {line.chStart} → {line.chEnd}
+          </div>
+        )}
 
         {/* NOK/dag */}
-        <div style={{fontFamily:"Roboto,sans-serif",textAlign:"right",width:84,flexShrink:0}}>
+        <div style={{fontFamily:"Roboto,sans-serif",textAlign:"right",flexShrink:0,minWidth:84}}>
           <div style={{fontWeight:700,color:C.text,fontSize:12,whiteSpace:"nowrap"}}>{fmtNOK(line.dayBudget)}/dag</div>
           <div style={{fontSize:10,color:C.nickel}}>{line.dl}d igjen</div>
         </div>
@@ -1337,10 +1355,10 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
         {/* Pacing */}
         <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 7px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
 
-        {/* Buttons */}
-        <div style={{display:"flex",gap:3,flexShrink:0,marginLeft:"auto"}}>
-          {isEnded&&<button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
-            style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
+        {/* Avslutt + Slett */}
+        <div style={{display:"flex",gap:4,flexShrink:0}}>
+          <button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
+            style={{background:`${C.greyOlive}20`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>
           <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
             style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 7px",borderRadius:3,fontSize:12}}>🗑</button>
         </div>
