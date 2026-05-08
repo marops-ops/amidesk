@@ -1158,7 +1158,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
             <div key={channelName}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:6,marginBottom:8,paddingBottom:6,borderBottom:`1px solid ${C.ash}`}}>
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  {icon&&<img src={icon} alt="" style={{width:22,height:22,borderRadius:4,objectFit:"contain",background:"#fff",padding:2}}/>}
+                  {icon&&<img src={icon} alt="" style={{width:22,height:22,borderRadius:4,objectFit:"contain"}}/>}
                   <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.text}}>{channelName}</span>
                 </div>
                 <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(channelName)}
@@ -1682,7 +1682,7 @@ function ChannelDropdown({channels, onChange}) {
                         {selected&&<span style={{color:"#fff",fontSize:9}}>✓</span>}
                       </div>
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,flex:1,display:"flex",alignItems:"center",gap:6}}>
-                        {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+                        {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                         {ch}
                       </span>
                       {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
@@ -1872,7 +1872,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
           <label>Kanal</label>
           {presetChannel?(
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.sandrift}`}}>
-              {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+              {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
               <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.text}}>{presetChannel}</span>
             </div>
           ):(
@@ -1889,7 +1889,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
                       {Object.keys(chans).map(ch=>(
                         <div key={ch} onClick={()=>{setSelectedChannel(ch);setOpenCohort(null);}}
                           style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?`${C.sandrift}20`:"transparent",border:`1px solid ${selectedChannel===ch?C.sandrift:C.ash}`}}>
-                          {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+                          {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                           <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{ch}</span>
                           {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose,marginLeft:"auto"}}>−5% fee</span>}
                         </div>
@@ -1971,7 +1971,7 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
                 return (
                   <div key={key} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
                     <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim,display:"flex",alignItems:"center",gap:6}}>
-                      {icon&&<img src={icon} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain",background:"#fff",padding:1}}/>}
+                      {icon&&<img src={icon} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                       {key}
                       {hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:4}}>−5% fee</span>}
                     </div>
