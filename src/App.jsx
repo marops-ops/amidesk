@@ -412,7 +412,7 @@ export default function App() {
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
         {(page==="customers"&&selectedCustomerId&&activeCustomer)||(page==="customer-detail"&&activeCustomer)
-          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate}/>:null}
+          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&isAdmin&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
         {page==="team-member"&&isAdmin&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate}/>}
@@ -1264,38 +1264,37 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   };
   const saveDate=()=>{
     const nd={...(task.channelDates||{}),[line.flatKey]:{start:dateVal.start,end:dateVal.end}};
-    updateCampaign(task.id,{channelDates:nd});setMode(null);
+    updateCampaign(task.id,{channelDates:nd});
   };
 
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
 
   return (
     <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"10px 12px"}}>
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"9px 12px",flexWrap:"nowrap"}}>
 
-        {/* Name + pencil + dates */}
-        <div style={{width:280,flexShrink:0}}>
+        {/* Name + pencil */}
+        <div style={{width:260,flexShrink:0}}>
           {editingName?(
             <div style={{display:"flex",alignItems:"center",gap:4}}>
               <input value={nameVal} onChange={e=>setNameVal(e.target.value)}
                 onKeyDown={e=>{if(e.key==="Enter")saveName();if(e.key==="Escape")setEditingName(false);}}
                 style={{flex:1,padding:"3px 6px",fontSize:12,fontWeight:500}} autoFocus/>
-              <button className="btn" onClick={saveName} style={{background:C.sandrift,color:"#fff",padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+              <button className="btn" onClick={saveName} style={{background:C.sandrift,color:"#fff",padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
               <button className="btn" onClick={()=>setEditingName(false)} style={{background:C.ash,color:C.text,padding:"3px 6px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
             </div>
           ):(
             <div style={{display:"flex",alignItems:"center",gap:5}}>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.text}}>{lineName}</div>
-              <span onClick={()=>{setNameVal(lineName);setEditingName(true);}} style={{cursor:"pointer",color:C.nickel,fontSize:12,opacity:.6,flexShrink:0}}>✏️</span>
+              <span onClick={()=>{setNameVal(lineName);setEditingName(true);}} style={{cursor:"pointer",color:C.nickel,fontSize:11,opacity:.5,flexShrink:0}}>✏️</span>
             </div>
           )}
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginTop:2}}>{line.chStart} → {line.chEnd}</div>
-          {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
+          {line.hunch&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.brandyRose,marginTop:1}}>Hunch −5% = {fmtNOK(line.netBudget)}</div>}
         </div>
 
-        {/* Progress bar — fixed narrow width */}
-        <div style={{width:120,flexShrink:0}}>
-          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:4}}>
+        {/* Progress bar */}
+        <div style={{width:160,flexShrink:0}}>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:3}}>
             <span>{fmtNOK(line.spent)}</span>
             <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
           </div>
@@ -1304,60 +1303,48 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           </div>
         </div>
 
-        {/* Spend input + label */}
-        <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-          <input
-            type="number"
-            value={spentVal}
-            onChange={e=>setSpentVal(e.target.value)}
-            onBlur={saveSpent}
-            onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
-            placeholder="0"
-            style={{width:80,padding:"5px 8px",fontSize:12,textAlign:"right",fontWeight:500}}
-          />
-          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Brukt</span>
+        {/* Spend input */}
+        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+          <input type="number" value={spentVal} onChange={e=>setSpentVal(e.target.value)}
+            onBlur={saveSpent} onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
+            placeholder="0" style={{width:76,padding:"4px 7px",fontSize:12,textAlign:"right",fontWeight:500}}/>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>Brukt</span>
         </div>
 
-        {/* NOK/dag + dager */}
-        <div style={{fontFamily:"Roboto,sans-serif",textAlign:"right",width:90,flexShrink:0}}>
-          <div style={{fontWeight:700,color:C.text,fontSize:13,whiteSpace:"nowrap"}}>{fmtNOK(line.dayBudget)}/dag</div>
+        {/* Budget inline */}
+        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(e.target.value)}
+            onBlur={saveBudget} onKeyDown={e=>e.key==="Enter"&&saveBudget()}
+            placeholder="0" style={{width:80,padding:"4px 7px",fontSize:12,textAlign:"right"}}/>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel}}>Budsjett</span>
+        </div>
+
+        {/* Dates inline */}
+        <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+          <input type="date" value={dateVal.start} onChange={e=>{setDateVal(f=>({...f,start:e.target.value}));}}
+            onBlur={saveDate} style={{width:120,padding:"3px 6px",fontSize:11}}/>
+          <span style={{color:C.nickel,fontSize:10}}>→</span>
+          <input type="date" value={dateVal.end} onChange={e=>{setDateVal(f=>({...f,end:e.target.value}));}}
+            onBlur={saveDate} style={{width:120,padding:"3px 6px",fontSize:11}}/>
+        </div>
+
+        {/* NOK/dag */}
+        <div style={{fontFamily:"Roboto,sans-serif",textAlign:"right",width:84,flexShrink:0}}>
+          <div style={{fontWeight:700,color:C.text,fontSize:12,whiteSpace:"nowrap"}}>{fmtNOK(line.dayBudget)}/dag</div>
           <div style={{fontSize:10,color:C.nickel}}>{line.dl}d igjen</div>
         </div>
 
         {/* Pacing */}
-        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:10,padding:"3px 8px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
+        <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 7px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
 
-        {/* Action buttons */}
-        <div style={{display:"flex",gap:4,flexShrink:0}}>
+        {/* Buttons */}
+        <div style={{display:"flex",gap:3,flexShrink:0,marginLeft:"auto"}}>
           {isEnded&&<button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
-            style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Avslutt</button>}
-          <button className="btn" onClick={()=>setMode(mode==="budget"?null:"budget")}
-            style={{background:mode==="budget"?C.sandrift:"none",border:`1px solid ${mode==="budget"?C.sandrift:C.ash}`,color:mode==="budget"?"#fff":C.nickel,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Budsjett</button>
-          <button className="btn" onClick={()=>setMode(mode==="date"?null:"date")}
-            style={{background:mode==="date"?C.sandrift:"none",border:`1px solid ${mode==="date"?C.sandrift:C.ash}`,color:mode==="date"?"#fff":C.nickel,padding:"4px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Dato</button>
+            style={{background:`${C.greyOlive}25`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>}
           <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
-            style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+            style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 7px",borderRadius:3,fontSize:12}}>🗑</button>
         </div>
       </div>
-
-      {mode==="budget"&&(
-        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`}}>
-          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Budsjett:</span>
-          <input type="number" value={budgetVal} onChange={e=>setBudgetVal(e.target.value)} style={{flex:1,maxWidth:160}} placeholder="NOK" autoFocus/>
-          <button className="btn" onClick={saveBudget} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
-        </div>
-      )}
-      {mode==="date"&&(
-        <div style={{display:"flex",gap:8,alignItems:"center",padding:"8px 12px",background:C.input,borderTop:`1px solid ${C.ash}`,flexWrap:"wrap"}}>
-          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>Datoer:</span>
-          <input type="date" value={dateVal.start} onChange={e=>setDateVal(f=>({...f,start:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}} autoFocus/>
-          <span style={{color:C.nickel,fontSize:11}}>→</span>
-          <input type="date" value={dateVal.end} onChange={e=>setDateVal(f=>({...f,end:e.target.value}))} style={{width:140,padding:"4px 8px",fontSize:11}}/>
-          <button className="btn" onClick={saveDate} style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Lagre</button>
-          <button className="btn" onClick={()=>setMode(null)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>✕</button>
-        </div>
-      )}
     </div>
   );
 }
@@ -1440,7 +1427,7 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
 }
 
 // ══ Customer Detail ════════════════════════════════════════════════
-function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate}) {
+function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign}) {
   const [tab,setTab]=useState("active");
   const [editingBank,setEditingBank]=useState(false);
   const [bankInput,setBankInput]=useState(customer.bank||0);
@@ -1472,7 +1459,11 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         </div>
         {updateCustomer&&(
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>
+            <div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
+                style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
+              {updateCustomer&&<button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>}
+            </div>
             <div style={{textAlign:"right"}}>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
               {editingBank?(
