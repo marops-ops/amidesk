@@ -2049,6 +2049,22 @@ function CreateCustomerModal({onClose, onSave}) {
     contactName:"",contactPhone:"",contactEmail:"",
     advisorId:"",resources:[],
   });
+  const [uploading,setUploading]=useState(false);
+  const [previewUrl,setPreviewUrl]=useState(null);
+  const tempId = useState(()=>uid())[0]; // stable temp ID for upload path
+
+  const handleFile = async e => {
+    const file=e.target.files[0];
+    if(!file) return;
+    setUploading(true);
+    const ext=file.name.split(".").pop();
+    const path=`${tempId}.${ext}`;
+    const {error}=await sb.storage.from("logos").upload(path,file,{upsert:true});
+    if(error){alert("Feil ved opplasting: "+error.message);setUploading(false);return;}
+    const {data}=sb.storage.from("logos").getPublicUrl(path);
+    setPreviewUrl(data.publicUrl+"?t="+Date.now());
+    setUploading(false);
+  };
 
   const addResource=()=>setForm(f=>({...f,resources:[...f.resources,{staffId:"",department:""}]}));
   const updateResource=(i,changes)=>setForm(f=>({...f,resources:f.resources.map((r,idx)=>idx===i?{...r,...changes}:r)}));
@@ -2057,7 +2073,7 @@ function CreateCustomerModal({onClose, onSave}) {
   const save=()=>{
     if(!form.name) return alert("Fyll inn kundenavn");
     const logo=form.logo||form.name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-    onSave({id:uid(),...form,logo,bank:+form.bank||0});
+    onSave({id:tempId,...form,logo,logoUrl:previewUrl,bank:+form.bank||0});
   };
 
   return (
@@ -2068,11 +2084,25 @@ function CreateCustomerModal({onClose, onSave}) {
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
 
-        {/* Farger */}
-        <div style={{display:"flex",gap:20,alignItems:"flex-start",marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase",width:100,paddingTop:4}}>Merkevarefarger</div>
-          <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
-          <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
+        {/* Logo + farger */}
+        <div style={{display:"flex",alignItems:"flex-start",gap:20,marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
+            {previewUrl
+              ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
+              :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()||"?"}</div>
+            }
+            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,cursor:"pointer",textAlign:"center"}}>
+              {uploading?"Laster…":"Last opp logo"}
+              <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} disabled={uploading}/>
+            </label>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Merkevarefarger</div>
+            <div style={{display:"flex",gap:20}}>
+              <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
+              <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
+            </div>
+          </div>
         </div>
 
         {/* Grunninfo */}
