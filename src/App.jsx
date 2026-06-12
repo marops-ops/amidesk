@@ -362,12 +362,6 @@ export default function App() {
   };
 
   const deleteCampaign = async (id) => {
-    const task = tasks.find(t=>t.id===id);
-    if(task) {
-      const totalSpent = Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
-      const diff = task.budget - totalSpent; // rest tilbake til bank
-      if(diff!==0) await adjustBank(task.customerId, diff);
-    }
     setTasks(prev=>prev.filter(t=>t.id!==id));
     await sb.from("campaigns").delete().eq("id",id);
   };
@@ -413,7 +407,7 @@ export default function App() {
 
       <main style={{flex:1,overflow:"auto",padding:"32px 64px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
@@ -1015,35 +1009,37 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin}) {
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
+  const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Math.max(1,Object.keys(t.channelBudgets||{}).length),0);
 
-  // Count total lines across all tasks for a customer
-  const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Object.keys(t.channelBudgets||{}).length,0);
+  if(active.length===0 && !isAdmin) {
+    const myBriefs=briefs.filter(b=>!b.archived&&b.status!=="avsluttet");
+    return (
+      <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:"60vh",gap:20,textAlign:"center"}}>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:500,color:C.text}}>Ingen kampanjelinjer ennå</div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:14,color:C.nickel,maxWidth:420}}>Du har ingen aktive kampanjelinjer. Kom i gang ved å sjekke oppgavene dine eller opprette en ny kampanje.</div>
+        <div style={{display:"flex",gap:16,marginTop:8}}>
+          {myBriefs.length>0&&(
+            <button className="btn" onClick={()=>navigate("briefs")}
+              style={{background:C.panel,color:C.text,padding:"14px 28px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>
+              📋 Oppgaver ({myBriefs.length})
+            </button>
+          )}
+          <button className="btn" onClick={()=>navigate("customers")}
+            style={{background:C.sandrift,color:"#fff",padding:"14px 28px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13}}>
+            + Start ny kampanje
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
-      {grouped.length===0&&(
-        <div style={{textAlign:"center",padding:"80px 0"}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:14,color:C.nickel,marginBottom:24}}>Ingen aktive kampanjelinjer</div>
-          <div style={{display:"flex",gap:12,justifyContent:"center"}}>
-            <button className="btn" onClick={()=>navigate("briefs")}
-              style={{background:C.panel,color:C.text,padding:"12px 24px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>
-              📋 Se oppgaver
-            </button>
-            <button className="btn" onClick={()=>{
-              if(customers.length===0) return alert("Ingen kunder er satt opp ennå.");
-              // Open add campaign for first customer — or navigate to customers
-              navigate("customers");
-            }}
-              style={{background:C.sandrift,color:"#fff",padding:"12px 24px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13}}>
-              + Start ny kampanje
-            </button>
-          </div>
-        </div>
-      )}
+      {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
@@ -1842,34 +1838,42 @@ function CreateBriefModal({customers, onClose, onSave}) {
 // ══ Add Campaign Modal (standalone, no brief) ════════════════════
 function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
   const [form,setForm]=useState({title:"",start:today(),end:""});
-  const [lines,setLines]=useState(
-    presetChannel?[{id:uid(),channel:presetChannel,name:"Kampanje 1",budget:""}]:[]
+  const initChannels = presetChannel ? {[presetChannel]:[]} : {};
+  const [channels,setChannels]=useState(initChannels);
+  const [campaignLines,setCampaignLines]=useState(
+    presetChannel ? [{id:uid(),flatKey:presetChannel,name:"Kampanje 1",budget:"",hunch:isHunch(presetChannel)}] : []
   );
-  const [openCohort,setOpenCohort]=useState(null);
 
-  const total=lines.reduce((s,l)=>s+(+l.budget||0),0);
-  const bankAfter=(customer?.bank||0)-total;
+  const selectedLines = getSelectedLines(channels);
+  const total = campaignLines.reduce((a,cl)=>a+(+cl.budget||0),0);
+  const bankAfter = (customer?.bank||0) - total;
 
-  const addLine=(channel)=>{
-    const count=lines.filter(l=>l.channel===channel).length;
-    setLines(p=>[...p,{id:uid(),channel,name:`Kampanje ${count+1}`,budget:""}]);
-    setOpenCohort(null);
+  const handleChannelChange = newChannels => {
+    const newLines = getSelectedLines(newChannels);
+    setCampaignLines(prev => {
+      const kept = prev.filter(cl => newLines.some(l=>l.flatKey===cl.flatKey));
+      const existing = new Set(kept.map(cl=>cl.flatKey));
+      const added = newLines.filter(l=>!existing.has(l.flatKey)).map(l=>({id:uid(),flatKey:l.flatKey,name:"Kampanje 1",budget:"",hunch:l.hunch}));
+      return [...kept,...added];
+    });
+    setChannels(newChannels);
   };
-  const updateLine=(id,changes)=>setLines(p=>p.map(l=>l.id===id?{...l,...changes}:l));
-  const removeLine=(id)=>setLines(p=>p.filter(l=>l.id!==id));
 
-  const save=()=>{
+  const addLine = flatKey => {
+    const count = campaignLines.filter(cl=>cl.flatKey===flatKey).length;
+    setCampaignLines(prev=>[...prev,{id:uid(),flatKey,name:`Kampanje ${count+1}`,budget:"",hunch:isHunch(flatKey)}]);
+  };
+  const removeLine = id => setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
+  const updateLine = (id,changes) => setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
+
+  const save = () => {
     if(!form.title) return alert("Fyll inn kampanjenavn");
     if(!form.end) return alert("Fyll inn sluttdato");
-    if(lines.length===0) return alert("Legg til minst én kanal");
-    if(lines.some(l=>!l.budget||+l.budget<=0)) return alert("Alle linjer må ha budsjett");
-    const channelBudgets={};
-    const channels={};
-    lines.forEach(l=>{
-      const key=`${l.channel} — ${l.name}`;
-      channelBudgets[key]=+l.budget;
-      const base=l.channel.split(" · ")[0];
-      if(!channels[base]) channels[base]=[];
+    if(Object.keys(channels).length===0) return alert("Velg minst én kanal");
+    if(campaignLines.length===0||campaignLines.every(cl=>!cl.budget||+cl.budget<=0)) return alert("Legg inn budsjett på minst én linje");
+    const channelBudgets = {};
+    campaignLines.forEach(cl=>{
+      if(cl.budget&&+cl.budget>0) channelBudgets[`${cl.flatKey} — ${cl.name}`] = +cl.budget;
     });
     onSave({
       id:uid(), customerId:customer.id, title:form.title,
@@ -1882,90 +1886,74 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kampanje — {customer.name}</h2>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600}}>Ny kampanje — {customer.name}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
 
-        <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
+        <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:14,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
           <span style={{color:C.nickel}}>Kundebank: <strong style={{color:C.text}}>{fmtNOK(customer.bank||0)}</strong></span>
           <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
-        <div style={{marginBottom:14}}><label>Kampanjenavn</label>
-          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}} placeholder="f.eks. Always on | Juni 2026" autoFocus/>
+        <div style={{marginBottom:12}}><label>Kampanjenavn</label>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}} placeholder="f.eks. Meta | Always on | Juni 2026" autoFocus/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:14}}>
           <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{width:"100%"}}/></div>
           <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{width:"100%"}}/></div>
         </div>
 
-        {/* Channel lines */}
-        {lines.length>0&&(
-          <div style={{marginBottom:16}}>
-            <label>Kampanjelinjer</label>
-            <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:6}}>
-              {lines.map(l=>{
-                const icon=CHANNEL_ICONS[l.channel];
-                const hunch=isHunch(l.channel);
-                return (
-                  <div key={l.id} style={{display:"flex",alignItems:"center",gap:8,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
-                    {icon&&<img src={icon} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain",flexShrink:0}}/>}
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0,minWidth:80}}>{l.channel}</span>
-                    <input value={l.name} onChange={e=>updateLine(l.id,{name:e.target.value})}
-                      style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Linjenavn"/>
-                    <input type="number" value={l.budget} onChange={e=>updateLine(l.id,{budget:e.target.value})}
-                      style={{width:110,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="Budsjett"/>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>NOK</span>
-                    {hunch&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose,flexShrink:0}}>−5%</span>}
-                    <button className="btn" onClick={()=>removeLine(l.id)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"3px 7px",borderRadius:3,fontSize:12,flexShrink:0}}>🗑</button>
-                  </div>
-                );
-              })}
-              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:4}}>
-                Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Add channel */}
-        <div style={{marginBottom:16}}>
-          <label>Legg til kanal</label>
+        <div style={{marginBottom:14}}>
+          <label>Kanaler</label>
           {presetChannel?(
-            <button className="btn" onClick={()=>addLine(presetChannel)}
-              style={{background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12,marginTop:6}}>
-              + Legg til linje for {presetChannel}
-            </button>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.sandrift}`}}>
+              {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.text}}>{presetChannel}</span>
+            </div>
           ):(
-            <div style={{marginTop:6}}>
-              {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
-                <div key={cohort} style={{marginBottom:4}}>
-                  <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
-                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",background:C.bg,border:`1px solid ${C.ash}`,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{cohort}</span>
-                    <span style={{color:C.nickel,fontSize:12}}>{openCohort===cohort?"▲":"▼"}</span>
-                  </div>
-                  {openCohort===cohort&&(
-                    <div style={{border:`1px solid ${C.ash}`,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"6px",background:C.input,display:"flex",flexDirection:"column",gap:3}}>
-                      {Object.keys(chans).map(ch=>(
-                        <div key={ch} onClick={()=>addLine(ch)}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:"transparent",border:`1px solid ${C.ash}`}}
-                          onMouseEnter={e=>e.currentTarget.style.borderColor=C.sandrift}
-                          onMouseLeave={e=>e.currentTarget.style.borderColor=C.ash}>
-                          {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,flex:1}}>{ch}</span>
-                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
-                          <span style={{color:C.sandrift,fontSize:14}}>+</span>
+            <ChannelDropdown channels={channels} onChange={handleChannelChange}/>
+          )}
+        </div>
+
+        {selectedLines.length>0&&(
+          <div style={{marginBottom:16}}>
+            <label>Kampanjelinjer og budsjett</label>
+            <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
+              {selectedLines.map(line=>{
+                const linesForChannel = campaignLines.filter(cl=>cl.flatKey===line.flatKey);
+                return (
+                  <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`,padding:"10px 12px"}}>
+                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6}}>
+                        {CHANNEL_ICONS[line.flatKey.split(" · ")[0]]&&<img src={CHANNEL_ICONS[line.flatKey.split(" · ")[0]]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
+                        <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text}}>{line.label}</span>
+                        {line.hunch&&<span style={{color:C.brandyRose,fontSize:10}}>−5% fee</span>}
+                      </div>
+                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>+ Legg til</button>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      {linesForChannel.map(cl=>(
+                        <div key={cl.id} style={{display:"flex",alignItems:"center",gap:8}}>
+                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Linjenavn"/>
+                          <input type="number" value={cl.budget} onChange={e=>updateLine(cl.id,{budget:e.target.value})} style={{width:110,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="Budsjett"/>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,width:30}}>NOK</span>
+                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.nickel,fontSize:13,padding:"2px 4px"}}>✕</button>}
                         </div>
                       ))}
                     </div>
-                  )}
-                </div>
-              ))}
+                  </div>
+                );
+              })}
             </div>
-          )}
-        </div>
+            {total>0&&(
+              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.ash}`}}>
+                <span style={{color:C.nickel}}>Totalt budsjett</span>
+                <strong style={{color:C.text}}>{fmtNOK(total)}</strong>
+              </div>
+            )}
+          </div>
+        )}
 
         <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
