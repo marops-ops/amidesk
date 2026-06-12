@@ -1494,6 +1494,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         <div style={{flex:1}}>
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.greyOlive,marginTop:4}}>
+            Aktive kampanjer: {activeTasks.reduce((sum,t)=>sum+Math.max(1,Object.keys(t.channelBudgets||{}).length),0)}
+          </div>
         </div>
         {updateCustomer&&(
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
