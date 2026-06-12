@@ -1320,7 +1320,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
             <span>{fmtNOK(line.hunch?line.netBudget:line.budget)}</span>
           </div>
           <div style={{height:3,background:C.ash,borderRadius:2,overflow:"hidden"}}>
-            <div style={{width:`${pct}%`,height:"100%",background:C.brandyRose,borderRadius:2,transition:"width .4s"}}/>
+            <div style={{width:`${pct}%`,height:"100%",background:line.p.ok?"#4CAF50":C.brandyRose,borderRadius:2,transition:"width .4s"}}/>
           </div>
         </div>
 
