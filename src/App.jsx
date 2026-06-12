@@ -407,7 +407,7 @@ export default function App() {
 
       <main style={{flex:1,overflow:"auto",padding:"32px 64px"}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
@@ -1009,7 +1009,7 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session}) {
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
   const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Math.max(1,Object.keys(t.channelBudgets||{}).length),0);
@@ -1050,13 +1050,24 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:17,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||"#fff"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
               <div style={{flex:1}}/>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:customer.colorSecondary||"rgba(255,255,255,.8)",background:"rgba(0,0,0,.15)",padding:"2px 9px",borderRadius:10,flexShrink:0}}>{lineCount} kampanje{lineCount!==1?"r":""}</div>
+              <AssignDropdown label="Tildel alle" onAssign={async staff=>{
+                const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+                if(!profile){alert(`${staff.name} har ikke logget inn ennå.`);return;}
+                for(const t of custTasks) await updateCampaign(t.id,{ownerId:profile.id});
+                const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+                await sb.from("notifications").insert({
+                  id:uid(),user_id:profile.id,type:"campaign_assigned",
+                  message:`${senderName} tildelte deg alle kampanjer for ${customer.name}`,
+                  brief_id:null,read:false,
+                });
+              }}/>
               <button className="btn" onClick={()=>onAddCampaign(customer,null)}
                 style={{background:"rgba(0,0,0,.15)",color:customer.colorSecondary||"#fff",border:`1px solid ${customer.colorSecondary||"rgba(255,255,255,.4)"}`,padding:"4px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,flexShrink:0}}>
                 + Lag kampanje
               </button>
             </div>
             {custTasks.map((task,taskIdx)=>(
-              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})}/>
+              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session}/>
             ))}
           </div>
         );
@@ -1065,7 +1076,39 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   );
 }
 
-function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign}) {
+function AssignDropdown({onAssign, label="Tildel"}) {
+  const [open,setOpen]=useState(false);
+  const [search,setSearch]=useState("");
+  const filtered=AMIDAYS_STAFF.filter(s=>s.name.toLowerCase().includes(search.toLowerCase()));
+  return (
+    <div style={{position:"relative"}}>
+      <button className="btn" onClick={()=>setOpen(!open)}
+        style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>
+        👤 {label}
+      </button>
+      {open&&(
+        <div style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:4,padding:8,width:200,boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2}}>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Søk..." style={{width:"100%",padding:"4px 8px",fontSize:11,marginBottom:6}} autoFocus/>
+          <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}}>
+            {filtered.map(s=>(
+              <div key={s.id} onClick={()=>{onAssign(s);setOpen(false);setSearch("");}}
+                style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:3,cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}
+                onMouseEnter={e=>e.currentTarget.style.background=C.ash}
+                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                <div style={{width:22,height:22,borderRadius:"50%",background:C.ash,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:600,flexShrink:0}}>
+                  {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                </div>
+                {s.name}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session}) {
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(task.title);
   const [editingMeta,setEditingMeta]=useState(false);
@@ -1116,6 +1159,18 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     updateCampaign(task.id,{channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)});
   };
 
+  const handleAssign=async(staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(`${staff.name} har ikke logget inn i AmiDesk ennå.`);return;}
+    await updateCampaign(task.id,{ownerId:profile.id});
+    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+    await sb.from("notifications").insert({
+      id:uid(), user_id:profile.id, type:"campaign_assigned",
+      message:`${senderName} tildelte deg kampanjen "${task.title}"`,
+      brief_id:null, read:false,
+    });
+  };
+
   const lines=getChannelLines(task);
   const grouped=groupLinesByChannel(lines);
 
@@ -1164,7 +1219,10 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
               </div>
             )}
             {!editingMeta&&!showEndConfirm&&(
-              <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
+              <>
+                <AssignDropdown onAssign={handleAssign}/>
+                <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
+              </>
             )}
           </div>
         )}
