@@ -204,7 +204,7 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [page, setPage] = useState("dashboard");
+  const [page, setPage] = useState("campaigns");
   const [selectedCustomerId, setSelectedCustomerId] = useState(null);
   const [selectedTaskId, setSelectedTaskId] = useState(null);
   const [selectedBriefId, setSelectedBriefId] = useState(null);
@@ -362,6 +362,12 @@ export default function App() {
   };
 
   const deleteCampaign = async (id) => {
+    const task = tasks.find(t=>t.id===id);
+    if(task) {
+      const totalSpent = Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
+      const diff = task.budget - totalSpent; // rest tilbake til bank
+      if(diff!==0) await adjustBank(task.customerId, diff);
+    }
     setTasks(prev=>prev.filter(t=>t.id!==id));
     await sb.from("campaigns").delete().eq("id",id);
   };
@@ -1019,7 +1025,25 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   return (
     <div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
-      {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
+      {grouped.length===0&&(
+        <div style={{textAlign:"center",padding:"80px 0"}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:14,color:C.nickel,marginBottom:24}}>Ingen aktive kampanjelinjer</div>
+          <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+            <button className="btn" onClick={()=>navigate("briefs")}
+              style={{background:C.panel,color:C.text,padding:"12px 24px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>
+              📋 Se oppgaver
+            </button>
+            <button className="btn" onClick={()=>{
+              if(customers.length===0) return alert("Ingen kunder er satt opp ennå.");
+              // Open add campaign for first customer — or navigate to customers
+              navigate("customers");
+            }}
+              style={{background:C.sandrift,color:"#fff",padding:"12px 24px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13}}>
+              + Start ny kampanje
+            </button>
+          </div>
+        </div>
+      )}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
@@ -1818,28 +1842,38 @@ function CreateBriefModal({customers, onClose, onSave}) {
 // ══ Add Campaign Modal (standalone, no brief) ════════════════════
 function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
   const [form,setForm]=useState({title:"",start:today(),end:""});
-  const [selectedChannel,setSelectedChannel]=useState(presetChannel||"");
-  const [lineName,setLineName]=useState("Kampanje 1");
-  const [budget,setBudget]=useState("");
+  const [lines,setLines]=useState(
+    presetChannel?[{id:uid(),channel:presetChannel,name:"Kampanje 1",budget:""}]:[]
+  );
   const [openCohort,setOpenCohort]=useState(null);
 
-  const flatKey=selectedChannel?`${selectedChannel} — ${lineName}`:"";
-  const total=budget?+budget:0;
+  const total=lines.reduce((s,l)=>s+(+l.budget||0),0);
   const bankAfter=(customer?.bank||0)-total;
-  const hunch=isHunch(selectedChannel);
-  const netBudget=hunch?Math.round(total*(1-HUNCH_FEE)):total;
+
+  const addLine=(channel)=>{
+    const count=lines.filter(l=>l.channel===channel).length;
+    setLines(p=>[...p,{id:uid(),channel,name:`Kampanje ${count+1}`,budget:""}]);
+    setOpenCohort(null);
+  };
+  const updateLine=(id,changes)=>setLines(p=>p.map(l=>l.id===id?{...l,...changes}:l));
+  const removeLine=(id)=>setLines(p=>p.filter(l=>l.id!==id));
 
   const save=()=>{
     if(!form.title) return alert("Fyll inn kampanjenavn");
     if(!form.end) return alert("Fyll inn sluttdato");
-    if(!selectedChannel) return alert("Velg en kanal");
-    if(!budget||+budget<=0) return alert("Legg inn budsjett");
-    const channelBudgets={[flatKey]:+budget};
-    const baseChannel=selectedChannel.split(" · ")[0];
-    const channels={[baseChannel]:[]};
+    if(lines.length===0) return alert("Legg til minst én kanal");
+    if(lines.some(l=>!l.budget||+l.budget<=0)) return alert("Alle linjer må ha budsjett");
+    const channelBudgets={};
+    const channels={};
+    lines.forEach(l=>{
+      const key=`${l.channel} — ${l.name}`;
+      channelBudgets[key]=+l.budget;
+      const base=l.channel.split(" · ")[0];
+      if(!channels[base]) channels[base]=[];
+    });
     onSave({
       id:uid(), customerId:customer.id, title:form.title,
-      start:form.start, end:form.end, budget:+budget,
+      start:form.start, end:form.end, budget:total,
       status:"green", channels, channelBudgets,
       spent:{}, channelDates:{}, archived:false, fromBriefId:null,
     });
@@ -1847,36 +1881,64 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
 
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kampanje — {customer.name}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
         </div>
 
-        {/* Bank info */}
         <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
           <span style={{color:C.nickel}}>Kundebank: <strong style={{color:C.text}}>{fmtNOK(customer.bank||0)}</strong></span>
           <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
         <div style={{marginBottom:14}}><label>Kampanjenavn</label>
-          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}} placeholder="f.eks. Meta | Trafikk | Juni 2026" autoFocus/>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}} placeholder="f.eks. Always on | Juni 2026" autoFocus/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:16}}>
           <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{width:"100%"}}/></div>
           <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{width:"100%"}}/></div>
         </div>
 
-        {/* Channel picker */}
-        <div style={{marginBottom:14}}>
-          <label>Kanal</label>
-          {presetChannel?(
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.sandrift}`}}>
-              {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
-              <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.text}}>{presetChannel}</span>
+        {/* Channel lines */}
+        {lines.length>0&&(
+          <div style={{marginBottom:16}}>
+            <label>Kampanjelinjer</label>
+            <div style={{display:"flex",flexDirection:"column",gap:6,marginTop:6}}>
+              {lines.map(l=>{
+                const icon=CHANNEL_ICONS[l.channel];
+                const hunch=isHunch(l.channel);
+                return (
+                  <div key={l.id} style={{display:"flex",alignItems:"center",gap:8,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
+                    {icon&&<img src={icon} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain",flexShrink:0}}/>}
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0,minWidth:80}}>{l.channel}</span>
+                    <input value={l.name} onChange={e=>updateLine(l.id,{name:e.target.value})}
+                      style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Linjenavn"/>
+                    <input type="number" value={l.budget} onChange={e=>updateLine(l.id,{budget:e.target.value})}
+                      style={{width:110,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="Budsjett"/>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,flexShrink:0}}>NOK</span>
+                    {hunch&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose,flexShrink:0}}>−5%</span>}
+                    <button className="btn" onClick={()=>removeLine(l.id)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"3px 7px",borderRadius:3,fontSize:12,flexShrink:0}}>🗑</button>
+                  </div>
+                );
+              })}
+              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:4}}>
+                Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong>
+              </div>
             </div>
+          </div>
+        )}
+
+        {/* Add channel */}
+        <div style={{marginBottom:16}}>
+          <label>Legg til kanal</label>
+          {presetChannel?(
+            <button className="btn" onClick={()=>addLine(presetChannel)}
+              style={{background:C.ash,color:C.text,padding:"6px 14px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12,marginTop:6}}>
+              + Legg til linje for {presetChannel}
+            </button>
           ):(
-            <div>
+            <div style={{marginTop:6}}>
               {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
                 <div key={cohort} style={{marginBottom:4}}>
                   <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
@@ -1887,11 +1949,14 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
                   {openCohort===cohort&&(
                     <div style={{border:`1px solid ${C.ash}`,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"6px",background:C.input,display:"flex",flexDirection:"column",gap:3}}>
                       {Object.keys(chans).map(ch=>(
-                        <div key={ch} onClick={()=>{setSelectedChannel(ch);setOpenCohort(null);}}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?`${C.sandrift}20`:"transparent",border:`1px solid ${selectedChannel===ch?C.sandrift:C.ash}`}}>
+                        <div key={ch} onClick={()=>addLine(ch)}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:"transparent",border:`1px solid ${C.ash}`}}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor=C.sandrift}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor=C.ash}>
                           {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{ch}</span>
-                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose,marginLeft:"auto"}}>−5% fee</span>}
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,flex:1}}>{ch}</span>
+                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
+                          <span style={{color:C.sandrift,fontSize:14}}>+</span>
                         </div>
                       ))}
                     </div>
@@ -1901,18 +1966,6 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
             </div>
           )}
         </div>
-
-        {selectedChannel&&(
-          <div style={{display:"grid",gridTemplateColumns:"1fr auto",gap:10,marginBottom:16,alignItems:"end"}}>
-            <div><label>Kampanjenavn (linje)</label>
-              <input value={lineName} onChange={e=>setLineName(e.target.value)} style={{width:"100%"}} placeholder="f.eks. Trafikk"/>
-            </div>
-            <div><label>Budsjett (NOK)</label>
-              <input type="number" value={budget} onChange={e=>setBudget(e.target.value)} style={{width:130,textAlign:"right"}} placeholder="0"/>
-            </div>
-          </div>
-        )}
-        {hunch&&budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.brandyRose,marginBottom:12}}>Hunch fee −5% = netto {fmtNOK(netBudget)}</div>}
 
         <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
