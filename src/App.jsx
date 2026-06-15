@@ -1292,7 +1292,6 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                     }}
                   />
                 ))}
-                ))}
               </div>
             </div>
           );
@@ -1364,8 +1363,10 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const pct=line.budget>0?Math.min(100,Math.round((line.spent/line.budget)*100)):0;
   const isEnded=line.chEnd&&line.chEnd<=today();
 
-  // Stale: no spend update in 7+ days and campaign is active
-  const lastUpdate = task.lastSpendUpdate ? new Date(task.lastSpendUpdate) : null;
+  // Stale: no spend update in 7+ days (use campaign start as fallback reference)
+  const lastUpdate = task.lastSpendUpdate
+    ? new Date(task.lastSpendUpdate)
+    : task.start ? new Date(task.start) : null;
   const daysSinceUpdate = lastUpdate ? Math.floor((new Date()-lastUpdate)/(1000*60*60*24)) : 999;
   const isStale = !isEnded && daysSinceUpdate >= 7;
 
