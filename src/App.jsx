@@ -139,6 +139,7 @@ const rowToCampaign = r => ({
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   spent:r.spent||{}, channelDates:r.channel_dates||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
+  lineAssignments:r.line_assignments||{},
 });
 const customerToRow = c => ({
   id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
@@ -160,6 +161,7 @@ const campaignToRow = t => ({
   channels:t.channels, channel_budgets:t.channelBudgets,
   spent:t.spent, channel_dates:t.channelDates||{},
   from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
+  line_assignments:t.lineAssignments||{},
 });
 
 // ══ Login Screen ═══════════════════════════════════════════════════
@@ -1219,10 +1221,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
               </div>
             )}
             {!editingMeta&&!showEndConfirm&&(
-              <>
-                <AssignDropdown onAssign={handleAssign}/>
-                <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
-              </>
+              <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen "${task.title}" permanent?`))deleteCampaign(task.id);}} style={{background:"none",border:`1px solid ${C.brandyRose}40`,color:C.brandyRose,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Slett</button>
             )}
           </div>
         )}
@@ -1244,7 +1243,22 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
               </div>
               <div style={{display:"flex",flexDirection:"column",gap:4}}>
                 {channelLines.map(line=>(
-                  <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}/>
+                  <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
+                    onAssignLine={async(staff)=>{
+                      const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+                      if(!profile){alert(`${staff.name} har ikke logget inn i AmiDesk ennå.`);return;}
+                      // Store per-line assignment in channelDates as metadata (reuse existing structure)
+                      const assignments={...(task.lineAssignments||{}),[line.flatKey]:profile.id};
+                      await updateCampaign(task.id,{lineAssignments:assignments});
+                      const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+                      await sb.from("notifications").insert({
+                        id:uid(),user_id:profile.id,type:"line_assigned",
+                        message:`${senderName} tildelte deg kampanjelinjen "${line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label}" (${task.title})`,
+                        brief_id:null,read:false,
+                      });
+                    }}
+                  />
+                ))}
                 ))}
               </div>
             </div>
@@ -1305,7 +1319,7 @@ function groupLinesByChannel(lines) {
   return groups;
 }
 
-function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine}) {
+function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(
@@ -1433,10 +1447,11 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
         {/* Pacing */}
         <span className={line.p.ok?"pacing-ok":"pacing-bad"} style={{fontSize:9,padding:"2px 7px",whiteSpace:"nowrap",flexShrink:0}}>{line.p.label}</span>
 
-        {/* Avslutt + Slett */}
+        {/* Avslutt + Tildel + Slett */}
         <div style={{display:"flex",gap:4,flexShrink:0}}>
           <button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
             style={{background:`${C.greyOlive}20`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>
+          {onAssignLine&&<AssignDropdown onAssign={onAssignLine} label="Tildel"/>}
           <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
             style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 7px",borderRadius:3,fontSize:12}}>🗑</button>
         </div>
