@@ -140,6 +140,8 @@ const rowToCampaign = r => ({
   spent:r.spent||{}, channelDates:r.channel_dates||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
   lineAssignments:r.line_assignments||{},
+  sharedWith:r.shared_with||[],
+  lastSpendUpdate:r.last_spend_update||null,
 });
 const customerToRow = c => ({
   id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
@@ -162,6 +164,8 @@ const campaignToRow = t => ({
   spent:t.spent, channel_dates:t.channelDates||{},
   from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
   line_assignments:t.lineAssignments||{},
+  shared_with:t.sharedWith||[],
+  last_spend_update:t.lastSpendUpdate||null,
 });
 
 // ══ Login Screen ═══════════════════════════════════════════════════
@@ -273,20 +277,23 @@ export default function App() {
     if (!session) return;
     async function load() {
       const userId = session.user.id;
-      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tData }, { data: nData }] = await Promise.all([
+      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tOwned }, { data: tShared }, { data: nData }] = await Promise.all([
         sb.from("customers").select("*"),
         sb.from("briefs").select("*").eq("owner_id", userId),
         sb.from("briefs").select("*").contains("shared_with", [userId]),
         sb.from("campaigns").select("*").eq("owner_id", userId),
+        sb.from("campaigns").select("*").contains("shared_with", [userId]),
         sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
       if (cData) setCustomers(cData.map(rowToCustomer));
-      // Merge owned + shared briefs, deduplicate
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
-      const seen = new Set();
-      const deduped = allBriefs.filter(b => { if(seen.has(b.id)) return false; seen.add(b.id); return true; });
-      setBriefs(deduped.map(rowToBrief));
-      if (tData) setTasks(tData.map(rowToCampaign));
+      const seenB = new Set();
+      const dedupedB = allBriefs.filter(b => { if(seenB.has(b.id)) return false; seenB.add(b.id); return true; });
+      setBriefs(dedupedB.map(rowToBrief));
+      const allTasks = [...(tOwned||[]), ...(tShared||[])];
+      const seenT = new Set();
+      const dedupedT = allTasks.filter(t => { if(seenT.has(t.id)) return false; seenT.add(t.id); return true; });
+      setTasks(dedupedT.map(rowToCampaign));
       if (nData) setNotifications(nData);
       if (ADMIN_EMAILS.includes(session.user.email)) {
         const { data: members } = await sb.from("profiles").select("*");
@@ -1078,10 +1085,18 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   );
 }
 
-function AssignDropdown({onAssign, label="Tildel"}) {
+function AssignDropdown({onAssign, onShare, label="Tildel", showModes=false}) {
   const [open,setOpen]=useState(false);
+  const [mode,setMode]=useState(null); // null | "give" | "share"
   const [search,setSearch]=useState("");
   const filtered=AMIDAYS_STAFF.filter(s=>s.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleSelect=(staff)=>{
+    if(showModes && mode==="share") onShare&&onShare(staff);
+    else onAssign&&onAssign(staff);
+    setOpen(false);setSearch("");setMode(null);
+  };
+
   return (
     <div style={{position:"relative"}}>
       <button className="btn" onClick={()=>setOpen(!open)}
@@ -1089,21 +1104,37 @@ function AssignDropdown({onAssign, label="Tildel"}) {
         👤 {label}
       </button>
       {open&&(
-        <div style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:4,padding:8,width:200,boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2}}>
-          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Søk..." style={{width:"100%",padding:"4px 8px",fontSize:11,marginBottom:6}} autoFocus/>
-          <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}}>
-            {filtered.map(s=>(
-              <div key={s.id} onClick={()=>{onAssign(s);setOpen(false);setSearch("");}}
-                style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:3,cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}
-                onMouseEnter={e=>e.currentTarget.style.background=C.ash}
-                onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                <div style={{width:22,height:22,borderRadius:"50%",background:C.ash,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:600,flexShrink:0}}>
-                  {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
-                </div>
-                {s.name}
+        <div style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:4,padding:8,width:210,boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2}}>
+          {showModes&&!mode&&(
+            <div style={{display:"flex",gap:6,marginBottom:8}}>
+              <button className="btn" onClick={()=>setMode("give")}
+                style={{flex:1,background:C.sandrift,color:"#fff",padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Gi bort</button>
+              <button className="btn" onClick={()=>setMode("share")}
+                style={{flex:1,background:C.ash,color:C.text,padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Del</button>
+            </div>
+          )}
+          {(!showModes||mode)&&(
+            <>
+              {showModes&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:6,paddingBottom:4,borderBottom:`1px solid ${C.ash}`}}>
+                {mode==="give"?"Gi bort til:":"Del med:"}
+                <span onClick={()=>setMode(null)} style={{cursor:"pointer",color:C.sandrift,marginLeft:8}}>← Bytt</span>
+              </div>}
+              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Søk..." style={{width:"100%",padding:"4px 8px",fontSize:11,marginBottom:6}} autoFocus/>
+              <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}}>
+                {filtered.map(s=>(
+                  <div key={s.id} onClick={()=>handleSelect(s)}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:3,cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}
+                    onMouseEnter={e=>e.currentTarget.style.background=C.ash}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <div style={{width:22,height:22,borderRadius:"50%",background:C.ash,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:600,flexShrink:0}}>
+                      {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                    </div>
+                    {s.name}
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </>
+          )}
         </div>
       )}
     </div>
@@ -1161,17 +1192,6 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     updateCampaign(task.id,{channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)});
   };
 
-  const handleAssign=async(staff)=>{
-    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
-    if(!profile){alert(`${staff.name} har ikke logget inn i AmiDesk ennå.`);return;}
-    await updateCampaign(task.id,{ownerId:profile.id});
-    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
-    await sb.from("notifications").insert({
-      id:uid(), user_id:profile.id, type:"campaign_assigned",
-      message:`${senderName} tildelte deg kampanjen "${task.title}"`,
-      brief_id:null, read:false,
-    });
-  };
 
   const lines=getChannelLines(task);
   const grouped=groupLinesByChannel(lines);
@@ -1247,13 +1267,26 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                     onAssignLine={async(staff)=>{
                       const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
                       if(!profile){alert(`${staff.name} har ikke logget inn i AmiDesk ennå.`);return;}
-                      // Store per-line assignment in channelDates as metadata (reuse existing structure)
-                      const assignments={...(task.lineAssignments||{}),[line.flatKey]:profile.id};
-                      await updateCampaign(task.id,{lineAssignments:assignments});
+                      // Give away: change owner_id
+                      await updateCampaign(task.id,{ownerId:profile.id});
                       const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
                       await sb.from("notifications").insert({
                         id:uid(),user_id:profile.id,type:"line_assigned",
-                        message:`${senderName} tildelte deg kampanjelinjen "${line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label}" (${task.title})`,
+                        message:`${senderName} ga deg kampanjen "${task.title}"`,
+                        brief_id:null,read:false,
+                      });
+                    }}
+                    onShareLine={async(staff)=>{
+                      const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+                      if(!profile){alert(`${staff.name} har ikke logget inn i AmiDesk ennå.`);return;}
+                      // Share: add to shared_with
+                      const newShared=[...(task.sharedWith||[])];
+                      if(!newShared.includes(profile.id)) newShared.push(profile.id);
+                      await updateCampaign(task.id,{sharedWith:newShared});
+                      const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+                      await sb.from("notifications").insert({
+                        id:uid(),user_id:profile.id,type:"line_shared",
+                        message:`${senderName} delte kampanjen "${task.title}" med deg`,
                         brief_id:null,read:false,
                       });
                     }}
@@ -1319,7 +1352,7 @@ function groupLinesByChannel(lines) {
   return groups;
 }
 
-function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine}) {
+function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(
@@ -1331,9 +1364,14 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const pct=line.budget>0?Math.min(100,Math.round((line.spent/line.budget)*100)):0;
   const isEnded=line.chEnd&&line.chEnd<=today();
 
+  // Stale: no spend update in 7+ days and campaign is active
+  const lastUpdate = task.lastSpendUpdate ? new Date(task.lastSpendUpdate) : null;
+  const daysSinceUpdate = lastUpdate ? Math.floor((new Date()-lastUpdate)/(1000*60*60*24)) : 999;
+  const isStale = !isEnded && daysSinceUpdate >= 7;
+
   const saveSpent=()=>{
     const v=spentVal===""?0:+spentVal;
-    updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:v}});
+    updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:v}, lastSpendUpdate:new Date().toISOString()});
   };
   const saveName=()=>{
     if(!nameVal.trim()){setEditingName(false);return;}
@@ -1363,7 +1401,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
 
   return (
-    <div style={{borderRadius:3,border:`1px solid ${C.ash}`,background:"rgba(255,255,255,.02)",overflow:"hidden"}}>
+    <div style={{borderRadius:3,border:`1px solid ${isStale?"rgba(196,131,116,.4)":C.ash}`,background:isStale?"rgba(196,131,116,.06)":"rgba(255,255,255,.02)",overflow:"hidden"}}>
       <div style={{display:"flex",alignItems:"center",gap:10,padding:"9px 12px"}}>
 
         {/* Name + pencil */}
@@ -1451,7 +1489,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
         <div style={{display:"flex",gap:4,flexShrink:0}}>
           <button className="btn" onClick={()=>onEndChannel&&onEndChannel(line)}
             style={{background:`${C.greyOlive}20`,border:`1px solid ${C.greyOlive}`,color:C.greyOlive,padding:"3px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>Avslutt</button>
-          {onAssignLine&&<AssignDropdown onAssign={onAssignLine} label="Tildel"/>}
+          {onAssignLine&&<AssignDropdown showModes={true} onAssign={onAssignLine} onShare={onShareLine} label="Tildel"/>}
           <button className="btn" onClick={()=>onDeleteLine&&onDeleteLine(line.flatKey)}
             style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 7px",borderRadius:3,fontSize:12}}>🗑</button>
         </div>
