@@ -1087,9 +1087,17 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 
 function AssignDropdown({onAssign, onShare, label="Tildel", showModes=false}) {
   const [open,setOpen]=useState(false);
-  const [mode,setMode]=useState(null); // null | "give" | "share"
+  const [mode,setMode]=useState(null);
   const [search,setSearch]=useState("");
+  const [pos,setPos]=useState({top:0,left:0});
+  const btnRef=useState(null);
   const filtered=AMIDAYS_STAFF.filter(s=>s.name.toLowerCase().includes(search.toLowerCase()));
+
+  const handleOpen=(e)=>{
+    const rect=e.currentTarget.getBoundingClientRect();
+    setPos({top:rect.bottom+4,left:rect.left});
+    setOpen(!open);
+  };
 
   const handleSelect=(staff)=>{
     if(showModes && mode==="share") onShare&&onShare(staff);
@@ -1099,43 +1107,46 @@ function AssignDropdown({onAssign, onShare, label="Tildel", showModes=false}) {
 
   return (
     <div style={{position:"relative"}}>
-      <button className="btn" onClick={()=>setOpen(!open)}
+      <button className="btn" onClick={handleOpen}
         style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>
         👤 {label}
       </button>
       {open&&(
-        <div style={{position:"absolute",top:"100%",left:0,zIndex:50,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:4,padding:8,width:210,boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2}}>
-          {showModes&&!mode&&(
-            <div style={{display:"flex",gap:6,marginBottom:8}}>
-              <button className="btn" onClick={()=>setMode("give")}
-                style={{flex:1,background:C.sandrift,color:"#fff",padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Gi bort</button>
-              <button className="btn" onClick={()=>setMode("share")}
-                style={{flex:1,background:C.ash,color:C.text,padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Del</button>
-            </div>
-          )}
-          {(!showModes||mode)&&(
-            <>
-              {showModes&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:6,paddingBottom:4,borderBottom:`1px solid ${C.ash}`}}>
-                {mode==="give"?"Gi bort til:":"Del med:"}
-                <span onClick={()=>setMode(null)} style={{cursor:"pointer",color:C.sandrift,marginLeft:8}}>← Bytt</span>
-              </div>}
-              <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Søk..." style={{width:"100%",padding:"4px 8px",fontSize:11,marginBottom:6}} autoFocus/>
-              <div style={{maxHeight:180,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}}>
-                {filtered.map(s=>(
-                  <div key={s.id} onClick={()=>handleSelect(s)}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:3,cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}
-                    onMouseEnter={e=>e.currentTarget.style.background=C.ash}
-                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <div style={{width:22,height:22,borderRadius:"50%",background:C.ash,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:600,flexShrink:0}}>
-                      {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
-                    </div>
-                    {s.name}
-                  </div>
-                ))}
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:998}} onClick={()=>{setOpen(false);setMode(null);}}/>
+          <div style={{position:"fixed",top:pos.top,left:pos.left,zIndex:999,background:C.panel,border:`1px solid ${C.ash}`,borderRadius:4,padding:8,width:210,boxShadow:"0 4px 24px rgba(0,0,0,.6)"}}>
+            {showModes&&!mode&&(
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <button className="btn" onClick={()=>setMode("give")}
+                  style={{flex:1,background:C.sandrift,color:"#fff",padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Gi bort</button>
+                <button className="btn" onClick={()=>setMode("share")}
+                  style={{flex:1,background:C.ash,color:C.text,padding:"5px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Del</button>
               </div>
-            </>
-          )}
-        </div>
+            )}
+            {(!showModes||mode)&&(
+              <>
+                {showModes&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.nickel,marginBottom:6,paddingBottom:4,borderBottom:`1px solid ${C.ash}`}}>
+                  {mode==="give"?"Gi bort til:":"Del med:"}
+                  <span onClick={()=>setMode(null)} style={{cursor:"pointer",color:C.sandrift,marginLeft:8}}>← Bytt</span>
+                </div>}
+                <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Søk..." style={{width:"100%",padding:"4px 8px",fontSize:11,marginBottom:6}} autoFocus/>
+                <div style={{maxHeight:200,overflowY:"auto",display:"flex",flexDirection:"column",gap:2}}>
+                  {filtered.map(s=>(
+                    <div key={s.id} onClick={()=>handleSelect(s)}
+                      style={{display:"flex",alignItems:"center",gap:8,padding:"5px 8px",borderRadius:3,cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}
+                      onMouseEnter={e=>e.currentTarget.style.background=C.ash}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <div style={{width:22,height:22,borderRadius:"50%",background:C.ash,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:600,flexShrink:0}}>
+                        {s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}
+                      </div>
+                      {s.name}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
