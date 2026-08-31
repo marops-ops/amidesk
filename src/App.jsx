@@ -888,6 +888,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
     return lu&&Math.floor((new Date()-lu)/(1000*60*60*24))>=7;
   }).length;
   const firstName=session?.user?.user_metadata?.full_name?.split(" ")[0]||"";
+
   return (
     <div>
       <div style={{marginBottom:28}}>
@@ -909,7 +910,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
           </div>
         ))}
       </div>
-      {activeBriefs.length>0&&(
+      {activeBriefs.length>0 ? (
         <div>
           <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,marginBottom:12}}>Dine oppgaver</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -949,7 +950,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
             })}
           </div>
         </div>
-      ):(
+      ) : (
         <div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center",fontSize:14}}>Ingen aktive oppgaver. Opprett en oppgave for å komme i gang.</div>
       )}
     </div>
