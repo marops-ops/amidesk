@@ -90,14 +90,14 @@ const CHANNEL_COHORTS = {
     "TikTok Search Ads": null,
   },
   "Paid Social": {
-    "Meta":              ["Meta Ads","Facebook","Instagram"],
-    "Hunch - Meta":      null,
-    "Snapchat":          null,
+    "Meta":             ["Meta Ads","Facebook","Instagram"],
+    "Hunch - Meta":     null,
+    "Snapchat":         null,
     "Hunch - Snapchat": null,
-    "TikTok":            ["TikTok Feed","TikTok TopView","TikTok Spark Ads"],
-    "LinkedIn":          null,
-    "Pinterest":         null,
-    "Reddit":            null,
+    "TikTok":           ["TikTok Feed","TikTok TopView","TikTok Spark Ads"],
+    "LinkedIn":         null,
+    "Pinterest":        null,
+    "Reddit":           null,
   },
   "Programmatisk": {
     "DV360":     ["Display","Video","Native"],
@@ -132,6 +132,7 @@ const CHANNEL_ICONS = {
 };
 
 const getChannelIcon = key => {
+  // Match on the base channel name (before · separator)
   const base = key.split(" · ")[0];
   return CHANNEL_ICONS[base] || null;
 };
@@ -318,6 +319,7 @@ export default function App() {
         sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
       if (cData) setCustomers(cData.map(rowToCustomer));
+      // Merge owned + shared briefs, deduplicate
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
       const seen = new Set();
       const deduped = allBriefs.filter(b => { if(seen.has(b.id)) return false; seen.add(b.id); return true; });
@@ -476,6 +478,7 @@ export default function App() {
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
+          // Find if assigned resource maps to a known profile
           const staffMember = b.assignedTo?.[0]
             ? AMIDAYS_STAFF.find(s=>s.id===b.assignedTo[0])
             : null;
@@ -484,6 +487,7 @@ export default function App() {
             const {data:profile} = await sb.from("profiles").select("id").eq("email",staffMember.email).single();
             if(profile && profile.id !== session.user.id) {
               sharedWith = [profile.id];
+              // Create notification
               await sb.from("notifications").insert({
                 id: uid(),
                 user_id: profile.id,
@@ -537,17 +541,14 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
     <aside style={{width:232,background:C.sidebar,display:"flex",flexDirection:"column",padding:"24px 14px",borderRight:`1px solid ${C.border}`,gap:2,flexShrink:0,position:"relative"}}>
       <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,color:C.ink,padding:"0 10px 24px",letterSpacing:"-.02em"}}>AmiDesk</div>
 
-      {navItems.map(({id,label,Icon})=>{
-        const isActive = page===id || page===`${id}-detail` || (page==="team-member" && id==="team");
-        return (
-          <div key={id}
-            className={`nav-item${isActive ? " active" : ""}`}
-            onClick={()=>navigate(id)}>
-            <Icon size={16} strokeWidth={1.75}/>
-            {label}
-          </div>
-        );
-      })}
+      {navItems.map(({id,label,Icon})=>(
+        <div key={id}
+          className={`nav-item${page===id||page===id+"-detail"||page==="team-member"&&id==="team"?" active":""}`}
+          onClick={()=>navigate(id)}>
+          <Icon size={16} strokeWidth={1.75}/>
+          {label}
+        </div>
+      ))}
 
       <div style={{flex:1}}/>
 
@@ -888,7 +889,6 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
     return lu&&Math.floor((new Date()-lu)/(1000*60*60*24))>=7;
   }).length;
   const firstName=session?.user?.user_metadata?.full_name?.split(" ")[0]||"";
-
   return (
     <div>
       <div style={{marginBottom:28}}>
@@ -910,7 +910,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
           </div>
         ))}
       </div>
-      {activeBriefs.length>0 ? (
+      {activeBriefs.length>0&&(
         <div>
           <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,marginBottom:12}}>Dine oppgaver</div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
@@ -950,7 +950,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
             })}
           </div>
         </div>
-      ) : (
+      ):(
         <div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center",fontSize:14}}>Ingen aktive oppgaver. Opprett en oppgave for å komme i gang.</div>
       )}
     </div>
@@ -987,7 +987,7 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Oppgaver</h1>
-        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.sandrift,color:"#fff",padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny oppgave</button>
+        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny oppgave</button>
       </div>
       <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
         {["active","archived"].map(t=>(
@@ -1084,10 +1084,11 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign}) {
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
 
+  // Count total lines across all tasks for a customer
   const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Object.keys(t.channelBudgets||{}).length,0);
 
   return (
@@ -1157,7 +1158,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     if(!confirm(`Slett linjen "${flatKey}" permanent?`)) return;
     const lineBudget=task.channelBudgets?.[flatKey]||0;
     const lineSpent=task.spent?.[flatKey]||0;
-    const diff=lineBudget-lineSpent;
+    const diff=lineBudget-lineSpent; // rest tilbake til bank
     if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
     const newBudgets={...task.channelBudgets};
     const newSpent={...task.spent};
@@ -1278,8 +1279,10 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
 }
 
 function getChannelLines(task) {
+  // Use channelBudgets as source of truth — these have the actual named lines
   const budgets = task.channelBudgets || {};
   if (Object.keys(budgets).length === 0) {
+    // Fallback: derive from channels structure
     return Object.entries(task.channels||{}).flatMap(([ch,subs])=>{
       const items=(subs&&subs.length>0)?subs:[null];
       return items.map(sub=>{
@@ -1298,6 +1301,7 @@ function getChannelLines(task) {
     });
   }
   return Object.entries(budgets).map(([flatKey, budget])=>{
+    // baseChannel is everything before " — "
     const baseChannel = flatKey.split(" — ")[0].split(" · ")[0];
     const spent=task.spent?.[flatKey]??0;
     const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
@@ -1311,6 +1315,7 @@ function getChannelLines(task) {
   });
 }
 
+// Group lines by base channel for display
 function groupLinesByChannel(lines) {
   const groups = {};
   lines.forEach(line => {
@@ -1320,6 +1325,7 @@ function groupLinesByChannel(lines) {
   });
   return groups;
 }
+
 
 const LINE_GRID = "minmax(186px,1.5fr) minmax(146px,1.2fr) 90px 92px 118px 104px 30px";
 
@@ -1752,7 +1758,6 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     </>
   );
 }
-
 function ChannelDropdown({channels, onChange}) {
   const [openCohort, setOpenCohort] = useState(null);
   const toggleChannel = ch => {
@@ -2047,6 +2052,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
 // ══ Convert Brief → Campaign Modal ════════════════════════════════
 function ConvertBriefModal({brief, customers, onClose, onSave}) {
   const cust=customers.find(c=>c.id===brief.customerId);
+  // Use brief.channelBudgets directly — these have the named lines + amounts already set
   const [channelBudgets,setChannelBudgets]=useState({...brief.channelBudgets});
   const [form,setForm]=useState({title:brief.title,start:brief.start||today(),end:brief.end||""});
   const total=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
@@ -2054,6 +2060,7 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
 
   const save=()=>{
     if(!form.title||!form.end) return alert("Fyll inn tittel og sluttdato");
+    // Build channels object from brief
     onSave({
       id:uid(),customerId:brief.customerId,title:form.title,
       start:form.start,end:form.end,budget:total,status:"green",
