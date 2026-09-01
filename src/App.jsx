@@ -179,6 +179,22 @@ const rowToCampaign = r => ({
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   spent:r.spent||{}, channelDates:r.channel_dates||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
+  lineAssignments:r.line_assignments||{},
+  sharedWith:r.shared_with||[],
+  lastSpendUpdate:r.last_spend_update||null,
+  archivedLines:r.archived_lines||[],
+});
+const campaignToRow = t => ({
+  id:t.id, customer_id:t.customerId, title:t.title,
+  start_date:t.start, end_date:t.end, budget:t.budget,
+  status:t.status, archived:t.archived,
+  channels:t.channels, channel_budgets:t.channelBudgets,
+  spent:t.spent, channel_dates:t.channelDates||{},
+  from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
+  line_assignments:t.lineAssignments||{},
+  shared_with:t.sharedWith||[],
+  last_spend_update:t.lastSpendUpdate||null,
+  archived_lines:t.archivedLines||[],
 });
 const customerToRow = c => ({
   id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
@@ -192,14 +208,6 @@ const briefToRow = b => ({
   channels:b.channels, channel_budgets:b.channelBudgets,
   status:b.status, archived:b.archived, owner_id:b.ownerId||null,
   shared_with:b.sharedWith||[],
-});
-const campaignToRow = t => ({
-  id:t.id, customer_id:t.customerId, title:t.title,
-  start_date:t.start, end_date:t.end, budget:t.budget,
-  status:t.status, archived:t.archived,
-  channels:t.channels, channel_budgets:t.channelBudgets,
-  spent:t.spent, channel_dates:t.channelDates||{},
-  from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
 });
 
 // ══ Login Screen ═══════════════════════════════════════════════════
@@ -1184,8 +1192,23 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const lineDiff=line.budget-line.spent;
     if(confirm(`Avslutt "${line.label}"?\n${lineDiff>=0?`${fmtNOK(lineDiff)} returneres til bank`:`${fmtNOK(Math.abs(lineDiff))} trekkes fra bank`}`)){
       if(adjustBank) adjustBank(task.customerId, lineDiff);
-      const nd={...(task.channelDates||{}),[line.flatKey]:{start:line.chStart,end:today()}};
-      updateCampaign(task.id,{channelDates:nd});
+      // Remove line from channelBudgets (moves it out of active view)
+      const newBudgets={...task.channelBudgets};
+      const newSpent={...task.spent};
+      delete newBudgets[line.flatKey];
+      delete newSpent[line.flatKey];
+      // Store in archivedLines for historikk
+      const archivedLines=[...(task.archivedLines||[]),{
+        flatKey:line.flatKey, label:line.label,
+        budget:line.budget, spent:line.spent,
+        start:line.chStart, end:today(),
+        settledAt:today(),
+      }];
+      // If no more lines, archive the whole campaign
+      const remainingLines=Object.keys(newBudgets).length;
+      const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
+      if(remainingLines===0) updates.archived=true;
+      updateCampaign(task.id,updates);
     }
   };
   const handleDeleteLine=(flatKey)=>{
