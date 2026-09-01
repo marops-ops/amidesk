@@ -1833,8 +1833,8 @@ function DeptCard({dept, budget, spent, allTasks, onSave, canEdit}) {
             <div style={{position:"absolute",inset:"0 auto 0 0",width:pct+"%",borderRadius:99,background:rest<0?C.badBar:C.okBar,transition:"width .4s"}}/>
           </div>
           <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
-            <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(spent)}</strong> ({pct}%)</span>
-            <span style={{color:rest<0?C.badFg:C.okFg}}>Rest: <strong>{fmtNOK(rest)}</strong></span>
+            <span>Brukt + budsjettert: <strong style={{color:C.ink}}>{fmtNOK(spent)}</strong> ({pct}%)</span>
+            <span style={{color:rest<0?C.badFg:C.okFg}}>Disponibelt: <strong>{fmtNOK(rest)}</strong></span>
           </div>
         </>
       )}
@@ -1877,7 +1877,13 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
         const ch=(l.label||l.flatKey||"").split(" — ")[0];
         return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+(l.spent||0):a;
       },0);
-      return sum+activeSp+archivedSp;
+      // Active budgeted (not yet spent) — already committed from bank
+      const activeBudgeted=t.archived?0:Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>{
+        const ch=key.split(" — ")[0];
+        const spent=t.spent?.[key]||0;
+        return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+(bud-spent):a;
+      },0);
+      return sum+activeSp+archivedSp+activeBudgeted;
     },0);
   });
   const totalDeptBudget=DEPTS.reduce((a,d)=>a+(deptBudgets[d.key]||0),0);
@@ -1890,8 +1896,8 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
         {[
           {label:"Total årsbudsjett",value:fmtNOK(totalDeptBudget),color:C.ink},
-          {label:"Totalt brukt",value:fmtNOK(totalSpent),color:C.badFg},
-          {label:"Rest",value:fmtNOK(totalDeptBudget-totalSpent),color:(totalDeptBudget-totalSpent)<0?C.badFg:C.okFg},
+          {label:"Brukt + aktivt budsjettert",value:fmtNOK(totalSpent),color:C.badFg},
+          {label:"Disponibelt",value:fmtNOK(totalDeptBudget-totalSpent),color:(totalDeptBudget-totalSpent)<0?C.badFg:C.okFg},
         ].map(s=>(
           <div key={s.label} className="card" style={{padding:"16px 18px"}}>
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,letterSpacing:".1em",textTransform:"uppercase",color:C.ink3,marginBottom:6}}>{s.label}</div>
