@@ -244,7 +244,7 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [routeState, setRouteState] = useState(parseUrl);
+  const [routeState, setRouteState] = useState(()=>parseUrl());
   const page = routeState.page;
   const selectedCustomerId = routeState.page==="customer-detail" ? routeState.slug : null;
   const selectedBriefId    = routeState.page==="brief-detail"    ? routeState.slug : null;
@@ -370,9 +370,6 @@ const slugify = (name) => (name||"").toLowerCase()
 
   const navigate = (p, extra={}) => {
     let path = "/kampanjelinjer";
-    const slugify = (name) => name.toLowerCase()
-      .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
-      .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
     if (p==="dashboard")      path = "/dashboard";
     else if (p==="campaigns") path = "/kampanjelinjer";
     else if (p==="briefs")    path = "/oppgaver";
