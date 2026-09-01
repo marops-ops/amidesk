@@ -1456,6 +1456,8 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   </>
   );
 }
+
+function getChannelLines(task) {
   // Use channelBudgets as source of truth — these have the actual named lines
   const budgets = task.channelBudgets || {};
   if (Object.keys(budgets).length === 0) {
