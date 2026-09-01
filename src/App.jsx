@@ -1082,7 +1082,7 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session}) {
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
 
