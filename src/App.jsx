@@ -444,9 +444,9 @@ const slugify = (name) => (name||"").toLowerCase()
     for (const t of linked) await sb.from("campaigns").delete().eq("id",t.id);
   };
 
-  const deleteCampaign = async (id) => {
+  const deleteCampaign = (id) => {
     setTasks(prev=>prev.filter(t=>t.id!==id));
-    await sb.from("campaigns").delete().eq("id",id);
+    sb.from("campaigns").delete().eq("id",id);
   };
 
   if (loading) return (
@@ -1638,8 +1638,8 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
 // ══ Customer Detail ════════════════════════════════════════════════
 function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign}) {
   const [tab,setTab]=useState("active");
-  const [editingBank,setEditingBank]=useState(false);
-  const [bankInput,setBankInput]=useState(customer.bank||0);
+  const [bankMode,setBankMode]=useState(null); // null | "deposit" | "total"
+  const [bankInput,setBankInput]=useState("");
   const [showEdit,setShowEdit]=useState(false);
   const activeTasks=tasks.filter(t=>t.customerId===customer.id&&!t.archived);
   const archivedTasks=tasks.filter(t=>t.customerId===customer.id&&t.archived);
@@ -1656,6 +1656,24 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     acc[e.month].push(e);return acc;
   },{});
 
+  // Total spent (archived lines + active spent)
+  const totalSpentHistorik = [...activeTasks,...archivedTasks].reduce((sum,t)=>{
+    return sum + Object.values(t.spent||{}).reduce((a,b)=>a+b,0);
+  },0);
+
+  const saveBank=()=>{
+    const val=+bankInput;
+    if(isNaN(val)||val<0) return;
+    if(bankMode==="deposit") {
+      updateCustomer(customer.id,{bank:(customer.bank||0)+val});
+    } else if(bankMode==="total") {
+      // New bank = total budget - already spent
+      const newBank=val-totalSpentHistorik;
+      updateCustomer(customer.id,{bank:newBank});
+    }
+    setBankMode(null);setBankInput("");
+  };
+
   return (
     <>
       <div>
@@ -1666,36 +1684,43 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500,color:C.ink}}>{customer.name}</h1>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{customer.industry} · {customer.contact}</div>
         </div>
-        {updateCustomer&&(
-          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-            <div style={{display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
-                style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
-              {updateCustomer&&<button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>}
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
-              {editingBank?(
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
-                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sand,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lagre</button>
-                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.borderSoft,color:C.ink,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>✕</button>
-                </div>
-              ):(
-                <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
-                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:"1px solid "+C.border,color:C.ink3,padding:"3px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Sett inn</button>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+          {updateCustomer&&<div style={{display:"flex",gap:8}}>
+            <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
+              style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
+            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>
+          </div>}
+          {/* Bank */}
+          <div style={{textAlign:"right"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
+            <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
+              <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:600,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
+              {updateCustomer&&!bankMode&&(
+                <div style={{display:"flex",gap:4}}>
+                  <button className="action-btn" onClick={()=>{setBankInput("");setBankMode("deposit");}}>Innskudd</button>
+                  <button className="action-btn" onClick={()=>{setBankInput("");setBankMode("total");}}>Sett total</button>
                 </div>
               )}
             </div>
+            {bankMode&&(
+              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,textAlign:"left"}}>
+                  {bankMode==="deposit"?"Legg til beløp:":"Totalbudsjett for perioden:"}
+                </div>
+                <input type="number" value={bankInput} onChange={e=>setBankInput(e.target.value)}
+                  style={{width:130,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="NOK" autoFocus/>
+                {bankMode==="total"&&bankInput&&(
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2,width:"100%",textAlign:"right"}}>
+                    Ny bank: <strong style={{color:(+bankInput-totalSpentHistorik)<0?C.badFg:C.okFg}}>{fmtNOK(+bankInput-totalSpentHistorik)}</strong>
+                    <span style={{color:C.ink3}}> (totalbudsjett − {fmtNOK(totalSpentHistorik)} brukt)</span>
+                  </div>
+                )}
+                <button className="action-btn settle" onClick={saveBank}>Lagre</button>
+                <button className="action-btn" onClick={()=>{setBankMode(null);setBankInput("");}}><X size={12}/></button>
+              </div>
+            )}
           </div>
-        )}
-        {!updateCustomer&&(
-          <div style={{textAlign:"right"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
-            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
-          </div>
-        )}
+        </div>
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
