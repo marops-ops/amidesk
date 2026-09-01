@@ -950,8 +950,6 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
             })}
           </div>
         </div>
-      ):(
-        <div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center",fontSize:14}}>Ingen aktive oppgaver. Opprett en oppgave for å komme i gang.</div>
       )}
     </div>
   );
