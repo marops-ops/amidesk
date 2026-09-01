@@ -172,6 +172,7 @@ const rowToBrief = r => ({
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   status:r.status, archived:r.archived, ownerId:r.owner_id,
   sharedWith:r.shared_with||[],
+  restspendUsed:r.restspend_used||0,
 });
 const rowToCampaign = r => ({
   id:r.id, customerId:r.customer_id, title:r.title,
@@ -212,6 +213,7 @@ const briefToRow = b => ({
   channels:b.channels, channel_budgets:b.channelBudgets,
   status:b.status, archived:b.archived, owner_id:b.ownerId||null,
   shared_with:b.sharedWith||[],
+  restspend_used:b.restspendUsed||0,
 });
 
 // ══ Login Screen ═══════════════════════════════════════════════════
@@ -2047,7 +2049,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
               const tilgodeHistorik=[...activeTasks,...archivedTasks].reduce((sum,t)=>{
                 return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
               },0);
-              const restspendBrukt=[...activeTasks,...archivedTasks].reduce((sum,t)=>sum+(t.restspendUsed||0),0);
+              const restspendBrukt=[...activeTasks,...archivedTasks].reduce((sum,t)=>sum+(t.restspendUsed||0),0)
+                +briefs.filter(b=>b.customerId===customer.id).reduce((sum,b)=>sum+(b.restspendUsed||0),0);
               const netto=tilgodeHistorik-restspendBrukt;
               if(netto===0) return null;
               return (
@@ -2283,6 +2286,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
       return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
     },0)
     - allCustomerTasks.reduce((sum,t)=>sum+(t.restspendUsed||0),0)
+    - tasks.filter(b=>b.customerId===form.customerId).reduce((s,b)=>s+(b.restspendUsed||0),0)
   );
 
   const selectedLines=getSelectedLines(form.channels);
@@ -2439,6 +2443,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
     },0)
     - allCustomerTasks.reduce((sum,t)=>sum+(t.restspendUsed||0),0)
+    - tasks.filter(b=>b.customerId===customer?.id).reduce((s,b)=>s+(b.restspendUsed||0),0)
   );
 
   const selectedChannels=Object.keys(channelLines);
