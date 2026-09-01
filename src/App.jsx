@@ -184,6 +184,7 @@ const rowToCampaign = r => ({
   sharedWith:r.shared_with||[],
   lastSpendUpdate:r.last_spend_update||null,
   archivedLines:r.archived_lines||[],
+  restspendUsed:r.restspend_used||0,
 });
 const campaignToRow = t => ({
   id:t.id, customer_id:t.customerId, title:t.title,
@@ -196,6 +197,7 @@ const campaignToRow = t => ({
   shared_with:t.sharedWith||[],
   last_spend_update:t.lastSpendUpdate||null,
   archived_lines:t.archivedLines||[],
+  restspend_used:t.restspendUsed||0,
 });
 const customerToRow = c => ({
   id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
