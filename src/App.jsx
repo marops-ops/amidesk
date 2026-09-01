@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@supabase/supabase-js";
 import {
   LayoutDashboard, List, ClipboardList, Building2, Users,
@@ -290,6 +290,7 @@ const slugify = (name) => (name||"").toLowerCase()
   const [addCampaignTarget, setAddCampaignTarget] = useState(null);
   const [notifications, setNotifications] = useState([]);
   const [favoriteCustomers, setFavoriteCustomers] = useState([]);
+  const [customerOrder, setCustomerOrder] = useState([]);
 
   // Auth listener
   useEffect(() => {
@@ -367,8 +368,9 @@ const slugify = (name) => (name||"").toLowerCase()
       setTasks(allTasks.filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; }).map(rowToCampaign));
       if (nData) setNotifications(nData);
       // Load favorites from profile
-      const {data: profileData} = await sb.from("profiles").select("favorite_customers").eq("id", userId).single();
+      const {data: profileData} = await sb.from("profiles").select("favorite_customers, customer_order").eq("id", userId).single();
       if (profileData?.favorite_customers) setFavoriteCustomers(profileData.favorite_customers);
+      if (profileData?.customer_order) setCustomerOrder(profileData.customer_order);
       if (ADMIN_EMAILS.includes(session.user.email)) {
         const { data: members } = await sb.from("profiles").select("*");
         if (members) setTeamMembers(members);
@@ -422,6 +424,13 @@ const slugify = (name) => (name||"").toLowerCase()
     setFavoriteCustomers(next);
     if (session?.user?.id) {
       await sb.from("profiles").update({favorite_customers: next}).eq("id", session.user.id);
+    }
+  };
+
+  const saveCustomerOrder = async (order) => {
+    setCustomerOrder(order);
+    if (session?.user?.id) {
+      await sb.from("profiles").update({customer_order: order}).eq("id", session.user.id);
     }
   };
 
@@ -521,7 +530,7 @@ const slugify = (name) => (name||"").toLowerCase()
 
       <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px",background:C.bg,color:C.ink}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert} session={session}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite}/>}
@@ -1150,12 +1159,37 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session}) {
-  const active=tasks.filter(t=>!t.archived);
-  const grouped=customers.map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)})).filter(g=>g.tasks.length>0);
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder}) {
+  const [dragOver, setDragOver] = useState(null);
+  const dragSrc = useRef(null);
 
-  // Count total lines across all tasks for a customer
+  const active=tasks.filter(t=>!t.archived);
+  const grouped=customers
+    .filter(c=>active.some(t=>t.customerId===c.id))
+    .sort((a,b)=>{
+      const ai=customerOrder.indexOf(a.id);
+      const bi=customerOrder.indexOf(b.id);
+      if(ai===-1&&bi===-1) return a.name.localeCompare(b.name);
+      if(ai===-1) return 1; if(bi===-1) return -1;
+      return ai-bi;
+    })
+    .map(c=>({customer:c,tasks:active.filter(t=>t.customerId===c.id)}));
+
   const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Object.keys(t.channelBudgets||{}).length,0);
+
+  const handleDragStart=(e,id)=>{dragSrc.current=id;e.dataTransfer.effectAllowed="move";};
+  const handleDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
+  const handleDrop=(e,targetId)=>{
+    e.preventDefault();
+    const srcId=dragSrc.current;
+    if(!srcId||srcId===targetId){setDragOver(null);return;}
+    const ids=grouped.map(g=>g.customer.id);
+    const from=ids.indexOf(srcId), to=ids.indexOf(targetId);
+    ids.splice(from,1); ids.splice(to,0,srcId);
+    onReorder&&onReorder(ids);
+    setDragOver(null); dragSrc.current=null;
+  };
+  const handleDragEnd=()=>{setDragOver(null);dragSrc.current=null;};
 
   return (
     <div>
@@ -1165,7 +1199,13 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
         return (
-          <div key={customer.id} style={{marginBottom:14,background:C.card,borderRadius:14,border:"1px solid "+C.border,overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)"}}>
+          <div key={customer.id}
+            draggable
+            onDragStart={e=>handleDragStart(e,customer.id)}
+            onDragOver={e=>handleDragOver(e,customer.id)}
+            onDrop={e=>handleDrop(e,customer.id)}
+            onDragEnd={handleDragEnd}
+            style={{marginBottom:14,background:C.card,borderRadius:14,border:"1px solid "+(dragOver===customer.id?C.sand:C.border),overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)",transition:"border .15s",cursor:"grab"}}>
             <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap",background:customer.colorPrimary||C.cardAlt}}>
               <CustomerAvatar customer={customer} size={34} fontSize={12}/>
               <div style={{flex:1,minWidth:0}}>
