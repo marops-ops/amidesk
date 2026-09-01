@@ -778,7 +778,7 @@ function ColorSwatch({color, label, onChange}) {
     <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4}}>
       <div
         onClick={()=>setEditing(!editing)}
-        style={{width:32,height:32,borderRadius:"50%",background:color||"transparent",border:`2px solid ${color?color:C.ash}`,cursor:"pointer",position:"relative",flexShrink:0,transition:"transform .15s"}}
+        style={{width:32,height:32,borderRadius:"50%",background:color||"transparent",border:`2px solid ${color?color:C.border}`,cursor:"pointer",position:"relative",flexShrink:0,transition:"transform .15s"}}
         title={label}
       >
         {!color&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:C.ink3,fontSize:16}}>+</div>}
@@ -1037,7 +1037,7 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
           const totalBudget=Object.values(brief.channelBudgets||{}).reduce((a,b)=>a+b,0);
           return (
             <div key={brief.id} className="card"
-              style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${brief.status==="avsluttet"?C.ash:isStarted?C.greyOlive:C.sandrift}`}}
+              style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${brief.status==="avsluttet"?C.border:isStarted?C.sandDeep:C.sand}`}}
               onClick={()=>navigate("brief-detail",{briefId:brief.id})}>
               <div style={{width:36,height:36,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
               <div style={{flex:1,minWidth:0}}>
@@ -1104,7 +1104,7 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
             ))}
           </div>
           <button className="btn" onClick={()=>updateBrief(brief.id,{status:isStarted?"ny":"startet"})}
-            style={{padding:"10px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.ink,border:"none"}}>
+            style={{padding:"10px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:isStarted?C.okBg:C.borderSoft,color:C.ink2,border:"none"}}>
             {isStarted?"● Startet — klikk for å reversere":"Sett i gang"}
           </button>
           <button className="btn" onClick={()=>{if(confirm("Avslutt og arkiver oppgaven?"))updateBrief(brief.id,{status:"avsluttet",archived:true});}}
@@ -1661,7 +1661,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                 </div>
               ):(
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+                  <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
                   <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:"1px solid "+C.border,color:C.ink3,padding:"3px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Sett inn</button>
                 </div>
               )}
@@ -1671,7 +1671,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         {!updateCustomer&&(
           <div style={{textAlign:"right"}}>
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
-            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
+            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
           </div>
         )}
       </div>
@@ -1692,7 +1692,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:8}}>Oppgaver</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {activeBriefs.map(b=>(
-                    <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:"3px solid "+C.sandrift}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
+                    <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:"3px solid "+C.sand}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
                         <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{b.start&&b.end?b.start+" → "+b.end:""}</div>
@@ -1845,9 +1845,9 @@ function ChannelDropdown({channels, onChange}) {
               {Object.entries(chans).map(([ch,subs])=>{
                 const selected=!!channels[ch];
                 return (
-                  <div key={ch} style={{borderRadius:3,border:`1px solid ${selected?C.sandrift:C.ash}`,background:selected?`${C.sand}10`:"transparent"}}>
+                  <div key={ch} style={{borderRadius:3,border:`1px solid ${selected?C.sand:C.border}`,background:selected?`${C.sand}10`:"transparent"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",cursor:"pointer"}} onClick={()=>toggleChannel(ch)}>
-                      <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${selected?C.sandrift:C.ash}`,background:selected?C.sandrift:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                      <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${selected?C.sand:C.border}`,background:selected?C.sand:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {selected&&<span style={{color:"#fff",fontSize:9}}>✓</span>}
                       </div>
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink,flex:1,display:"flex",alignItems:"center",gap:6}}>
@@ -2025,7 +2025,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
         {/* Bank info */}
         <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
           <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(customer.bank||0)}</strong></span>
-          <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
+          <span style={{color:bankAfter<0?C.badFg:C.okFg}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
         <div style={{marginBottom:14}}><label>Kampanjenavn</label>
@@ -2057,7 +2057,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
                     <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"6px",background:C.cardAlt,display:"flex",flexDirection:"column",gap:3}}>
                       {Object.keys(chans).map(ch=>(
                         <div key={ch} onClick={()=>{setSelectedChannel(ch);setOpenCohort(null);}}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?`${C.sand}20`:"transparent",border:`1px solid ${selectedChannel===ch?C.sandrift:C.ash}`}}>
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?C.sandBg:"transparent",border:`1px solid ${selectedChannel===ch?C.sand:C.border}`}}>
                           {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                           <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{ch}</span>
                           {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg,marginLeft:"auto"}}>−5% fee</span>}
@@ -2121,7 +2121,7 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
         {cust&&(
           <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
             <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(cust.bank||0)}</strong></span>
-            <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
+            <span style={{color:bankAfter<0?C.badFg:C.okFg}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
           </div>
         )}
         <div style={{marginBottom:14}}><label>Kampanjenavn</label><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}}/></div>
