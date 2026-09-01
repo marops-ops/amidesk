@@ -183,7 +183,6 @@ const rowToCampaign = r => ({
   sharedWith:r.shared_with||[],
   lastSpendUpdate:r.last_spend_update||null,
   archivedLines:r.archived_lines||[],
-  restspendUsed:r.restspend_used||0,
 });
 const campaignToRow = t => ({
   id:t.id, customer_id:t.customerId, title:t.title,
@@ -196,7 +195,6 @@ const campaignToRow = t => ({
   shared_with:t.sharedWith||[],
   last_spend_update:t.lastSpendUpdate||null,
   archived_lines:t.archivedLines||[],
-  restspend_used:t.restspendUsed||0,
 });
 const customerToRow = c => ({
   id:c.id, name:c.name, industry:c.industry, contact:c.contact, logo:c.logo, logo_url:c.logoUrl||null, bank:c.bank||0,
@@ -287,6 +285,7 @@ const slugify = (name) => (name||"").toLowerCase()
   const [briefToConvert, setBriefToConvert] = useState(null);
   const [addCampaignTarget, setAddCampaignTarget] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  const [favoriteCustomers, setFavoriteCustomers] = useState([]);
 
   // Auth listener
   useEffect(() => {
@@ -363,6 +362,9 @@ const slugify = (name) => (name||"").toLowerCase()
       const seenT = new Set();
       setTasks(allTasks.filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; }).map(rowToCampaign));
       if (nData) setNotifications(nData);
+      // Load favorites from profile
+      const {data: profileData} = await sb.from("profiles").select("favorite_customers").eq("id", userId).single();
+      if (profileData?.favorite_customers) setFavoriteCustomers(profileData.favorite_customers);
       if (ADMIN_EMAILS.includes(session.user.email)) {
         const { data: members } = await sb.from("profiles").select("*");
         if (members) setTeamMembers(members);
@@ -407,6 +409,16 @@ const slugify = (name) => (name||"").toLowerCase()
       return next;
     });
     if (updated) await sb.from("customers").update({bank: updated.bank}).eq("id", customerId);
+  };
+
+  const toggleFavorite = async (customerId) => {
+    const next = favoriteCustomers.includes(customerId)
+      ? favoriteCustomers.filter(id=>id!==customerId)
+      : [...favoriteCustomers, customerId];
+    setFavoriteCustomers(next);
+    if (session?.user?.id) {
+      await sb.from("profiles").update({favorite_customers: next}).eq("id", session.user.id);
+    }
   };
 
   const updateCustomer = async (id, changes) => {
@@ -475,8 +487,6 @@ const slugify = (name) => (name||"").toLowerCase()
         .nav-item:hover{background:rgba(43,47,54,.06)}.nav-item.active{background:${C.card};box-shadow:0 1px 2px rgba(43,47,54,.07);color:${C.ink}}
         input,select,textarea{font-family:Roboto,sans-serif;font-size:13px;background:${C.card};border:1px solid ${C.border};border-radius:9px;padding:8px 12px;color:${C.ink};outline:none;transition:border .15s;width:100%}
         input:focus,select:focus,textarea:focus{border-color:${C.sand}}
-        input[type=date]{cursor:pointer;-webkit-appearance:none;appearance:none;min-width:140px}
-        input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;filter:invert(40%)}
         input::placeholder,textarea::placeholder{color:${C.ink4}}
         label{font-family:Roboto,sans-serif;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:${C.ink4};display:block;margin-bottom:5px}
         .modal-overlay{position:fixed;inset:0;background:rgba(43,47,54,.42);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -510,7 +520,7 @@ const slugify = (name) => (name||"").toLowerCase()
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
+        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite}/>}
         {(page==="customer-detail"&&activeCustomer)
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
@@ -1713,14 +1723,34 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
 }
 
 // ══ Customer List ══════════════════════════════════════════════════
-function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer, onAddCampaign}) {
+function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer, onAddCampaign, favoriteCustomers=[], toggleFavorite}) {
   const [search,setSearch]=useState("");
-  const filtered=customers.filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.industry||"").toLowerCase().includes(search.toLowerCase()));
+  const [showOnlyFavorites,setShowOnlyFavorites]=useState(favoriteCustomers.length>0);
+  const hasFavorites=favoriteCustomers.length>0;
+
+  const filtered=customers
+    .filter(c=>showOnlyFavorites?favoriteCustomers.includes(c.id):true)
+    .filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.industry||"").toLowerCase().includes(search.toLowerCase()));
+
   return (
     <div>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:24}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,color:C.ink,letterSpacing:"-.02em"}}>Kunder</h1>
-        {setShowCreateCustomer&&<button className="btn" onClick={setShowCreateCustomer} style={{background:C.sand,color:"#fff",padding:"9px 18px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,display:"flex",alignItems:"center",gap:6}}><Plus size={14}/> Ny kunde</button>}
+        <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          {hasFavorites&&(
+            <div style={{display:"flex",background:C.borderSoft,borderRadius:99,padding:3}}>
+              <button onClick={()=>setShowOnlyFavorites(false)}
+                style={{padding:"5px 14px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:12,border:"none",cursor:"pointer",background:!showOnlyFavorites?C.card:"transparent",color:!showOnlyFavorites?C.ink:C.ink3,boxShadow:!showOnlyFavorites?"0 1px 3px rgba(43,47,54,.1)":"none",transition:"all .15s"}}>
+                Alle kunder
+              </button>
+              <button onClick={()=>setShowOnlyFavorites(true)}
+                style={{padding:"5px 14px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:12,border:"none",cursor:"pointer",background:showOnlyFavorites?C.card:"transparent",color:showOnlyFavorites?C.ink:C.ink3,boxShadow:showOnlyFavorites?"0 1px 3px rgba(43,47,54,.1)":"none",transition:"all .15s",display:"flex",alignItems:"center",gap:5}}>
+                ★ Mine kunder
+              </button>
+            </div>
+          )}
+          {setShowCreateCustomer&&<button className="btn" onClick={setShowCreateCustomer} style={{background:C.sand,color:"#fff",padding:"9px 18px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,display:"flex",alignItems:"center",gap:6}}><Plus size={14}/> Ny kunde</button>}
+        </div>
       </div>
       <div style={{position:"relative",marginBottom:20}}>
         <Search size={14} color={C.ink3} style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)"}}/>
@@ -1730,9 +1760,15 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
         {filtered.map(c=>{
           const cTasks=tasks.filter(t=>t.customerId===c.id&&!t.archived);
           const cBriefs=briefs.filter(b=>b.customerId===c.id&&!b.archived);
+          const isFav=favoriteCustomers.includes(c.id);
           return (
-            <div key={c.id} className="card" style={{padding:"20px 22px",cursor:"pointer"}} onClick={()=>navigate("customer-detail",{customerId:c.id})}>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14}}>
+            <div key={c.id} className="card" style={{padding:"20px 22px",cursor:"pointer",position:"relative"}} onClick={()=>navigate("customer-detail",{customerId:c.id})}>
+              {/* Favorite star */}
+              <button className="btn" onClick={e=>{e.stopPropagation();toggleFavorite&&toggleFavorite(c.id);}}
+                style={{position:"absolute",top:14,right:14,background:"none",color:isFav?"#E8B84B":C.ink4,fontSize:18,padding:"2px 4px",lineHeight:1,border:"none"}}>
+                {isFav?"★":"☆"}
+              </button>
+              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,paddingRight:28}}>
                 <CustomerAvatar customer={c} size={44} fontSize={14}/>
                 <div style={{flex:1,minWidth:0}}>
                   <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{c.name}</div>
@@ -1842,20 +1878,28 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             )}
             {/* Tilgode */}
             {(()=>{
-              // Historical only: archivedLines budget-spent, minus restspend already used
+              // Active lines: budget - spent
+              const tilgodeAktiv=activeTasks.reduce((sum,t)=>{
+                return sum+Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>{
+                  return a+(bud-(t.spent?.[key]||0));
+                },0);
+              },0);
+              // Historical: sum of (budget - spent) from archivedLines
               const tilgodeHistorik=[...activeTasks,...archivedTasks].reduce((sum,t)=>{
                 return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
               },0);
-              const restspendBrukt=[...activeTasks,...archivedTasks].reduce((sum,t)=>sum+(t.restspendUsed||0),0);
-              const netto=tilgodeHistorik-restspendBrukt;
-              if(netto===0) return null;
               return (
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.borderSoft}}>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Returnert fra avsluttede linjer</div>
-                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:netto<0?C.badFg:C.okFg}}>{fmtNOK(netto)}</div>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>
-                    {fmtNOK(tilgodeHistorik)} returnert{restspendBrukt>0?" − "+fmtNOK(restspendBrukt)+" brukt som restspend":""} · ligger i kundebank
-                  </div>
+                  {tilgodeAktiv!==0&&<div style={{marginBottom:8}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Tilgode (aktive linjer)</div>
+                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeAktiv<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeAktiv)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{tilgodeAktiv>0?"Underspend — kan brukes videre":tilgodeAktiv<0?"Overspend — må dekkes inn":"I rute"}</div>
+                  </div>}
+                  {tilgodeHistorik!==0&&<div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Returnert fra avsluttede linjer</div>
+                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeHistorik<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeHistorik)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>Ligger i kundebank</div>
+                  </div>}
                 </div>
               );
             })()}
