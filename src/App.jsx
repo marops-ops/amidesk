@@ -1721,6 +1721,23 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                 <button className="action-btn" onClick={()=>{setBankMode(null);setBankInput("");}}><X size={12}/></button>
               </div>
             )}
+            {/* Tilgode */}
+            {(()=>{
+              const tilgode=activeTasks.reduce((sum,t)=>{
+                return sum+Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>{
+                  return a+(bud-(t.spent?.[key]||0));
+                },0);
+              },0);
+              return (
+                <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.borderSoft}}>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:3}}>Tilgode (aktive linjer)</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgode<0?C.badFg:tilgode===0?C.ink3:C.okFg}}>{fmtNOK(tilgode)}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>
+                    {tilgode>0?"Underspend — kan brukes videre":tilgode<0?"Overspend — må dekkes inn":"I rute"}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </div>
