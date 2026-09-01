@@ -244,11 +244,26 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [page, setPage] = useState("dashboard");
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
-  const [selectedTaskId, setSelectedTaskId] = useState(null);
-  const [selectedBriefId, setSelectedBriefId] = useState(null);
-  const [viewingUserId, setViewingUserId] = useState(null);
+  // ── URL routing ────────────────────────────────────────────────
+  const parseUrl = () => {
+    const path = window.location.pathname;
+    if (path === "/" || path === "/dashboard") return {page:"dashboard", slug:null};
+    if (path === "/kampanjelinjer") return {page:"campaigns", slug:null};
+    if (path === "/oppgaver") return {page:"briefs", slug:null};
+    if (path.startsWith("/kunder/")) return {page:"customer-detail", slug:path.replace("/kunder/","")};
+    if (path === "/kunder") return {page:"customers", slug:null};
+    if (path === "/team") return {page:"team", slug:null};
+    if (path.startsWith("/team/")) return {page:"team-member", slug:path.replace("/team/","")};
+    if (path.startsWith("/oppgave/")) return {page:"brief-detail", slug:path.replace("/oppgave/","")};
+    if (path.startsWith("/kampanje/")) return {page:"task-detail", slug:path.replace("/kampanje/","")};
+    return {page:"campaigns", slug:null};
+  };
+  const [routeState, setRouteState] = useState(parseUrl);
+  const page = routeState.page;
+  const selectedCustomerId = routeState.page==="customer-detail" ? routeState.slug : null;
+  const selectedBriefId    = routeState.page==="brief-detail"    ? routeState.slug : null;
+  const selectedTaskId     = routeState.page==="task-detail"     ? routeState.slug : null;
+  const viewingUserId      = routeState.page==="team-member"     ? routeState.slug : null;
   const [teamMembers, setTeamMembers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -340,17 +355,38 @@ export default function App() {
   );
   if (!session) return <LoginScreen error={authError} />;
 
+  const slugify2 = (name) => (name||"").toLowerCase()
+    .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
+    .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
   const activeTask     = tasks.find(t=>t.id===selectedTaskId);
-  const activeCustomer = customers.find(c=>c.id===selectedCustomerId);
+  const activeCustomer = customers.find(c=>c.id===selectedCustomerId||slugify2(c.name)===selectedCustomerId);
   const activeBrief    = briefs.find(b=>b.id===selectedBriefId);
 
+  useEffect(() => {
+    const onPop = () => setRouteState(parseUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   const navigate = (p, extra={}) => {
-    setPage(p);
-    if (extra.customerId !== undefined) setSelectedCustomerId(extra.customerId);
-    else if (p === "customers") setSelectedCustomerId(null);
-    if (extra.taskId !== undefined) setSelectedTaskId(extra.taskId);
-    if (extra.briefId !== undefined) setSelectedBriefId(extra.briefId);
-    if (extra.viewingUserId !== undefined) setViewingUserId(extra.viewingUserId);
+    let path = "/kampanjelinjer";
+    const slugify = (name) => name.toLowerCase()
+      .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
+      .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
+    if (p==="dashboard")      path = "/dashboard";
+    else if (p==="campaigns") path = "/kampanjelinjer";
+    else if (p==="briefs")    path = "/oppgaver";
+    else if (p==="team")      path = "/team";
+    else if (p==="customers") path = "/kunder";
+    else if (p==="customer-detail" && extra.customerId) {
+      const c = customers.find(c=>c.id===extra.customerId);
+      path = "/kunder/"+(c ? slugify(c.name) : extra.customerId);
+    }
+    else if (p==="brief-detail" && extra.briefId)         path = "/oppgave/"+extra.briefId;
+    else if (p==="task-detail" && extra.taskId)           path = "/kampanje/"+extra.taskId;
+    else if (p==="team-member" && extra.viewingUserId)    path = "/team/"+extra.viewingUserId;
+    window.history.pushState({}, "", path);
+    setRouteState({page:p, slug:extra.customerId||extra.briefId||extra.taskId||extra.viewingUserId||null});
   };
 
   const adjustBank = async (customerId, delta) => {
@@ -458,7 +494,7 @@ export default function App() {
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>}
-        {(page==="customers"&&selectedCustomerId&&activeCustomer)||(page==="customer-detail"&&activeCustomer)
+        {(page==="customer-detail"&&activeCustomer)
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&isAdmin&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
