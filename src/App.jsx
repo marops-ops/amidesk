@@ -2079,10 +2079,11 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
 
   const selectedCustomer=customers.find(c=>c.id===form.customerId);
   // Calculate available restspend for selected customer
-  const customerTasks=tasks.filter(t=>t.customerId===form.customerId&&!t.archived);
-  const tilgode=customerTasks.reduce((sum,t)=>{
-    return sum+[...(t.archivedLines||[])].reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
-    +Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0);
+  const allCustomerTasks=tasks.filter(t=>t.customerId===form.customerId);
+  const tilgode=allCustomerTasks.reduce((sum,t)=>{
+    return sum
+      +(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
+      +(!t.archived?Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0):0);
   },0);
 
   const selectedLines=getSelectedLines(form.channels);
@@ -2234,12 +2235,12 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
   const [useRestspend,setUseRestspend]=useState(false);
   const [restspendAmount,setRestspendAmount]=useState("");
 
-  // Tilgode for this customer
-  const customerTasks=tasks.filter(t=>t.customerId===customer?.id&&!t.archived);
-  const tilgode=customerTasks.reduce((sum,t)=>{
+  // Tilgode for this customer — include archived tasks' archivedLines
+  const allCustomerTasks=tasks.filter(t=>t.customerId===customer?.id);
+  const tilgode=allCustomerTasks.reduce((sum,t)=>{
     return sum
       +(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
-      +Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0);
+      +(!t.archived?Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0):0);
   },0);
 
   const selectedChannels=Object.keys(channelLines);
