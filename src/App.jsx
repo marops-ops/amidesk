@@ -324,6 +324,14 @@ const slugify = (name) => (name||"").toLowerCase()
     }, { onConflict: "id" });
   }, [session]);
 
+  // Popstate for URL routing
+  useEffect(() => {
+    setRouteState(parseUrl());
+    const onPop = () => setRouteState(parseUrl());
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   // Load data
   useEffect(() => {
     if (!session) return;
@@ -361,13 +369,6 @@ const slugify = (name) => (name||"").toLowerCase()
   const activeTask     = tasks.find(t=>t.id===selectedTaskId);
   const activeCustomer = customers.find(c=>c.id===selectedCustomerId||slugify(c.name)===selectedCustomerId);
   const activeBrief    = briefs.find(b=>b.id===selectedBriefId);
-
-  useEffect(() => {
-    setRouteState(parseUrl());
-    const onPop = () => setRouteState(parseUrl());
-    window.addEventListener("popstate", onPop);
-    return () => window.removeEventListener("popstate", onPop);
-  }, []);
 
   const navigate = (p, extra={}) => {
     let path = "/kampanjelinjer";
