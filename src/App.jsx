@@ -2009,42 +2009,59 @@ function CreateBriefModal({customers, onClose, onSave}) {
 // ══ Add Campaign Modal (standalone, no brief) ════════════════════
 function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
   const [form,setForm]=useState({title:"",start:today(),end:""});
-  const [selectedChannel,setSelectedChannel]=useState(presetChannel||"");
   const [openCohort,setOpenCohort]=useState(null);
-  const [lines,setLines]=useState([{id:uid(),name:"",budget:""}]);
+  // channels: { [channelName]: [{id, name, budget}] }
+  const [channelLines,setChannelLines]=useState(
+    presetChannel ? {[presetChannel]:[{id:uid(),name:"",budget:""}]} : {}
+  );
 
-  const addLine=()=>setLines(p=>[...p,{id:uid(),name:"",budget:""}]);
-  const removeLine=i=>setLines(p=>p.filter((_,idx)=>idx!==i));
-  const updateLine=(i,field,val)=>setLines(p=>p.map((l,idx)=>idx===i?{...l,[field]:val}:l));
-
-  const total=lines.reduce((a,l)=>a+(+l.budget||0),0);
+  const selectedChannels=Object.keys(channelLines);
+  const total=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.budget||0),0);
   const bankAfter=(customer?.bank||0)-total;
-  const hunch=isHunch(selectedChannel);
+
+  const toggleChannel=(ch)=>{
+    setChannelLines(prev=>{
+      if(prev[ch]){
+        const next={...prev};
+        delete next[ch];
+        return next;
+      }
+      return {...prev,[ch]:[{id:uid(),name:"",budget:""}]};
+    });
+    setOpenCohort(null);
+  };
+
+  const addLine=(ch)=>setChannelLines(prev=>({...prev,[ch]:[...prev[ch],{id:uid(),name:"",budget:""}]}));
+  const removeLine=(ch,id)=>setChannelLines(prev=>({...prev,[ch]:prev[ch].filter(l=>l.id!==id)}));
+  const updateLine=(ch,id,field,val)=>setChannelLines(prev=>({
+    ...prev,[ch]:prev[ch].map(l=>l.id===id?{...l,[field]:val}:l)
+  }));
 
   const save=()=>{
     if(!form.title) return alert("Fyll inn kampanjenavn");
     if(!form.end) return alert("Fyll inn sluttdato");
-    if(!selectedChannel) return alert("Velg en kanal");
-    if(lines.every(l=>!l.budget||+l.budget<=0)) return alert("Legg inn budsjett på minst én linje");
+    if(selectedChannels.length===0) return alert("Velg minst én kanal");
+    if(total<=0) return alert("Legg inn budsjett på minst én linje");
     const channelBudgets={};
-    lines.forEach(l=>{
-      if(+l.budget>0){
-        const key=`${selectedChannel} — ${l.name||form.title}`;
-        channelBudgets[key]=+l.budget;
-      }
+    const channels={};
+    selectedChannels.forEach(ch=>{
+      const base=ch.split(" · ")[0];
+      channels[base]=[];
+      channelLines[ch].forEach(l=>{
+        if(+l.budget>0) channelBudgets[`${ch} — ${l.name||form.title}`]=+l.budget;
+      });
     });
-    const base=selectedChannel.split(" · ")[0];
     onSave({
-      id:uid(), customerId:customer.id, title:form.title,
-      start:form.start, end:form.end, budget:total,
-      status:"green", channels:{[base]:[]}, channelBudgets,
-      spent:{}, channelDates:{}, archived:false, fromBriefId:null,
+      id:uid(),customerId:customer.id,title:form.title,
+      start:form.start,end:form.end,budget:total,
+      status:"green",channels,channelBudgets,
+      spent:{},channelDates:{},archived:false,fromBriefId:null,
     });
   };
 
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal">
+      <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny kampanje — {customer.name}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
@@ -2056,90 +2073,96 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
           <span style={{color:bankAfter<0?C.badFg:C.okFg}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
-        {/* Kampanjenavn */}
+        {/* Kampanjenavn + datoer */}
         <div style={{marginBottom:12}}>
           <label>Kampanjenavn</label>
           <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))}
             placeholder="f.eks. Meta | Always On | September 2026" autoFocus/>
         </div>
-
-        {/* Datoer */}
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:16}}>
-          <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/></div>
-          <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+          <div><label>Startdato</label>
+            <input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/>
+          </div>
+          <div><label>Sluttdato</label>
+            <input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))}/>
+          </div>
         </div>
 
-        {/* Kanal */}
-        <div style={{marginBottom:16}}>
-          <label>Kanal</label>
-          {presetChannel?(
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:C.sandBg,borderRadius:9,border:"1px solid "+C.sandBd}}>
-              {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
-              <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.sandDeep}}>{presetChannel}</span>
-            </div>
-          ):(
-            <div style={{display:"flex",flexDirection:"column",gap:4}}>
-              {/* Valgt kanal vises øverst */}
-              {selectedChannel&&(
-                <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px",background:C.sandBg,borderRadius:9,border:"1px solid "+C.sandBd,marginBottom:4}}>
-                  {CHANNEL_ICONS[selectedChannel]&&<img src={CHANNEL_ICONS[selectedChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
-                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.sandDeep,flex:1}}>{selectedChannel}</span>
-                  <button className="btn" onClick={()=>setSelectedChannel("")} style={{background:"none",color:C.ink3,fontSize:12,padding:"2px 6px"}}>Bytt</button>
-                </div>
-              )}
-              {!selectedChannel&&Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
-                <div key={cohort}>
-                  <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
-                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:C.cardAlt,border:"1px solid "+C.border,borderRadius:openCohort===cohort?"9px 9px 0 0":"9px",cursor:"pointer"}}>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>{cohort}</span>
-                    <ChevronDown size={14} color={C.ink3} style={{transform:openCohort===cohort?"rotate(180deg)":"none",transition:"transform .2s"}}/>
+        {/* Valgte kanaler med linjer */}
+        {selectedChannels.length>0&&(
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+            {selectedChannels.map(ch=>{
+              const icon=CHANNEL_ICONS[ch];
+              const hunch=isHunch(ch);
+              return (
+                <div key={ch} style={{border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+                    {icon&&<div style={{width:22,height:22,borderRadius:5,overflow:"hidden",background:"#fff",flexShrink:0}}>
+                      <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                    </div>}
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink,flex:1}}>{ch}</span>
+                    {hunch&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg,background:C.badBg,padding:"2px 8px",borderRadius:99}}>−5% fee</span>}
+                    <button className="btn" onClick={()=>toggleChannel(ch)} style={{background:"none",color:C.ink3,padding:"2px 6px",fontSize:12}}>✕</button>
                   </div>
-                  {openCohort===cohort&&(
-                    <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 9px 9px",overflow:"hidden"}}>
-                      {Object.keys(chans).map(ch=>(
-                        <div key={ch} onClick={()=>{setSelectedChannel(ch);setOpenCohort(null);}}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",cursor:"pointer",background:C.card,borderBottom:"1px solid "+C.borderSoft}}
-                          onMouseEnter={e=>e.currentTarget.style.background=C.sandBg}
-                          onMouseLeave={e=>e.currentTarget.style.background=C.card}>
-                          {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{ch}</span>
-                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg,marginLeft:"auto"}}>−5% fee</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+                    {channelLines[ch].map((l,idx)=>(
+                      <div key={l.id} style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center"}}>
+                        <input value={l.name} onChange={e=>updateLine(ch,l.id,"name",e.target.value)}
+                          placeholder={form.title||"Linjenavn"}/>
+                        <input type="number" value={l.budget} onChange={e=>updateLine(ch,l.id,"budget",e.target.value)}
+                          placeholder="Budsjett" style={{textAlign:"right"}}/>
+                        {channelLines[ch].length>1&&(
+                          <button className="btn" onClick={()=>removeLine(ch,l.id)}
+                            style={{background:"none",color:C.badFg,padding:"4px 8px",border:"1px solid "+C.badBg,borderRadius:8}}>✕</button>
+                        )}
+                      </div>
+                    ))}
+                    <button className="action-btn" onClick={()=>addLine(ch)} style={{alignSelf:"flex-start"}}>
+                      <Plus size={12}/> Legg til linje
+                    </button>
+                  </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Kampanjelinjer */}
-        {selectedChannel&&(
-          <div style={{marginBottom:16}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <label style={{marginBottom:0}}>Kampanjelinjer</label>
-              <button className="action-btn" onClick={addLine}><Plus size={12}/> Legg til linje</button>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {lines.map((l,i)=>(
-                <div key={l.id} style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center"}}>
-                  <input value={l.name} onChange={e=>updateLine(i,"name",e.target.value)}
-                    placeholder={form.title||"Linjenavn"}/>
-                  <input type="number" value={l.budget} onChange={e=>updateLine(i,"budget",e.target.value)}
-                    placeholder="Budsjett" style={{textAlign:"right"}}/>
-                  {lines.length>1&&<button className="btn" onClick={()=>removeLine(i)}
-                    style={{background:"none",color:C.badFg,padding:"4px 8px",border:"1px solid "+C.badBg,borderRadius:8,fontSize:13}}>✕</button>}
-                </div>
-              ))}
-            </div>
-            {hunch&&total>0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.badFg,marginTop:8}}>Hunch fee −5% = netto {fmtNOK(Math.round(total*(1-HUNCH_FEE)))}</div>}
-            {total>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12,marginTop:10,padding:"8px 12px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
-              <span style={{color:C.ink3}}>Totalt</span>
-              <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
-            </div>}
+              );
+            })}
           </div>
         )}
+
+        {/* Kanal-velger */}
+        <div style={{marginBottom:16}}>
+          <label>Legg til kanal</label>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
+              <div key={cohort}>
+                <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
+                  style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:C.cardAlt,border:"1px solid "+C.border,borderRadius:openCohort===cohort?"9px 9px 0 0":"9px",cursor:"pointer"}}>
+                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>{cohort}</span>
+                  <ChevronDown size={14} color={C.ink3} style={{transform:openCohort===cohort?"rotate(180deg)":"none",transition:"transform .2s"}}/>
+                </div>
+                {openCohort===cohort&&(
+                  <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 9px 9px",overflow:"hidden"}}>
+                    {Object.keys(chans).map(ch=>{
+                      const selected=!!channelLines[ch];
+                      return (
+                        <div key={ch} onClick={()=>toggleChannel(ch)}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",cursor:"pointer",background:selected?C.sandBg:C.card,borderBottom:"1px solid "+C.borderSoft}}>
+                          {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:selected?C.sandDeep:C.ink,fontWeight:selected?600:400,flex:1}}>{ch}</span>
+                          {isHunch(ch)&&<span style={{fontSize:10,color:C.badFg}}>−5% fee</span>}
+                          {selected&&<CircleCheck size={14} color={C.sand}/>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {total>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginBottom:14,padding:"10px 14px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+          <span style={{color:C.ink3}}>Totalt budsjett</span>
+          <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
+        </div>}
 
         <button className="btn" onClick={save}
           style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>
