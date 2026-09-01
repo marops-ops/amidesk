@@ -220,11 +220,11 @@ function LoginScreen({ error }) {
         html,body,#root{height:100%;width:100%;margin:0;padding:0}*{box-sizing:border-box;margin:0;padding:0}
         .btn{cursor:pointer;border:none;transition:all .2s}.btn:hover{opacity:.85;transform:translateY(-1px)}.btn:active{transform:translateY(0)}
       `}</style>
-      <div style={{background:C.panel,borderRadius:8,padding:"52px 48px",border:`1px solid ${C.ash}`,textAlign:"center",maxWidth:400,width:"90%"}}>
-        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,color:C.text,marginBottom:8}}>AmiDesk</div>
-        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,letterSpacing:".08em",textTransform:"uppercase",marginBottom:40}}>Kampanjeadministrasjon</div>
-        {error&&<div style={{background:`${C.brandyRose}20`,border:`1px solid ${C.brandyRose}`,borderRadius:4,padding:"10px 14px",marginBottom:20,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.brandyRose}}>{error}</div>}
-        <button className="btn" onClick={handleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,width:"100%",padding:"14px",borderRadius:4,background:C.sandrift,color:"#fff",fontFamily:"Roboto,sans-serif",fontSize:13,letterSpacing:".04em"}}>
+      <div style={{background:C.card,borderRadius:8,padding:"52px 48px",border:"1px solid "+C.border,textAlign:"center",maxWidth:400,width:"90%"}}>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,color:C.ink,marginBottom:8}}>AmiDesk</div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,letterSpacing:".08em",textTransform:"uppercase",marginBottom:40}}>Kampanjeadministrasjon</div>
+        {error&&<div style={{background:`${C.badFg}20`,border:"1px solid "+C.badFg,borderRadius:4,padding:"10px 14px",marginBottom:20,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.badFg}}>{error}</div>}
+        <button className="btn" onClick={handleLogin} style={{display:"flex",alignItems:"center",justifyContent:"center",gap:12,width:"100%",padding:"14px",borderRadius:4,background:C.sand,color:"#fff",fontFamily:"Roboto,sans-serif",fontSize:13,letterSpacing:".04em"}}>
           <svg width="18" height="18" viewBox="0 0 24 24">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#fff"/>
             <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#fff"/>
@@ -233,7 +233,7 @@ function LoginScreen({ error }) {
           </svg>
           Logg inn med Google
         </button>
-        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginTop:16}}>Kun @amidays.com kontoer har tilgang</div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:16}}>Kun @amidays.com kontoer har tilgang</div>
       </div>
     </div>
   );
@@ -363,7 +363,7 @@ const slugify = (name) => (name||"").toLowerCase()
   }, [session]);
 
   if (session === undefined) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.ink2}}>Laster AmiDesk…</div>
   );
   if (!session) return <LoginScreen error={authError} />;
 
@@ -443,11 +443,11 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   if (loading) return (
-    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.textDim}}>Laster AmiDesk…</div>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100vh",background:C.bg,fontFamily:"'Montserrat',sans-serif",fontSize:24,color:C.ink2}}>Laster AmiDesk…</div>
   );
 
   return (
-    <div style={{display:"flex",height:"100vh",width:"100%",fontFamily:"'Montserrat',sans-serif",background:C.bg,color:C.text,overflow:"hidden"}}>
+    <div style={{display:"flex",height:"100vh",width:"100%",fontFamily:"'Montserrat',sans-serif",background:C.bg,color:C.ink,overflow:"hidden"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Roboto:wght@300;400;500&display=swap');
         html,body,#root{height:100%;width:100%;margin:0;padding:0}
@@ -659,14 +659,14 @@ function TeamPage({teamMembers, navigate}) {
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
                 {member.avatar_url
                   ?<img src={member.avatar_url} alt={member.display_name} style={{width:44,height:44,borderRadius:"50%"}}/>
-                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
                 }
                 <div>
                   <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</div>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{member.email}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{member.email}</div>
                 </div>
               </div>
-              {adminMember&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sandrift,background:`${C.sandrift}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
+              {adminMember&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sand,background:`${C.sand}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
             </div>
           );
         })}
@@ -704,45 +704,45 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("team")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("team")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         {member.avatar_url
           ?<img src={member.avatar_url} style={{width:44,height:44,borderRadius:"50%"}}/>
-          :<div style={{width:44,height:44,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+          :<div style={{width:44,height:44,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
         }
         <div>
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</h1>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>{member.email}</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{member.email}</div>
         </div>
       </div>
-      {loading?<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel}}>Laster…</div>:(
+      {loading?<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3}}>Laster…</div>:(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
           <div>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Oppgaver ({activeBriefs.length})</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Oppgaver ({activeBriefs.length})</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {activeBriefs.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive oppgaver.</div>}
+              {activeBriefs.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen aktive oppgaver.</div>}
               {activeBriefs.map(b=>{
                 const cust=customers.find(c=>c.id===b.customerId);
                 return (
-                  <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:`3px solid ${C.sandrift}`}}>
+                  <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:`3px solid ${C.sand}`}}>
                     <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{cust?.name} · {b.start} → {b.end}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{cust?.name} · {b.start} → {b.end}</div>
                   </div>
                 );
               })}
             </div>
           </div>
           <div>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
             <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen aktive kampanjer.</div>}
+              {activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen aktive kampanjer.</div>}
               {activeTasks.map(t=>{
                 const cust=customers.find(c=>c.id===t.customerId);
                 const totalSpent=Object.values(t.spent||{}).reduce((a,b)=>a+b,0);
                 return (
                   <div key={t.id} className="card" style={{padding:"12px 16px"}}>
                     <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
                   </div>
                 );
               })}
@@ -781,14 +781,14 @@ function ColorSwatch({color, label, onChange}) {
         style={{width:32,height:32,borderRadius:"50%",background:color||"transparent",border:`2px solid ${color?color:C.ash}`,cursor:"pointer",position:"relative",flexShrink:0,transition:"transform .15s"}}
         title={label}
       >
-        {!color&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:C.nickel,fontSize:16}}>+</div>}
+        {!color&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",color:C.ink3,fontSize:16}}>+</div>}
       </div>
-      <div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.nickel,letterSpacing:".04em",textTransform:"uppercase"}}>{label}</div>
+      <div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.ink3,letterSpacing:".04em",textTransform:"uppercase"}}>{label}</div>
       {editing&&(
         <div style={{display:"flex",gap:4,alignItems:"center",marginTop:2}}>
           <input value={val} onChange={e=>setVal(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")save();if(e.key==="Escape")setEditing(false);}}
             placeholder="#000000" style={{width:88,padding:"3px 6px",fontSize:11}} autoFocus/>
-          <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
+          <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"3px 7px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>OK</button>
         </div>
       )}
     </div>
@@ -835,23 +835,23 @@ function EditCustomerModal({customer, onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Rediger kunde</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
 
         {/* Logo + farger */}
-        <div style={{display:"flex",alignItems:"flex-start",gap:20,marginBottom:20,padding:"16px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:20,marginBottom:20,padding:"16px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
           <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6}}>
             {previewUrl
               ?<img src={previewUrl} alt="logo" style={{width:56,height:56,borderRadius:"50%",objectFit:"cover"}}/>
-              :<div style={{width:56,height:56,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
+              :<div style={{width:56,height:56,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:18,fontWeight:500}}>{form.logo||form.name.slice(0,2).toUpperCase()}</div>
             }
-            <label className="btn" style={{display:"inline-block",background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,cursor:"pointer",textAlign:"center"}}>
+            <label className="btn" style={{display:"inline-block",background:C.borderSoft,color:C.ink,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,cursor:"pointer",textAlign:"center"}}>
               {uploading?"Laster…":"Last opp"}
               <input type="file" accept="image/*" style={{display:"none"}} onChange={handleFile} disabled={uploading}/>
             </label>
           </div>
           <div style={{flex:1}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Merkevarefarger</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Merkevarefarger</div>
             <div style={{display:"flex",gap:20,alignItems:"flex-start"}}>
               <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
               <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
@@ -869,8 +869,8 @@ function EditCustomerModal({customer, onClose, onSave}) {
         </div>
 
         {/* Kundekontakt */}
-        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
             <div><label>Navn</label><input value={form.contactName} onChange={e=>setForm(f=>({...f,contactName:e.target.value}))} style={{width:"100%"}} placeholder="Kontaktperson"/></div>
             <div><label>Telefon</label><input value={form.contactPhone} onChange={e=>setForm(f=>({...f,contactPhone:e.target.value}))} style={{width:"100%"}} placeholder="+47 xxx xx xxx"/></div>
@@ -879,20 +879,20 @@ function EditCustomerModal({customer, onClose, onSave}) {
         </div>
 
         {/* Rådgiver */}
-        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
           <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
             <option value="">Velg rådgiver...</option>
             {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
-          {form.advisorId&&(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===form.advisorId);return s?<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginTop:6}}>{s.email}</div>:null;})()}
+          {form.advisorId&&(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===form.advisorId);return s?<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:6}}>{s.email}</div>:null;})()}
         </div>
 
         {/* Ressurser */}
-        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
-            <button className="btn" onClick={addResource} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
+            <button className="btn" onClick={addResource} style={{background:C.borderSoft,color:C.ink,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {form.resources.map((r,i)=>(
@@ -902,14 +902,14 @@ function EditCustomerModal({customer, onClose, onSave}) {
                   {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
                 <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
-                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:`1px solid ${C.badFg}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
               </div>
             ))}
-            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser lagt til.</div>}
+            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen ressurser lagt til.</div>}
           </div>
         </div>
 
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Lagre endringer</button>
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Lagre endringer</button>
       </div>
     </div>
   );
@@ -977,9 +977,9 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
                         <ArrowRight size={12}/> Lag kampanje
                       </button>
                     )}
-                    {hasCampaign&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.greyOlive,padding:"5px 10px",background:`${C.greyOlive}18`,borderRadius:3}}>✓ Kampanje opprettet</span>}
+                    {hasCampaign&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep,padding:"5px 10px",background:`${C.sandDeep}18`,borderRadius:3}}>✓ Kampanje opprettet</span>}
                     <button className="btn" onClick={e=>{e.stopPropagation();if(confirm("Slett oppgaven permanent?\nTilknyttede kampanjelinjer slettes også."))deleteBrief(brief.id);}}
-                      style={{background:"none",color:C.nickel,fontSize:14,padding:"4px 6px"}}>🗑</button>
+                      style={{background:"none",color:C.ink3,fontSize:14,padding:"4px 6px"}}>🗑</button>
                   </div>
                 </div>
               );
@@ -998,11 +998,11 @@ function StatusDot({status, onChange}) {
     <div style={{position:"relative"}} onClick={e=>e.stopPropagation()}>
       <div style={{width:14,height:14,borderRadius:"50%",background:col,cursor:"pointer",border:"2px solid rgba(0,0,0,.2)"}} onClick={()=>setOpen(!open)}/>
       {open&&(
-        <div style={{position:"absolute",right:0,top:20,background:C.input,border:`1px solid ${C.ash}`,borderRadius:4,padding:6,display:"flex",flexDirection:"column",gap:4,zIndex:10,boxShadow:"0 4px 16px rgba(0,0,0,.3)"}}>
+        <div style={{position:"absolute",right:0,top:20,background:C.cardAlt,border:"1px solid "+C.border,borderRadius:4,padding:6,display:"flex",flexDirection:"column",gap:4,zIndex:10,boxShadow:"0 4px 16px rgba(0,0,0,.3)"}}>
           {Object.entries(STATUS_COLORS).map(([k,v])=>(
             <div key={k} style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",padding:"3px 6px",borderRadius:3}} onClick={()=>{onChange(k);setOpen(false);}}>
               <div style={{width:10,height:10,borderRadius:"50%",background:v}}/>
-              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,whiteSpace:"nowrap",color:C.text}}>{k==="green"?"Aktiv":k==="yellow"?"Pågående":"Kritisk"}</span>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,whiteSpace:"nowrap",color:C.ink}}>{k==="green"?"Aktiv":k==="yellow"?"Pågående":"Kritisk"}</span>
             </div>
           ))}
         </div>
@@ -1021,9 +1021,9 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Oppgaver</h1>
-        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.text,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:`1px solid ${C.ash}`}}>+ Ny oppgave</button>
+        <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.ink,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:"1px solid "+C.border}}>+ Ny oppgave</button>
       </div>
-      <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
         {["active","archived"].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
             {t==="active"?"Aktive":"Avsluttede"} ({t==="active"?active.length:archived.length})
@@ -1039,16 +1039,16 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
             <div key={brief.id} className="card"
               style={{padding:"16px 20px",display:"flex",alignItems:"center",gap:14,cursor:"pointer",borderLeft:`4px solid ${brief.status==="avsluttet"?C.ash:isStarted?C.greyOlive:C.sandrift}`}}
               onClick={()=>navigate("brief-detail",{briefId:brief.id})}>
-              <div style={{width:36,height:36,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
+              <div style={{width:36,height:36,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,flexShrink:0}}>{cust?.logo||"?"}</div>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontWeight:500,fontSize:15,marginBottom:3}}>{brief.title}</div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,display:"flex",gap:12,flexWrap:"wrap"}}>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,display:"flex",gap:12,flexWrap:"wrap"}}>
                   <span>{cust?.name}</span>
                   {brief.start&&brief.end&&<span>{brief.start} → {brief.end}</span>}
                   {totalBudget>0&&<span>Budsjett: {fmtNOK(totalBudget)}</span>}
                 </div>
               </div>
-              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,padding:"3px 10px",borderRadius:8,background:C.ash,color:C.text,flexShrink:0}}>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,padding:"3px 10px",borderRadius:8,background:C.borderSoft,color:C.ink,flexShrink:0}}>
                 {brief.status==="startet"?"Startet":brief.status==="avsluttet"?"Avsluttet":"Ny"}
               </span>
             </div>
@@ -1067,24 +1067,24 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("briefs")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("briefs")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,flex:1}}>{brief.title}</h1>
-        <button className="btn" onClick={()=>setBriefToConvert(brief)} style={{background:C.sandrift,color:"#fff",padding:"9px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lag kampanje →</button>
+        <button className="btn" onClick={()=>setBriefToConvert(brief)} style={{background:C.sand,color:"#fff",padding:"9px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lag kampanje →</button>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 280px",gap:24}}>
         <div>
           {brief.description&&(
             <div className="card" style={{padding:"20px 24px",marginBottom:16}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Brief</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",color:C.textDim}}>{brief.description}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Brief</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",color:C.ink2}}>{brief.description}</div>
             </div>
           )}
           {Object.keys(brief.channelBudgets||{}).length>0&&(
             <div className="card" style={{padding:"20px 24px"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanalbudsjett</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:12}}>Kanalbudsjett</div>
               {Object.entries(brief.channelBudgets).map(([k,v])=>(
-                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.ash}`,fontFamily:"Roboto,sans-serif",fontSize:12}}>
-                  <span style={{color:C.textDim}}>{k}{isHunch(k)&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>-5% Hunch fee</span>}</span>
+                <div key={k} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:`1px solid ${C.border}`,fontFamily:"Roboto,sans-serif",fontSize:12}}>
+                  <span style={{color:C.ink2}}>{k}{isHunch(k)&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>-5% Hunch fee</span>}</span>
                   <span style={{fontWeight:500}}>{fmtNOK(v)}</span>
                 </div>
               ))}
@@ -1098,19 +1098,19 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
           <div className="card" style={{padding:"16px 18px"}}>
             {[{label:"Kunde",value:cust?.name||"—"},{label:"Periode",value:brief.start&&brief.end?`${brief.start} → ${brief.end}`:"Ikke satt"},{label:"Status",value:brief.status==="startet"?"Startet":brief.status==="avsluttet"?"Avsluttet":"Ny"}].map(row=>(
               <div key={row.label} style={{marginBottom:12}}>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{row.label}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>{row.label}</div>
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:13}}>{row.value}</div>
               </div>
             ))}
           </div>
           <button className="btn" onClick={()=>updateBrief(brief.id,{status:isStarted?"ny":"startet"})}
-            style={{padding:"10px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.text,border:"none"}}>
+            style={{padding:"10px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:isStarted?C.greyOlive:C.ash,color:C.ink,border:"none"}}>
             {isStarted?"● Startet — klikk for å reversere":"Sett i gang"}
           </button>
           <button className="btn" onClick={()=>{if(confirm("Avslutt og arkiver oppgaven?"))updateBrief(brief.id,{status:"avsluttet",archived:true});}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Avslutt oppgave</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.borderSoft,color:C.ink3,border:"none"}}>Avslutt oppgave</button>
           <button className="btn" onClick={()=>{if(confirm("Slett oppgaven permanent?\nTilknyttede kampanjelinjer slettes også.")){deleteBrief(brief.id);navigate("briefs");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett oppgave permanent</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.badFg,border:`1px solid ${C.badFg}60`}}>Slett oppgave permanent</button>
         </div>
       </div>
     </div>
@@ -1128,7 +1128,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   return (
     <div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
-      {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
+      {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
@@ -1537,13 +1537,13 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("campaigns")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("campaigns")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,flex:1}}>{task.title}</h1>
         <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"1fr 260px",gap:20}}>
         <div className="card" style={{padding:"20px 24px"}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Kanaler</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:12}}>Kanaler</div>
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {getChannelLines(task).map(line=>(
               <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign}/>
@@ -1554,15 +1554,15 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
           <div className="card" style={{padding:"16px 18px"}}>
             {[{label:"Kunde",value:cust?.name||"—"},{label:"Periode",value:`${task.start} → ${task.end}`},{label:"Totalt budsjett",value:fmtNOK(task.budget)},{label:"Totalt forbruk",value:fmtNOK(totalSpent)},{label:"Pacing",value:p.label}].map(r=>(
               <div key={r.label} style={{marginBottom:10}}>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:2}}>{r.label}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>{r.label}</div>
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:13}}>{r.value}</div>
               </div>
             ))}
           </div>
           <button className="btn" onClick={()=>{if(confirm("Arkiver kampanje?")){updateCampaign(task.id,{archived:true});navigate("campaigns");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.ash,color:C.nickel,border:"none"}}>Arkiver kampanje</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:C.borderSoft,color:C.ink3,border:"none"}}>Arkiver kampanje</button>
           <button className="btn" onClick={()=>{if(confirm(`Slett kampanjen permanent?`)){deleteCampaign(task.id);navigate("campaigns");}}}
-            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}60`}}>Slett kampanje</button>
+            style={{padding:"9px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:12,background:"none",color:C.badFg,border:`1px solid ${C.badFg}60`}}>Slett kampanje</button>
         </div>
       </div>
     </div>
@@ -1638,31 +1638,31 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     <>
       <div>
       <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("customers")} style={{background:C.ash,color:C.text,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+        <button className="btn" onClick={()=>navigate("customers")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <CustomerAvatar customer={customer} size={48} fontSize={15}/>
         <div style={{flex:1}}>
           <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>{customer.industry} · {customer.contact}</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{customer.industry} · {customer.contact}</div>
         </div>
         {updateCustomer&&(
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
             <div style={{display:"flex",gap:8}}>
               <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
-                style={{background:C.sandrift,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
-              {updateCustomer&&<button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.ash,color:C.text,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:`1px solid ${C.ash}`}}>Rediger kunde</button>}
+                style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
+              {updateCustomer&&<button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>}
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
               {editingBank?(
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="number" value={bankInput} onChange={e=>setBankInput(+e.target.value)} style={{width:130,textAlign:"right"}}/>
-                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sandrift,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lagre</button>
-                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.ash,color:C.text,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>✕</button>
+                  <button className="btn" onClick={()=>{updateCustomer(customer.id,{bank:bankInput});setEditingBank(false);}} style={{background:C.sand,color:"#fff",padding:"5px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>Lagre</button>
+                  <button className="btn" onClick={()=>setEditingBank(false)} style={{background:C.borderSoft,color:C.ink,padding:"5px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>✕</button>
                 </div>
               ):(
                 <div style={{display:"flex",alignItems:"center",gap:8}}>
                   <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
-                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"3px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Sett inn</button>
+                  <button className="btn" onClick={()=>{setBankInput(customer.bank||0);setEditingBank(true);}} style={{background:"none",border:"1px solid "+C.border,color:C.ink3,padding:"3px 9px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>Sett inn</button>
                 </div>
               )}
             </div>
@@ -1670,13 +1670,13 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         )}
         {!updateCustomer&&(
           <div style={{textAlign:"right"}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:4}}>Kundebank</div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
             <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:(customer.bank||0)<0?C.brandyRose:C.greyOlive}}>{fmtNOK(customer.bank||0)}</span>
           </div>
         )}
       </div>
 
-      <div style={{display:"flex",borderBottom:`1px solid ${C.ash}`,marginBottom:20}}>
+      <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
         {["active","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
             {t==="active"?"Aktive":t==="history"?"Historikk":"Hunch fees"}
@@ -1689,15 +1689,15 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           <div>
             {activeBriefs.length>0&&(
               <div style={{marginBottom:20}}>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Oppgaver</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:8}}>Oppgaver</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {activeBriefs.map(b=>(
                     <div key={b.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer",borderLeft:"3px solid "+C.sandrift}} onClick={()=>navigate("brief-detail",{briefId:b.id})}>
                       <div style={{flex:1}}>
                         <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{b.start&&b.end?b.start+" → "+b.end:""}</div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{b.start&&b.end?b.start+" → "+b.end:""}</div>
                       </div>
-                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,background:C.ash,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,background:C.borderSoft,padding:"2px 8px",borderRadius:8}}>{b.status==="startet"?"Startet":"Ny"}</span>
                     </div>
                   ))}
                 </div>
@@ -1705,7 +1705,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             )}
             {activeTasks.length>0&&(
               <div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.nickel,marginBottom:8}}>Kampanjer</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:8}}>Kampanjer</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {activeTasks.map(task=>{
                     const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
@@ -1713,9 +1713,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                       <div key={task.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>navigate("task-detail",{taskId:task.id})}>
                         <div style={{flex:1}}>
                           <div style={{fontWeight:500,fontSize:14}}>{task.title}</div>
-                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{task.start} → {task.end}</div>
+                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.start} → {task.end}</div>
                         </div>
-                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.textDim}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.ink2}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
                         <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
                       </div>
                     );
@@ -1723,31 +1723,31 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                 </div>
               </div>
             )}
-            {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
+            {activeBriefs.length===0&&activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"40px 0",textAlign:"center"}}>Ingen aktive oppgaver eller kampanjer.</div>}
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
             <div className="card" style={{padding:"16px 18px"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:12}}>Merkevarefarger</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:12}}>Merkevarefarger</div>
               <div style={{display:"flex",gap:20}}>
                 <ColorSwatch color={customer.colorPrimary} label="Primær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorPrimary:v})}/>
                 <ColorSwatch color={customer.colorSecondary} label="Sekundær" onChange={v=>updateCustomer&&updateCustomer(customer.id,{colorSecondary:v})}/>
               </div>
             </div>
             <div className="card" style={{padding:"16px 18px"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Kundekontakt</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Kundekontakt</div>
               {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{customer.contactName}</div>}
-              {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:2}}>📞 {customer.contactPhone}</div>}
-              {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {customer.contactEmail}</div>}
-              {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen kontakt registrert.</div>}
+              {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:2}}>📞 {customer.contactPhone}</div>}
+              {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>✉️ {customer.contactEmail}</div>}
+              {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen kontakt registrert.</div>}
             </div>
             <div className="card" style={{padding:"16px 18px"}}>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Rådgiver</div>
-              {customer.advisorId?(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);return s?<div><div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>✉️ {s.email}</div></div>:null;})():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen rådgiver tildelt.</div>}
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Rådgiver</div>
+              {customer.advisorId?(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);return s?<div><div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>✉️ {s.email}</div></div>:null;})():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen rådgiver tildelt.</div>}
             </div>
             {(customer.resources||[]).length>0&&(
               <div className="card" style={{padding:"16px 18px"}}>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.nickel,marginBottom:10}}>Ressurser</div>
-                {(customer.resources||[]).map((r,i)=>{const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);return s?(<div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:28,height:28,borderRadius:"50%",background:C.ash,color:C.text,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:10,fontWeight:500,flexShrink:0}}>{s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</div><div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>{r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{r.department}</div>}</div></div>):null;})}
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Ressurser</div>
+                {(customer.resources||[]).map((r,i)=>{const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);return s?(<div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:28,height:28,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:10,fontWeight:500,flexShrink:0}}>{s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</div><div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>{r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{r.department}</div>}</div></div>):null;})}
               </div>
             )}
           </div>
@@ -1755,24 +1755,24 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       )}
       {tab==="history"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.nickel,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
+          {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
           {archivedBriefs.map(b=>(
             <div key={b.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
               <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Oppgave · Avsluttet</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Oppgave · Avsluttet</div>
             </div>
           ))}
           {archivedTasks.map(t=>(
             <div key={t.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
               <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>Kampanje · {t.start} → {t.end} · {fmtNOK(t.budget)}</div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Kampanje · {t.start} → {t.end} · {fmtNOK(t.budget)}</div>
             </div>
           ))}
         </div>
       )}
       {tab==="hunch"&&(
         <div>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
           {Object.entries(hunchByMonth).map(([month,entries])=>(
             <div key={month} style={{marginBottom:20}}>
               <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500,marginBottom:10,textTransform:"capitalize"}}>{month}</div>
@@ -1780,11 +1780,11 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                 <div key={i} className="card" style={{padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
                   <div>
                     <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{e.channel}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>{e.taskTitle}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{e.taskTitle}</div>
                   </div>
                   <div style={{textAlign:"right"}}>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.brandyRose}}>Hunch fee: {fmtNOK(e.fee)}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>av {fmtNOK(e.spent)} forbruk</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.badFg}}>Hunch fee: {fmtNOK(e.fee)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>av {fmtNOK(e.spent)} forbruk</div>
                   </div>
                 </div>
               ))}
@@ -1819,7 +1819,7 @@ function ChannelDropdown({channels, onChange}) {
             const items=(subs&&subs.length>0)?subs:[null];
             return items.map(sub=>{
               const key=sub?`${ch} · ${sub}`:ch;
-              return <span key={key} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:`${C.sandrift}30`,color:C.sandrift,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
+              return <span key={key} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:`${C.sand}30`,color:C.sand,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
                 {key}<span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}>✕</span>
               </span>;
             });
@@ -1829,32 +1829,32 @@ function ChannelDropdown({channels, onChange}) {
       {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
         <div key={cohort} style={{marginBottom:6}}>
           <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
-            style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:C.bg,border:`1px solid ${C.ash}`,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
-            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{cohort}</span>
+            style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px",background:C.bg,border:"1px solid "+C.border,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
+            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{cohort}</span>
             <div style={{display:"flex",alignItems:"center",gap:8}}>
               {Object.keys(chans).filter(ch=>channels[ch]).length>0&&(
-                <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,background:`${C.sandrift}30`,color:C.sandrift,padding:"1px 7px",borderRadius:8}}>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,background:`${C.sand}30`,color:C.sand,padding:"1px 7px",borderRadius:8}}>
                   {Object.keys(chans).filter(ch=>channels[ch]).length} valgt
                 </span>
               )}
-              <span style={{color:C.nickel,fontSize:12}}>{openCohort===cohort?"▲":"▼"}</span>
+              <span style={{color:C.ink3,fontSize:12}}>{openCohort===cohort?"▲":"▼"}</span>
             </div>
           </div>
           {openCohort===cohort&&(
-            <div style={{border:`1px solid ${C.ash}`,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"8px",display:"flex",flexDirection:"column",gap:4,background:C.input}}>
+            <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"8px",display:"flex",flexDirection:"column",gap:4,background:C.cardAlt}}>
               {Object.entries(chans).map(([ch,subs])=>{
                 const selected=!!channels[ch];
                 return (
-                  <div key={ch} style={{borderRadius:3,border:`1px solid ${selected?C.sandrift:C.ash}`,background:selected?`${C.sandrift}10`:"transparent"}}>
+                  <div key={ch} style={{borderRadius:3,border:`1px solid ${selected?C.sandrift:C.ash}`,background:selected?`${C.sand}10`:"transparent"}}>
                     <div style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",cursor:"pointer"}} onClick={()=>toggleChannel(ch)}>
                       <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${selected?C.sandrift:C.ash}`,background:selected?C.sandrift:"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                         {selected&&<span style={{color:"#fff",fontSize:9}}>✓</span>}
                       </div>
-                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text,flex:1,display:"flex",alignItems:"center",gap:6}}>
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink,flex:1,display:"flex",alignItems:"center",gap:6}}>
                         {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                         {ch}
                       </span>
-                      {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose}}>−5% fee</span>}
+                      {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg}}>−5% fee</span>}
                     </div>
                     {selected&&subs&&(
                       <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:"4px 10px 8px 32px"}}>
@@ -1913,7 +1913,7 @@ function CreateBriefModal({customers, onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Ny oppgave</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
           <div><label>Kunde</label>
@@ -1949,20 +1949,20 @@ function CreateBriefModal({customers, onClose, onSave}) {
               {selectedLines.map(line=>{
                 const linesForChannel=campaignLines.filter(cl=>cl.flatKey===line.flatKey);
                 return (
-                  <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`,padding:"10px 12px"}}>
+                  <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:"1px solid "+C.border,padding:"10px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.text}}>
-                        {line.label}{line.hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>
+                        {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
                       </span>
-                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:`1px solid ${C.ash}`,color:C.nickel,padding:"2px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>+ Legg til kampanje</button>
+                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:"1px solid "+C.border,color:C.ink3,padding:"2px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>+ Legg til kampanje</button>
                     </div>
                     <div style={{display:"flex",flexDirection:"column",gap:5}}>
                       {linesForChannel.map(cl=>(
                         <div key={cl.id} style={{display:"flex",alignItems:"center",gap:8}}>
                           <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Kampanjenavn"/>
                           <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{width:120,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="0"/>
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,width:30}}>NOK</span>
-                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.nickel,fontSize:13,padding:"2px 4px"}}>✕</button>}
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,width:30}}>NOK</span>
+                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.ink3,fontSize:13,padding:"2px 4px"}}>✕</button>}
                         </div>
                       ))}
                     </div>
@@ -1971,14 +1971,14 @@ function CreateBriefModal({customers, onClose, onSave}) {
               })}
             </div>
             {total>0&&(
-              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.ash}`}}>
-                <span style={{color:C.nickel}}>Totalt budsjett</span>
-                <strong style={{color:C.text}}>{fmtNOK(total)}</strong>
+              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:"1px solid "+C.border}}>
+                <span style={{color:C.ink3}}>Totalt budsjett</span>
+                <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
               </div>
             )}
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett oppgave</button>
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett oppgave</button>
       </div>
     </div>
   );
@@ -2019,12 +2019,12 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
       <div className="modal">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kampanje — {customer.name}</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
 
         {/* Bank info */}
         <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
-          <span style={{color:C.nickel}}>Kundebank: <strong style={{color:C.text}}>{fmtNOK(customer.bank||0)}</strong></span>
+          <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(customer.bank||0)}</strong></span>
           <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
@@ -2040,27 +2040,27 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
         <div style={{marginBottom:14}}>
           <label>Kanal</label>
           {presetChannel?(
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.sandrift}`}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.bg,borderRadius:3,border:`1px solid ${C.sand}`}}>
               {CHANNEL_ICONS[presetChannel]&&<img src={CHANNEL_ICONS[presetChannel]} alt="" style={{width:18,height:18,borderRadius:3,objectFit:"contain"}}/>}
-              <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.text}}>{presetChannel}</span>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.ink}}>{presetChannel}</span>
             </div>
           ):(
             <div>
               {Object.entries(CHANNEL_COHORTS).map(([cohort,chans])=>(
                 <div key={cohort} style={{marginBottom:4}}>
                   <div onClick={()=>setOpenCohort(openCohort===cohort?null:cohort)}
-                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",background:C.bg,border:`1px solid ${C.ash}`,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{cohort}</span>
-                    <span style={{color:C.nickel,fontSize:12}}>{openCohort===cohort?"▲":"▼"}</span>
+                    style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"7px 10px",background:C.bg,border:"1px solid "+C.border,borderRadius:openCohort===cohort?"4px 4px 0 0":"4px",cursor:"pointer"}}>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{cohort}</span>
+                    <span style={{color:C.ink3,fontSize:12}}>{openCohort===cohort?"▲":"▼"}</span>
                   </div>
                   {openCohort===cohort&&(
-                    <div style={{border:`1px solid ${C.ash}`,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"6px",background:C.input,display:"flex",flexDirection:"column",gap:3}}>
+                    <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 4px 4px",padding:"6px",background:C.cardAlt,display:"flex",flexDirection:"column",gap:3}}>
                       {Object.keys(chans).map(ch=>(
                         <div key={ch} onClick={()=>{setSelectedChannel(ch);setOpenCohort(null);}}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?`${C.sandrift}20`:"transparent",border:`1px solid ${selectedChannel===ch?C.sandrift:C.ash}`}}>
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"6px 10px",borderRadius:3,cursor:"pointer",background:selectedChannel===ch?`${C.sand}20`:"transparent",border:`1px solid ${selectedChannel===ch?C.sandrift:C.ash}`}}>
                           {CHANNEL_ICONS[ch]&&<img src={CHANNEL_ICONS[ch]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.text}}>{ch}</span>
-                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.brandyRose,marginLeft:"auto"}}>−5% fee</span>}
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{ch}</span>
+                          {isHunch(ch)&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg,marginLeft:"auto"}}>−5% fee</span>}
                         </div>
                       ))}
                     </div>
@@ -2081,9 +2081,9 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
             </div>
           </div>
         )}
-        {hunch&&budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.brandyRose,marginBottom:12}}>Hunch fee −5% = netto {fmtNOK(netBudget)}</div>}
+        {hunch&&budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.badFg,marginBottom:12}}>Hunch fee −5% = netto {fmtNOK(netBudget)}</div>}
 
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
     </div>
   );
@@ -2116,11 +2116,11 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
       <div className="modal modal-lg">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Lag kampanje fra oppgave</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
         {cust&&(
           <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
-            <span style={{color:C.nickel}}>Kundebank: <strong style={{color:C.text}}>{fmtNOK(cust.bank||0)}</strong></span>
+            <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(cust.bank||0)}</strong></span>
             <span style={{color:bankAfter<0?C.brandyRose:C.greyOlive}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
           </div>
         )}
@@ -2138,29 +2138,29 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
                 const hunch = isHunch(baseCh);
                 const icon = getChannelIcon(baseCh);
                 return (
-                  <div key={key} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:`1px solid ${C.ash}`}}>
-                    <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.textDim,display:"flex",alignItems:"center",gap:6}}>
+                  <div key={key} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:"1px solid "+C.border}}>
+                    <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2,display:"flex",alignItems:"center",gap:6}}>
                       {icon&&<img src={icon} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
                       {key}
-                      {hunch&&<span style={{color:C.brandyRose,fontSize:10,marginLeft:4}}>−5% fee</span>}
+                      {hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:4}}>−5% fee</span>}
                     </div>
                     <input type="number" value={val||""} onChange={e=>setChannelBudgets(p=>({...p,[key]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel}}>NOK</span>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>NOK</span>
                   </div>
                 );
               })}
-              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,paddingRight:36}}>
-                Totalt: <strong style={{color:C.text,marginLeft:6}}>{fmtNOK(total)}</strong>
+              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,paddingRight:36}}>
+                Totalt: <strong style={{color:C.ink,marginLeft:6}}>{fmtNOK(total)}</strong>
               </div>
             </div>
           </div>
         )}
         {lineEntries.length===0&&(
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel,marginBottom:18,padding:"12px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:18,padding:"12px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
             Ingen kampanjelinjer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt.
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
     </div>
   );
@@ -2190,12 +2190,12 @@ function CreateCustomerModal({onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kunde</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.nickel}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
 
         {/* Farger */}
-        <div style={{display:"flex",gap:20,alignItems:"flex-start",marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase",width:100,paddingTop:4}}>Merkevarefarger</div>
+        <div style={{display:"flex",gap:20,alignItems:"flex-start",marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,letterSpacing:".05em",textTransform:"uppercase",width:100,paddingTop:4}}>Merkevarefarger</div>
           <ColorSwatch color={form.colorPrimary} label="Primær" onChange={v=>setForm(f=>({...f,colorPrimary:v}))}/>
           <ColorSwatch color={form.colorSecondary} label="Sekundær" onChange={v=>setForm(f=>({...f,colorSecondary:v}))}/>
         </div>
@@ -2213,8 +2213,8 @@ function CreateCustomerModal({onClose, onSave}) {
         </div>
 
         {/* Kundekontakt */}
-        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Kundekontakt</div>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}>
             <div><label>Navn</label><input value={form.contactName} onChange={e=>setForm(f=>({...f,contactName:e.target.value}))} style={{width:"100%"}} placeholder="Kontaktperson"/></div>
             <div><label>Telefon</label><input value={form.contactPhone} onChange={e=>setForm(f=>({...f,contactPhone:e.target.value}))} style={{width:"100%"}} placeholder="+47 xxx xx xxx"/></div>
@@ -2223,8 +2223,8 @@ function CreateCustomerModal({onClose, onSave}) {
         </div>
 
         {/* Rådgiver */}
-        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
+        <div style={{marginBottom:16,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
           <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
             <option value="">Velg rådgiver...</option>
             {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
@@ -2232,10 +2232,10 @@ function CreateCustomerModal({onClose, onSave}) {
         </div>
 
         {/* Ressurser */}
-        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:`1px solid ${C.ash}`}}>
+        <div style={{marginBottom:20,padding:"14px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.nickel,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
-            <button className="btn" onClick={addResource} style={{background:C.ash,color:C.text,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,letterSpacing:".05em",textTransform:"uppercase"}}>Ressurser</div>
+            <button className="btn" onClick={addResource} style={{background:C.borderSoft,color:C.ink,padding:"4px 10px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Legg til</button>
           </div>
           <div style={{display:"flex",flexDirection:"column",gap:8}}>
             {form.resources.map((r,i)=>(
@@ -2245,14 +2245,14 @@ function CreateCustomerModal({onClose, onSave}) {
                   {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
                 <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
-                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.brandyRose,border:`1px solid ${C.brandyRose}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:`1px solid ${C.badFg}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
               </div>
             ))}
-            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.nickel}}>Ingen ressurser lagt til.</div>}
+            {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen ressurser lagt til.</div>}
           </div>
         </div>
 
-        <button className="btn" onClick={save} style={{background:C.sandrift,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kunde</button>
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kunde</button>
       </div>
     </div>
   );
