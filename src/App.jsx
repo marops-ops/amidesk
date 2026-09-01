@@ -244,7 +244,7 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [routeState, setRouteState] = useState(()=>parseUrl());
+  const [routeState, setRouteState] = useState({page:"campaigns", slug:null});
   const page = routeState.page;
   const selectedCustomerId = routeState.page==="customer-detail" ? routeState.slug : null;
   const selectedBriefId    = routeState.page==="brief-detail"    ? routeState.slug : null;
@@ -363,6 +363,7 @@ const slugify = (name) => (name||"").toLowerCase()
   const activeBrief    = briefs.find(b=>b.id===selectedBriefId);
 
   useEffect(() => {
+    setRouteState(parseUrl());
     const onPop = () => setRouteState(parseUrl());
     window.addEventListener("popstate", onPop);
     return () => window.removeEventListener("popstate", onPop);
