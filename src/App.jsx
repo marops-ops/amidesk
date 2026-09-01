@@ -244,26 +244,29 @@ export default function App() {
   const [session, setSession] = useState(undefined);
   const [authError, setAuthError] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  // ── URL routing ────────────────────────────────────────────────
-  const parseUrl = () => {
-    const path = window.location.pathname;
-    if (path === "/" || path === "/dashboard") return {page:"dashboard", slug:null};
-    if (path === "/kampanjelinjer") return {page:"campaigns", slug:null};
-    if (path === "/oppgaver") return {page:"briefs", slug:null};
-    if (path.startsWith("/kunder/")) return {page:"customer-detail", slug:path.replace("/kunder/","")};
-    if (path === "/kunder") return {page:"customers", slug:null};
-    if (path === "/team") return {page:"team", slug:null};
-    if (path.startsWith("/team/")) return {page:"team-member", slug:path.replace("/team/","")};
-    if (path.startsWith("/oppgave/")) return {page:"brief-detail", slug:path.replace("/oppgave/","")};
-    if (path.startsWith("/kampanje/")) return {page:"task-detail", slug:path.replace("/kampanje/","")};
-    return {page:"campaigns", slug:null};
-  };
   const [routeState, setRouteState] = useState(parseUrl);
   const page = routeState.page;
   const selectedCustomerId = routeState.page==="customer-detail" ? routeState.slug : null;
   const selectedBriefId    = routeState.page==="brief-detail"    ? routeState.slug : null;
   const selectedTaskId     = routeState.page==="task-detail"     ? routeState.slug : null;
   const viewingUserId      = routeState.page==="team-member"     ? routeState.slug : null;
+  // ── URL routing helpers (outside component) ──────────────────────
+const parseUrl = () => {
+  const path = window.location.pathname;
+  if (path === "/" || path === "/dashboard") return {page:"dashboard", slug:null};
+  if (path === "/kampanjelinjer") return {page:"campaigns", slug:null};
+  if (path === "/oppgaver") return {page:"briefs", slug:null};
+  if (path.startsWith("/kunder/")) return {page:"customer-detail", slug:path.replace("/kunder/","")};
+  if (path === "/kunder") return {page:"customers", slug:null};
+  if (path === "/team") return {page:"team", slug:null};
+  if (path.startsWith("/team/")) return {page:"team-member", slug:path.replace("/team/","")};
+  if (path.startsWith("/oppgave/")) return {page:"brief-detail", slug:path.replace("/oppgave/","")};
+  if (path.startsWith("/kampanje/")) return {page:"task-detail", slug:path.replace("/kampanje/","")};
+  return {page:"campaigns", slug:null};
+};
+const slugify = (name) => (name||"").toLowerCase()
+  .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
+  .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
   const [teamMembers, setTeamMembers] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -355,11 +358,8 @@ export default function App() {
   );
   if (!session) return <LoginScreen error={authError} />;
 
-  const slugify2 = (name) => (name||"").toLowerCase()
-    .replace(/æ/g,"ae").replace(/ø/g,"o").replace(/å/g,"a")
-    .replace(/\s+/g,"-").replace(/[^a-z0-9-]/g,"");
   const activeTask     = tasks.find(t=>t.id===selectedTaskId);
-  const activeCustomer = customers.find(c=>c.id===selectedCustomerId||slugify2(c.name)===selectedCustomerId);
+  const activeCustomer = customers.find(c=>c.id===selectedCustomerId||slugify(c.name)===selectedCustomerId);
   const activeBrief    = briefs.find(b=>b.id===selectedBriefId);
 
   useEffect(() => {
