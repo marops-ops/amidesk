@@ -337,20 +337,21 @@ const slugify = (name) => (name||"").toLowerCase()
     if (!session) return;
     async function load() {
       const userId = session.user.id;
-      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tData }, { data: nData }] = await Promise.all([
+      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tOwned }, { data: tShared }, { data: nData }] = await Promise.all([
         sb.from("customers").select("*"),
         sb.from("briefs").select("*").eq("owner_id", userId),
-        sb.from("briefs").select("*").contains("shared_with", [userId]),
+        sb.from("briefs").select("*").filter("shared_with", "cs", `["${userId}"]`),
         sb.from("campaigns").select("*").eq("owner_id", userId),
+        sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
         sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
       if (cData) setCustomers(cData.map(rowToCustomer));
-      // Merge owned + shared briefs, deduplicate
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
-      const seen = new Set();
-      const deduped = allBriefs.filter(b => { if(seen.has(b.id)) return false; seen.add(b.id); return true; });
-      setBriefs(deduped.map(rowToBrief));
-      if (tData) setTasks(tData.map(rowToCampaign));
+      const seenB = new Set();
+      setBriefs(allBriefs.filter(b=>{ if(seenB.has(b.id)) return false; seenB.add(b.id); return true; }).map(rowToBrief));
+      const allTasks = [...(tOwned||[]), ...(tShared||[])];
+      const seenT = new Set();
+      setTasks(allTasks.filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; }).map(rowToCampaign));
       if (nData) setNotifications(nData);
       if (ADMIN_EMAILS.includes(session.user.email)) {
         const { data: members } = await sb.from("profiles").select("*");
