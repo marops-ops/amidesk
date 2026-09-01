@@ -428,13 +428,12 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   const updateCampaign = async (id, changes) => {
-    let updated;
     setTasks(prev => {
       const next = prev.map(t => t.id===id ? {...t,...changes} : t);
-      updated = next.find(t=>t.id===id);
+      const updated = next.find(t=>t.id===id);
+      if (updated) sb.from("campaigns").update(campaignToRow(updated)).eq("id", id);
       return next;
     });
-    if (updated) await sb.from("campaigns").update(campaignToRow(updated)).eq("id", id);
   };
 
   const deleteBrief = async (id) => {
