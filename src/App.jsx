@@ -164,6 +164,7 @@ const rowToCustomer = r => ({
   colorPrimary:r.color_primary||null, colorSecondary:r.color_secondary||null,
   contactName:r.contact_name||"", contactPhone:r.contact_phone||"", contactEmail:r.contact_email||"",
   advisorId:r.advisor_id||null, resources:r.resources||[],
+  deptBudgets:r.dept_budgets||{},
 });
 const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
@@ -201,6 +202,7 @@ const customerToRow = c => ({
   color_primary:c.colorPrimary||null, color_secondary:c.colorSecondary||null,
   contact_name:c.contactName||null, contact_phone:c.contactPhone||null, contact_email:c.contactEmail||null,
   advisor_id:c.advisorId||null, resources:c.resources||[],
+  dept_budgets:c.deptBudgets||{},
 });
 const briefToRow = b => ({
   id:b.id, customer_id:b.customerId, title:b.title, description:b.description,
@@ -1908,9 +1910,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
-        {["active","history",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
+        {["active","history","bank",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
-            {t==="active"?"Aktive":t==="history"?"Historikk":"Hunch fees"}
+            {t==="active"?"Aktive":t==="history"?"Historikk":t==="bank"?"Bank":"Hunch fees"}
           </div>
         ))}
       </div>
@@ -2001,6 +2003,109 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           ))}
         </div>
       )}
+      {tab==="bank"&&(()=>{
+        const DEPTS = [
+          {key:"some", label:"SOME", channels:["Meta","Hunch - Meta","Snapchat","Hunch - Snapchat","TikTok","LinkedIn","Pinterest","Reddit","Apple Search Ads","TikTok Search Ads"]},
+          {key:"sem",  label:"SEM",  channels:["Google Ads","Microsoft Ads"]},
+          {key:"prog", label:"Programmatisk", channels:["DV360","Kobler","ReadPeak","Adnuntius","Hawk"]},
+        ];
+        const allTasks=[...activeTasks,...archivedTasks];
+
+        // Spent per dept from campaign lines
+        const spentPerDept={};
+        DEPTS.forEach(dept=>{
+          spentPerDept[dept.key]=allTasks.reduce((sum,t)=>{
+            return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>{
+              const ch=key.split(" — ")[0];
+              return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+val:a;
+            },0);
+          },0);
+        });
+
+        const deptBudgets=customer.deptBudgets||{};
+        const saveDept=(key,val)=>{
+          updateCustomer&&updateCustomer(customer.id,{deptBudgets:{...deptBudgets,[key]:+val}});
+        };
+
+        const totalDeptBudget=DEPTS.reduce((a,d)=>a+(deptBudgets[d.key]||0),0);
+        const totalSpent=DEPTS.reduce((a,d)=>a+spentPerDept[d.key],0);
+
+        return (
+          <div style={{display:"flex",flexDirection:"column",gap:16}}>
+            {/* Summary */}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+              {[
+                {label:"Total årsbudsjett",value:fmtNOK(totalDeptBudget),color:C.ink},
+                {label:"Totalt brukt",value:fmtNOK(totalSpent),color:C.badFg},
+                {label:"Rest",value:fmtNOK(totalDeptBudget-totalSpent),color:(totalDeptBudget-totalSpent)<0?C.badFg:C.okFg},
+              ].map(s=>(
+                <div key={s.label} className="card" style={{padding:"16px 18px"}}>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,letterSpacing:".1em",textTransform:"uppercase",color:C.ink3,marginBottom:6}}>{s.label}</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:s.color}}>{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Per dept */}
+            {DEPTS.map(dept=>{
+              const budget=deptBudgets[dept.key]||0;
+              const spent=spentPerDept[dept.key]||0;
+              const rest=budget-spent;
+              const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
+              const [editing,setEditing]=useState(false);
+              const [val,setVal]=useState(budget||"");
+              return (
+                <div key={dept.key} className="card" style={{padding:"18px 20px"}}>
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink}}>{dept.label}</div>
+                    {editing?(
+                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                        <input type="number" value={val} onChange={e=>setVal(e.target.value)}
+                          style={{width:130,textAlign:"right",padding:"4px 8px",fontSize:12}} autoFocus
+                          onKeyDown={e=>{if(e.key==="Enter"){saveDept(dept.key,val);setEditing(false);}if(e.key==="Escape")setEditing(false);}}/>
+                        <button className="action-btn settle" onClick={()=>{saveDept(dept.key,val);setEditing(false);}}>Lagre</button>
+                        <button className="action-btn" onClick={()=>setEditing(false)}><X size={11}/></button>
+                      </div>
+                    ):(
+                      <div style={{display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:C.ink}}>{budget?fmtNOK(budget):"Ikke satt"}</span>
+                        {updateCustomer&&<button className="action-btn" onClick={()=>{setVal(budget||"");setEditing(true);}}>Sett budsjett</button>}
+                      </div>
+                    )}
+                  </div>
+                  {/* Progress */}
+                  {budget>0&&(
+                    <>
+                      <div style={{height:8,borderRadius:99,background:C.divider,marginBottom:6,position:"relative"}}>
+                        <div style={{position:"absolute",inset:"0 auto 0 0",width:pct+"%",borderRadius:99,background:rest<0?C.badBar:C.okBar,transition:"width .4s"}}/>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                        <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(spent)}</strong> ({pct}%)</span>
+                        <span style={{color:rest<0?C.badFg:C.okFg}}>Rest: <strong>{fmtNOK(rest)}</strong></span>
+                      </div>
+                    </>
+                  )}
+                  {!budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Brukt så langt: {fmtNOK(spent)}</div>}
+                  {/* Channels breakdown */}
+                  <div style={{marginTop:12,borderTop:"1px solid "+C.borderSoft,paddingTop:10}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink4,marginBottom:6}}>Kanaler</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+                      {dept.channels.map(ch=>{
+                        const chSpent=allTasks.reduce((sum,t)=>{
+                          return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>
+                            key.split(" — ")[0].toLowerCase().includes(ch.toLowerCase())?a+val:a,0);
+                        },0);
+                        if(chSpent===0) return null;
+                        return <span key={ch} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:C.borderSoft,color:C.ink2,padding:"3px 10px",borderRadius:99}}>{ch}: {fmtNOK(chSpent)}</span>;
+                      })}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
       {tab==="hunch"&&(
         <div>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
