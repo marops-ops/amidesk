@@ -500,6 +500,8 @@ const slugify = (name) => (name||"").toLowerCase()
         .nav-item:hover{background:rgba(43,47,54,.06)}.nav-item.active{background:${C.card};box-shadow:0 1px 2px rgba(43,47,54,.07);color:${C.ink}}
         input,select,textarea{font-family:Roboto,sans-serif;font-size:13px;background:${C.card};border:1px solid ${C.border};border-radius:9px;padding:8px 12px;color:${C.ink};outline:none;transition:border .15s;width:100%}
         input:focus,select:focus,textarea:focus{border-color:${C.sand}}
+        input[type=date]{cursor:pointer;-webkit-appearance:none;appearance:none;min-width:140px}
+        input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;filter:invert(30%)}
         input::placeholder,textarea::placeholder{color:${C.ink4}}
         label{font-family:Roboto,sans-serif;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:${C.ink4};display:block;margin-bottom:5px}
         .modal-overlay{position:fixed;inset:0;background:rgba(43,47,54,.42);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
@@ -2276,11 +2278,12 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
   const selectedCustomer=customers.find(c=>c.id===form.customerId);
   // Calculate available restspend for selected customer
   const allCustomerTasks=tasks.filter(t=>t.customerId===form.customerId);
-  const tilgode=allCustomerTasks.reduce((sum,t)=>{
-    return sum
-      +(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
-      +(!t.archived?Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0):0);
-  },0);
+  const tilgode=Math.max(0,
+    allCustomerTasks.reduce((sum,t)=>{
+      return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
+    },0)
+    - allCustomerTasks.reduce((sum,t)=>sum+(t.restspendUsed||0),0)
+  );
 
   const selectedLines=getSelectedLines(form.channels);
   const handleChannelChange=newChannels=>{
@@ -2431,11 +2434,12 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
 
   // Tilgode for this customer — include archived tasks' archivedLines
   const allCustomerTasks=tasks.filter(t=>t.customerId===customer?.id);
-  const tilgode=allCustomerTasks.reduce((sum,t)=>{
-    return sum
-      +(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
-      +(!t.archived?Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0):0);
-  },0);
+  const tilgode=Math.max(0,
+    allCustomerTasks.reduce((sum,t)=>{
+      return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
+    },0)
+    - allCustomerTasks.reduce((sum,t)=>sum+(t.restspendUsed||0),0)
+  );
 
   const selectedChannels=Object.keys(channelLines);
   const baseBudget=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.budget||0),0);
