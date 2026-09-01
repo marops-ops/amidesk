@@ -428,12 +428,18 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   const updateCampaign = async (id, changes) => {
+    let updated;
     setTasks(prev => {
-      const next = prev.map(t => t.id===id ? {...t,...changes} : t);
-      const updated = next.find(t=>t.id===id);
-      if (updated) sb.from("campaigns").update(campaignToRow(updated)).eq("id", id);
+      const next = prev.map(t => {
+        if(t.id!==id) return t;
+        updated = {...t,...changes};
+        return updated;
+      });
       return next;
     });
+    // Wait for state to settle then write to DB
+    await new Promise(r=>setTimeout(r,0));
+    if(updated) await sb.from("campaigns").update(campaignToRow(updated)).eq("id",id);
   };
 
   const deleteBrief = async (id) => {
@@ -444,9 +450,9 @@ const slugify = (name) => (name||"").toLowerCase()
     for (const t of linked) await sb.from("campaigns").delete().eq("id",t.id);
   };
 
-  const deleteCampaign = (id) => {
+  const deleteCampaign = async (id) => {
     setTasks(prev=>prev.filter(t=>t.id!==id));
-    sb.from("campaigns").delete().eq("id",id);
+    await sb.from("campaigns").delete().eq("id",id);
   };
 
   if (loading) return (
@@ -1191,19 +1197,15 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const lineDiff=line.budget-line.spent;
     if(confirm(`Avslutt "${line.label}"?\n${lineDiff>=0?`${fmtNOK(lineDiff)} returneres til bank`:`${fmtNOK(Math.abs(lineDiff))} trekkes fra bank`}`)){
       if(adjustBank) adjustBank(task.customerId, lineDiff);
-      // Remove line from channelBudgets (moves it out of active view)
       const newBudgets={...task.channelBudgets};
       const newSpent={...task.spent};
       delete newBudgets[line.flatKey];
       delete newSpent[line.flatKey];
-      // Store in archivedLines for historikk
       const archivedLines=[...(task.archivedLines||[]),{
         flatKey:line.flatKey, label:line.label,
         budget:line.budget, spent:line.spent,
-        start:line.chStart, end:today(),
-        settledAt:today(),
+        start:line.chStart, end:today(), settledAt:today(),
       }];
-      // If no more lines, archive the whole campaign
       const remainingLines=Object.keys(newBudgets).length;
       const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
       if(remainingLines===0) updates.archived=true;
@@ -1214,7 +1216,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     if(!confirm(`Slett linjen "${flatKey}" permanent?`)) return;
     const lineBudget=task.channelBudgets?.[flatKey]||0;
     const lineSpent=task.spent?.[flatKey]||0;
-    const diff=lineBudget-lineSpent; // rest tilbake til bank
+    const diff=lineBudget-lineSpent;
     if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
     const newBudgets={...task.channelBudgets};
     const newSpent={...task.spent};
