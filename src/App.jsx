@@ -488,7 +488,7 @@ const slugify = (name) => (name||"").toLowerCase()
         setNotifications(p=>p.filter(n=>n.id!==id));
       }}/>
 
-      <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px"}}>
+      <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px",background:C.bg,color:C.ink}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert} session={session}/>}
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
@@ -649,7 +649,7 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
 function TeamPage({teamMembers, navigate}) {
   return (
     <div>
-      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Team</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28,color:C.ink}}>Team</h1>
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
         {teamMembers.map(member=>{
           const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
@@ -710,7 +710,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
           :<div style={{width:44,height:44,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
         }
         <div>
-          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</h1>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,color:C.ink}}>{member.display_name||member.email.split("@")[0]}</h1>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{member.email}</div>
         </div>
       </div>
@@ -1020,7 +1020,7 @@ function BriefsPage({briefs, customers, navigate, setShowCreateBrief, setBriefTo
   return (
     <div>
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:28}}>
-        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500}}>Oppgaver</h1>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,color:C.ink}}>Oppgaver</h1>
         <button className="btn" onClick={()=>setShowCreateBrief(true)} style={{background:C.gunmetal,color:C.ink,padding:"10px 18px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,border:"1px solid "+C.border}}>+ Ny oppgave</button>
       </div>
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
@@ -1127,7 +1127,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 
   return (
     <div>
-      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28}}>Kampanjelinjer</h1>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28,color:C.ink}}>Kampanjelinjer</h1>
       {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
@@ -1641,7 +1641,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         <button className="btn" onClick={()=>navigate("customers")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         <CustomerAvatar customer={customer} size={48} fontSize={15}/>
         <div style={{flex:1}}>
-          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500}}>{customer.name}</h1>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500,color:C.ink}}>{customer.name}</h1>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{customer.industry} · {customer.contact}</div>
         </div>
         {updateCustomer&&(
