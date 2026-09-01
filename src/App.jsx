@@ -1795,6 +1795,108 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
 }
 
 // ══ Customer Detail ════════════════════════════════════════════════
+const DEPTS = [
+  {key:"some", label:"SOME", channels:["Meta","Hunch - Meta","Snapchat","Hunch - Snapchat","TikTok","LinkedIn","Pinterest","Reddit","Apple Search Ads","TikTok Search Ads"]},
+  {key:"sem",  label:"SEM",  channels:["Google Ads","Microsoft Ads"]},
+  {key:"prog", label:"Programmatisk", channels:["DV360","Kobler","ReadPeak","Adnuntius","Hawk"]},
+];
+
+function DeptCard({dept, budget, spent, allTasks, onSave, canEdit}) {
+  const [editing,setEditing]=useState(false);
+  const [val,setVal]=useState(budget||"");
+  const rest=budget-spent;
+  const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
+  return (
+    <div className="card" style={{padding:"18px 20px"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
+        <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink}}>{dept.label}</div>
+        {editing?(
+          <div style={{display:"flex",gap:6,alignItems:"center"}}>
+            <input type="number" value={val} onChange={e=>setVal(e.target.value)}
+              style={{width:130,textAlign:"right",padding:"4px 8px",fontSize:12}} autoFocus
+              onKeyDown={e=>{if(e.key==="Enter"){onSave(+val);setEditing(false);}if(e.key==="Escape")setEditing(false);}}/>
+            <button className="action-btn settle" onClick={()=>{onSave(+val);setEditing(false);}}>Lagre</button>
+            <button className="action-btn" onClick={()=>setEditing(false)}><X size={11}/></button>
+          </div>
+        ):(
+          <div style={{display:"flex",alignItems:"center",gap:8}}>
+            <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:C.ink}}>{budget?fmtNOK(budget):"Ikke satt"}</span>
+            {canEdit&&<button className="action-btn" onClick={()=>{setVal(budget||"");setEditing(true);}}>Sett budsjett</button>}
+          </div>
+        )}
+      </div>
+      {budget>0&&(
+        <>
+          <div style={{height:8,borderRadius:99,background:C.divider,marginBottom:6,position:"relative"}}>
+            <div style={{position:"absolute",inset:"0 auto 0 0",width:pct+"%",borderRadius:99,background:rest<0?C.badBar:C.okBar,transition:"width .4s"}}/>
+          </div>
+          <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+            <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(spent)}</strong> ({pct}%)</span>
+            <span style={{color:rest<0?C.badFg:C.okFg}}>Rest: <strong>{fmtNOK(rest)}</strong></span>
+          </div>
+        </>
+      )}
+      {!budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Brukt så langt: {fmtNOK(spent)}</div>}
+      <div style={{marginTop:12,borderTop:"1px solid "+C.borderSoft,paddingTop:10}}>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink4,marginBottom:6}}>Kanaler</div>
+        <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+          {dept.channels.map(ch=>{
+            const chSpent=allTasks.reduce((sum,t)=>{
+              return sum+Object.entries(t.spent||{}).reduce((a,[key,v])=>
+                key.split(" — ")[0].toLowerCase().includes(ch.toLowerCase())?a+v:a,0);
+            },0);
+            if(!chSpent) return null;
+            return <span key={ch} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:C.borderSoft,color:C.ink2,padding:"3px 10px",borderRadius:99}}>{ch}: {fmtNOK(chSpent)}</span>;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
+  const allTasks=[...activeTasks,...archivedTasks];
+  const deptBudgets=customer.deptBudgets||{};
+  const spentPerDept={};
+  DEPTS.forEach(dept=>{
+    spentPerDept[dept.key]=allTasks.reduce((sum,t)=>{
+      return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>{
+        const ch=key.split(" — ")[0];
+        return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+val:a;
+      },0);
+    },0);
+  });
+  const totalDeptBudget=DEPTS.reduce((a,d)=>a+(deptBudgets[d.key]||0),0);
+  const totalSpent=DEPTS.reduce((a,d)=>a+spentPerDept[d.key],0);
+  const saveDept=(key,val)=>{
+    updateCustomer&&updateCustomer(customer.id,{deptBudgets:{...deptBudgets,[key]:val}});
+  };
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:16}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+        {[
+          {label:"Total årsbudsjett",value:fmtNOK(totalDeptBudget),color:C.ink},
+          {label:"Totalt brukt",value:fmtNOK(totalSpent),color:C.badFg},
+          {label:"Rest",value:fmtNOK(totalDeptBudget-totalSpent),color:(totalDeptBudget-totalSpent)<0?C.badFg:C.okFg},
+        ].map(s=>(
+          <div key={s.label} className="card" style={{padding:"16px 18px"}}>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,letterSpacing:".1em",textTransform:"uppercase",color:C.ink3,marginBottom:6}}>{s.label}</div>
+            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:s.color}}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+      {DEPTS.map(dept=>(
+        <DeptCard key={dept.key} dept={dept}
+          budget={deptBudgets[dept.key]||0}
+          spent={spentPerDept[dept.key]||0}
+          allTasks={allTasks}
+          onSave={val=>saveDept(dept.key,val)}
+          canEdit={!!updateCustomer}/>
+      ))}
+    </div>
+  );
+}
+
 function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign}) {
   const [tab,setTab]=useState("active");
   const [bankMode,setBankMode]=useState(null); // null | "deposit" | "total"
@@ -1880,28 +1982,19 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             )}
             {/* Tilgode */}
             {(()=>{
-              // Active lines: budget - spent
-              const tilgodeAktiv=activeTasks.reduce((sum,t)=>{
-                return sum+Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>{
-                  return a+(bud-(t.spent?.[key]||0));
-                },0);
-              },0);
-              // Historical: sum of (budget - spent) from archivedLines
               const tilgodeHistorik=[...activeTasks,...archivedTasks].reduce((sum,t)=>{
                 return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
               },0);
+              const restspendBrukt=[...activeTasks,...archivedTasks].reduce((sum,t)=>sum+(t.restspendUsed||0),0);
+              const netto=tilgodeHistorik-restspendBrukt;
+              if(netto===0) return null;
               return (
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.borderSoft}}>
-                  {tilgodeAktiv!==0&&<div style={{marginBottom:8}}>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Tilgode (aktive linjer)</div>
-                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeAktiv<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeAktiv)}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{tilgodeAktiv>0?"Underspend — kan brukes videre":tilgodeAktiv<0?"Overspend — må dekkes inn":"I rute"}</div>
-                  </div>}
-                  {tilgodeHistorik!==0&&<div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Returnert fra avsluttede linjer</div>
-                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeHistorik<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeHistorik)}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>Ligger i kundebank</div>
-                  </div>}
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Returnert fra avsluttede linjer</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:netto<0?C.badFg:C.okFg}}>{fmtNOK(netto)}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>
+                    {fmtNOK(tilgodeHistorik)} returnert{restspendBrukt>0?" − "+fmtNOK(restspendBrukt)+" brukt som restspend":""} · ligger i kundebank
+                  </div>
                 </div>
               );
             })()}
@@ -2003,109 +2096,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           ))}
         </div>
       )}
-      {tab==="bank"&&(()=>{
-        const DEPTS = [
-          {key:"some", label:"SOME", channels:["Meta","Hunch - Meta","Snapchat","Hunch - Snapchat","TikTok","LinkedIn","Pinterest","Reddit","Apple Search Ads","TikTok Search Ads"]},
-          {key:"sem",  label:"SEM",  channels:["Google Ads","Microsoft Ads"]},
-          {key:"prog", label:"Programmatisk", channels:["DV360","Kobler","ReadPeak","Adnuntius","Hawk"]},
-        ];
-        const allTasks=[...activeTasks,...archivedTasks];
-
-        // Spent per dept from campaign lines
-        const spentPerDept={};
-        DEPTS.forEach(dept=>{
-          spentPerDept[dept.key]=allTasks.reduce((sum,t)=>{
-            return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>{
-              const ch=key.split(" — ")[0];
-              return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+val:a;
-            },0);
-          },0);
-        });
-
-        const deptBudgets=customer.deptBudgets||{};
-        const saveDept=(key,val)=>{
-          updateCustomer&&updateCustomer(customer.id,{deptBudgets:{...deptBudgets,[key]:+val}});
-        };
-
-        const totalDeptBudget=DEPTS.reduce((a,d)=>a+(deptBudgets[d.key]||0),0);
-        const totalSpent=DEPTS.reduce((a,d)=>a+spentPerDept[d.key],0);
-
-        return (
-          <div style={{display:"flex",flexDirection:"column",gap:16}}>
-            {/* Summary */}
-            <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-              {[
-                {label:"Total årsbudsjett",value:fmtNOK(totalDeptBudget),color:C.ink},
-                {label:"Totalt brukt",value:fmtNOK(totalSpent),color:C.badFg},
-                {label:"Rest",value:fmtNOK(totalDeptBudget-totalSpent),color:(totalDeptBudget-totalSpent)<0?C.badFg:C.okFg},
-              ].map(s=>(
-                <div key={s.label} className="card" style={{padding:"16px 18px"}}>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,letterSpacing:".1em",textTransform:"uppercase",color:C.ink3,marginBottom:6}}>{s.label}</div>
-                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:s.color}}>{s.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Per dept */}
-            {DEPTS.map(dept=>{
-              const budget=deptBudgets[dept.key]||0;
-              const spent=spentPerDept[dept.key]||0;
-              const rest=budget-spent;
-              const pct=budget>0?Math.min(100,Math.round(spent/budget*100)):0;
-              const [editing,setEditing]=useState(false);
-              const [val,setVal]=useState(budget||"");
-              return (
-                <div key={dept.key} className="card" style={{padding:"18px 20px"}}>
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:14}}>
-                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink}}>{dept.label}</div>
-                    {editing?(
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <input type="number" value={val} onChange={e=>setVal(e.target.value)}
-                          style={{width:130,textAlign:"right",padding:"4px 8px",fontSize:12}} autoFocus
-                          onKeyDown={e=>{if(e.key==="Enter"){saveDept(dept.key,val);setEditing(false);}if(e.key==="Escape")setEditing(false);}}/>
-                        <button className="action-btn settle" onClick={()=>{saveDept(dept.key,val);setEditing(false);}}>Lagre</button>
-                        <button className="action-btn" onClick={()=>setEditing(false)}><X size={11}/></button>
-                      </div>
-                    ):(
-                      <div style={{display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:C.ink}}>{budget?fmtNOK(budget):"Ikke satt"}</span>
-                        {updateCustomer&&<button className="action-btn" onClick={()=>{setVal(budget||"");setEditing(true);}}>Sett budsjett</button>}
-                      </div>
-                    )}
-                  </div>
-                  {/* Progress */}
-                  {budget>0&&(
-                    <>
-                      <div style={{height:8,borderRadius:99,background:C.divider,marginBottom:6,position:"relative"}}>
-                        <div style={{position:"absolute",inset:"0 auto 0 0",width:pct+"%",borderRadius:99,background:rest<0?C.badBar:C.okBar,transition:"width .4s"}}/>
-                      </div>
-                      <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
-                        <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(spent)}</strong> ({pct}%)</span>
-                        <span style={{color:rest<0?C.badFg:C.okFg}}>Rest: <strong>{fmtNOK(rest)}</strong></span>
-                      </div>
-                    </>
-                  )}
-                  {!budget&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Brukt så langt: {fmtNOK(spent)}</div>}
-                  {/* Channels breakdown */}
-                  <div style={{marginTop:12,borderTop:"1px solid "+C.borderSoft,paddingTop:10}}>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink4,marginBottom:6}}>Kanaler</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
-                      {dept.channels.map(ch=>{
-                        const chSpent=allTasks.reduce((sum,t)=>{
-                          return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>
-                            key.split(" — ")[0].toLowerCase().includes(ch.toLowerCase())?a+val:a,0);
-                        },0);
-                        if(chSpent===0) return null;
-                        return <span key={ch} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:C.borderSoft,color:C.ink2,padding:"3px 10px",borderRadius:99}}>{ch}: {fmtNOK(chSpent)}</span>;
-                      })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        );
-      })()}
+      {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer}/>}
       {tab==="hunch"&&(
         <div>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
