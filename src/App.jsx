@@ -1723,18 +1723,28 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             )}
             {/* Tilgode */}
             {(()=>{
-              const tilgode=activeTasks.reduce((sum,t)=>{
+              // Active lines: budget - spent
+              const tilgodeAktiv=activeTasks.reduce((sum,t)=>{
                 return sum+Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>{
                   return a+(bud-(t.spent?.[key]||0));
                 },0);
               },0);
+              // Historical: sum of (budget - spent) from archivedLines
+              const tilgodeHistorik=[...activeTasks,...archivedTasks].reduce((sum,t)=>{
+                return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
+              },0);
               return (
                 <div style={{marginTop:10,paddingTop:10,borderTop:"1px solid "+C.borderSoft}}>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:3}}>Tilgode (aktive linjer)</div>
-                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgode<0?C.badFg:tilgode===0?C.ink3:C.okFg}}>{fmtNOK(tilgode)}</div>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>
-                    {tilgode>0?"Underspend — kan brukes videre":tilgode<0?"Overspend — må dekkes inn":"I rute"}
-                  </div>
+                  {tilgodeAktiv!==0&&<div style={{marginBottom:8}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Tilgode (aktive linjer)</div>
+                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeAktiv<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeAktiv)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{tilgodeAktiv>0?"Underspend — kan brukes videre":tilgodeAktiv<0?"Overspend — må dekkes inn":"I rute"}</div>
+                  </div>}
+                  {tilgodeHistorik!==0&&<div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:2}}>Returnert fra avsluttede linjer</div>
+                    <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:tilgodeHistorik<0?C.badFg:C.okFg}}>{fmtNOK(tilgodeHistorik)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>Ligger i kundebank</div>
+                  </div>}
                 </div>
               );
             })()}
