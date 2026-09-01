@@ -473,6 +473,8 @@ const slugify = (name) => (name||"").toLowerCase()
         .nav-item:hover{background:rgba(43,47,54,.06)}.nav-item.active{background:${C.card};box-shadow:0 1px 2px rgba(43,47,54,.07);color:${C.ink}}
         input,select,textarea{font-family:Roboto,sans-serif;font-size:13px;background:${C.card};border:1px solid ${C.border};border-radius:9px;padding:8px 12px;color:${C.ink};outline:none;transition:border .15s;width:100%}
         input:focus,select:focus,textarea:focus{border-color:${C.sand}}
+        input[type=date]{cursor:pointer;-webkit-appearance:none;appearance:none;min-width:140px}
+        input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:.6;filter:invert(40%)}
         input::placeholder,textarea::placeholder{color:${C.ink4}}
         label{font-family:Roboto,sans-serif;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:${C.ink4};display:block;margin-bottom:5px}
         .modal-overlay{position:fixed;inset:0;background:rgba(43,47,54,.42);backdrop-filter:blur(3px);z-index:100;display:flex;align-items:center;justify-content:center;padding:20px}
