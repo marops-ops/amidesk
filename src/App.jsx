@@ -1842,8 +1842,13 @@ function DeptCard({dept, budget, spent, allTasks, onSave, canEdit}) {
         <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
           {dept.channels.map(ch=>{
             const chSpent=allTasks.reduce((sum,t)=>{
-              return sum+Object.entries(t.spent||{}).reduce((a,[key,v])=>
+              const activeSp=Object.entries(t.spent||{}).reduce((a,[key,v])=>
                 key.split(" — ")[0].toLowerCase().includes(ch.toLowerCase())?a+v:a,0);
+              const archivedSp=(t.archivedLines||[]).reduce((a,l)=>{
+                const lch=(l.label||l.flatKey||"").split(" — ")[0];
+                return lch.toLowerCase().includes(ch.toLowerCase())?a+(l.spent||0):a;
+              },0);
+              return sum+activeSp+archivedSp;
             },0);
             if(!chSpent) return null;
             return <span key={ch} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:C.borderSoft,color:C.ink2,padding:"3px 10px",borderRadius:99}}>{ch}: {fmtNOK(chSpent)}</span>;
@@ -1860,10 +1865,17 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
   const spentPerDept={};
   DEPTS.forEach(dept=>{
     spentPerDept[dept.key]=allTasks.reduce((sum,t)=>{
-      return sum+Object.entries(t.spent||{}).reduce((a,[key,val])=>{
+      // Active line spent
+      const activeSp=Object.entries(t.spent||{}).reduce((a,[key,val])=>{
         const ch=key.split(" — ")[0];
         return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+val:a;
       },0);
+      // Archived lines spent
+      const archivedSp=(t.archivedLines||[]).reduce((a,l)=>{
+        const ch=(l.label||l.flatKey||"").split(" — ")[0];
+        return dept.channels.some(dc=>ch.toLowerCase().includes(dc.toLowerCase()))?a+(l.spent||0):a;
+      },0);
+      return sum+activeSp+archivedSp;
     },0);
   });
   const totalDeptBudget=DEPTS.reduce((a,d)=>a+(deptBudgets[d.key]||0),0);
