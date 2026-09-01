@@ -1175,9 +1175,12 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   const grouped=groupLinesByChannel(lines);
 
   return (
-    <div>
-      {/* Campaign header */}
-      <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"10px 20px",borderBottom:`1px solid ${C.ash}`,borderLeft:`3px solid ${accent}`}}>
+    <div style={{borderBottom:"1px solid "+C.borderSoft}}>
+      {/* Campaign header — 2 lines */}
+      <div style={{background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+        {/* Line 1: title + actions */}
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",flexWrap:"wrap"}}>
+          <ChevronDown size={15} color={C.ink3}/>
           {editingName?(
             <div style={{display:"flex",alignItems:"center",gap:4,flex:1}}>
               <input value={nameVal} onChange={e=>setNameVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveName()}
@@ -1205,6 +1208,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
             </div>
           )}
         </div>
+        {/* Line 2: meta */}
         <div style={{display:"flex",alignItems:"center",gap:12,padding:"0 16px 10px 39px",flexWrap:"wrap"}}>
           <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.start+" → "+task.end}</span>
           <span style={{color:C.border}}>·</span>
