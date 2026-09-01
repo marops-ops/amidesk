@@ -517,6 +517,7 @@ const slugify = (name) => (name||"").toLowerCase()
       {addCampaignTarget&&<AddCampaignModal
         customer={addCampaignTarget.customer}
         presetChannel={addCampaignTarget.presetChannel}
+        tasks={tasks}
         onClose={()=>setAddCampaignTarget(null)}
         onSave={async campaign=>{
           const withOwner={...campaign,ownerId:session.user.id};
@@ -525,7 +526,7 @@ const slugify = (name) => (name||"").toLowerCase()
           await sb.from("campaigns").upsert(campaignToRow(withOwner));
           setAddCampaignTarget(null);
         }}/>}
-      {showCreateBrief&&<CreateBriefModal customers={customers} onClose={()=>setShowCreateBrief(false)}
+      {showCreateBrief&&<CreateBriefModal customers={customers} tasks={tasks} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
           // Find if assigned resource maps to a known profile
           const staffMember = b.assignedTo?.[0]
@@ -1339,6 +1340,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   const grouped=groupLinesByChannel(lines);
 
   return (
+    <>
     <div style={{borderBottom:"1px solid "+C.borderSoft}}>
       {/* Campaign header — 2 lines */}
       <div style={{background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
@@ -1451,6 +1453,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
       onReturnToBank={()=>doEndChannel(transferLine,null)}
       onTransfer={(target)=>doEndChannel(transferLine,target)}
     />}
+  </>
   );
 }
   // Use channelBudgets as source of truth — these have the actual named lines
@@ -2066,9 +2069,20 @@ function getSelectedLines(channels) {
 }
 
 // ══ Create Brief Modal ════════════════════════════════════════════
-function CreateBriefModal({customers, onClose, onSave}) {
+function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
   const [form,setForm]=useState({customerId:"",title:"",description:"",start:today(),end:"",assignedTo:"",channels:{}});
   const [campaignLines,setCampaignLines]=useState([]);
+  const [useRestspend,setUseRestspend]=useState(false);
+  const [restspendAmount,setRestspendAmount]=useState("");
+
+  const selectedCustomer=customers.find(c=>c.id===form.customerId);
+  // Calculate available restspend for selected customer
+  const customerTasks=tasks.filter(t=>t.customerId===form.customerId&&!t.archived);
+  const tilgode=customerTasks.reduce((sum,t)=>{
+    return sum+[...(t.archivedLines||[])].reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
+    +Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0);
+  },0);
+
   const selectedLines=getSelectedLines(form.channels);
   const handleChannelChange=newChannels=>{
     const newLines=getSelectedLines(newChannels);
@@ -2082,26 +2096,36 @@ function CreateBriefModal({customers, onClose, onSave}) {
   };
   const addLine=flatKey=>{
     const count=campaignLines.filter(cl=>cl.flatKey===flatKey).length;
-    setCampaignLines(prev=>[...prev,{id:uid(),flatKey,name:`Kampanje ${count+1}`,budget:0,hunch:isHunch(flatKey)}]);
+    setCampaignLines(prev=>[...prev,{id:uid(),flatKey,name:"Kampanje "+(count+1),budget:0,hunch:isHunch(flatKey)}]);
   };
   const removeLine=id=>setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
   const updateLine=(id,changes)=>setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
-  const total=campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
+  const baseBudget=campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
+  const restAmount=useRestspend?(+restspendAmount||0):0;
+  const total=baseBudget+restAmount;
+
   const save=()=>{
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
     if(!form.end) return alert("Fyll inn sluttdato");
     const channelBudgets={};
-    campaignLines.forEach(cl=>{channelBudgets[`${cl.flatKey} — ${cl.name}`]=cl.budget||0;});
-    onSave({id:uid(),...form,assignedTo:form.assignedTo?[form.assignedTo]:[],channels:form.channels,channelBudgets,status:"ny",archived:false});
+    campaignLines.forEach(cl=>{channelBudgets[cl.flatKey+" — "+cl.name]=cl.budget||0;});
+    onSave({
+      id:uid(),...form,
+      assignedTo:form.assignedTo?[form.assignedTo]:[],
+      channels:form.channels,channelBudgets,status:"ny",archived:false,
+      restspendUsed:restAmount,
+    });
   };
+
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Ny oppgave</h2>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny oppgave</h2>
           <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
+
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
           <div><label>Kunde</label>
             <select value={form.customerId} onChange={e=>setForm(f=>({...f,customerId:e.target.value}))} style={{width:"100%"}}>
               <option value="">Velg kunde...</option>
@@ -2111,44 +2135,52 @@ function CreateBriefModal({customers, onClose, onSave}) {
           <div><label>Ressurs</label>
             <select value={form.assignedTo} onChange={e=>setForm(f=>({...f,assignedTo:e.target.value}))} style={{width:"100%"}}>
               <option value="">Ikke tildelt</option>
-              <option value="r1">Robin Askevold</option>
+              {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
         </div>
-        <div style={{marginBottom:14}}><label>Tittel</label>
-          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}} placeholder="f.eks. Q2 kampanje"/>
+
+        {selectedCustomer&&(
+          <div style={{background:C.cardAlt,borderRadius:9,padding:"10px 14px",marginBottom:12,border:"1px solid "+C.borderSoft,display:"flex",gap:20,fontFamily:"Roboto,sans-serif",fontSize:12}}>
+            <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(selectedCustomer.bank||0)}</strong></span>
+            {tilgode!==0&&<span style={{color:tilgode>0?C.okFg:C.badFg}}>Tilgode: <strong>{fmtNOK(tilgode)}</strong></span>}
+          </div>
+        )}
+
+        <div style={{marginBottom:12}}><label>Tittel</label>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="f.eks. Meta | Always On | Oktober 2026"/>
         </div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:14}}>
-          <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{width:"100%"}}/></div>
-          <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{width:"100%"}}/></div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+          <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/></div>
+          <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))}/></div>
         </div>
-        <div style={{marginBottom:14}}><label>Brief / Beskrivelse</label>
-          <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} style={{width:"100%",minHeight:70,resize:"vertical"}} placeholder="Mål, målgruppe, budskap..."/>
+        <div style={{marginBottom:12}}><label>Brief / Beskrivelse</label>
+          <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} style={{minHeight:60,resize:"vertical"}} placeholder="Mål, målgruppe, budskap..."/>
         </div>
-        <div style={{marginBottom:16}}><label>Kanaler</label>
+        <div style={{marginBottom:14}}><label>Kanaler</label>
           <ChannelDropdown channels={form.channels} onChange={handleChannelChange}/>
         </div>
+
         {selectedLines.length>0&&(
-          <div style={{marginBottom:18}}>
+          <div style={{marginBottom:16}}>
             <label>Kampanjelinjer og budsjett</label>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
               {selectedLines.map(line=>{
                 const linesForChannel=campaignLines.filter(cl=>cl.flatKey===line.flatKey);
                 return (
-                  <div key={line.flatKey} style={{background:C.bg,borderRadius:4,border:"1px solid "+C.border,padding:"10px 12px"}}>
+                  <div key={line.flatKey} style={{background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft,padding:"10px 12px"}}>
                     <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>
-                        {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% Hunch fee</span>}
+                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink}}>
+                        {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% fee</span>}
                       </span>
-                      <button className="btn" onClick={()=>addLine(line.flatKey)} style={{background:"none",border:"1px solid "+C.border,color:C.ink3,padding:"2px 8px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:10}}>+ Legg til kampanje</button>
+                      <button className="action-btn" onClick={()=>addLine(line.flatKey)}><Plus size={11}/> Legg til linje</button>
                     </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
                       {linesForChannel.map(cl=>(
-                        <div key={cl.id} style={{display:"flex",alignItems:"center",gap:8}}>
-                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} style={{flex:1,padding:"5px 8px",fontSize:12}} placeholder="Kampanjenavn"/>
-                          <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{width:120,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="0"/>
-                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,width:30}}>NOK</span>
-                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.ink3,fontSize:13,padding:"2px 4px"}}>✕</button>}
+                        <div key={cl.id} style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center"}}>
+                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} placeholder="Linjenavn"/>
+                          <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{textAlign:"right"}} placeholder="0"/>
+                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.badFg,fontSize:13,padding:"2px 4px",border:"1px solid "+C.badBg,borderRadius:6}}>✕</button>}
                         </div>
                       ))}
                     </div>
@@ -2156,31 +2188,62 @@ function CreateBriefModal({customers, onClose, onSave}) {
                 );
               })}
             </div>
+
+            {/* Restspend */}
+            {selectedCustomer&&tilgode>0&&(
+              <div style={{marginTop:10,padding:"10px 14px",background:C.sandBg,borderRadius:9,border:"1px solid "+C.sandBd}}>
+                <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:0}}>
+                  <input type="checkbox" checked={useRestspend} onChange={e=>setUseRestspend(e.target.checked)} style={{width:"auto"}}/>
+                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.sandDeep}}>Bruk av restspend (tilgjengelig: {fmtNOK(tilgode)})</span>
+                </label>
+                {useRestspend&&(
+                  <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                    <input type="number" value={restspendAmount} onChange={e=>setRestspendAmount(e.target.value)}
+                      placeholder={"Maks "+fmtNOK(Math.min(tilgode,tilgode))} style={{flex:1,textAlign:"right"}}
+                      max={tilgode}/>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep}}>NOK fra restspend</span>
+                  </div>
+                )}
+              </div>
+            )}
+
             {total>0&&(
-              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"8px 12px",background:C.bg,borderRadius:3,border:"1px solid "+C.border}}>
-                <span style={{color:C.ink3}}>Totalt budsjett</span>
+              <div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginTop:10,padding:"10px 14px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+                <span style={{color:C.ink3}}>Totalt budsjett{restAmount>0&&<span style={{color:C.sandDeep}}> (inkl. {fmtNOK(restAmount)} restspend)</span>}</span>
                 <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
               </div>
             )}
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:6}}>Opprett oppgave</button>
+
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett oppgave</button>
       </div>
     </div>
   );
 }
 
 // ══ Add Campaign Modal (standalone, no brief) ════════════════════
-function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
+function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) {
   const [form,setForm]=useState({title:"",start:today(),end:""});
   const [openCohort,setOpenCohort]=useState(null);
-  // channels: { [channelName]: [{id, name, budget}] }
   const [channelLines,setChannelLines]=useState(
     presetChannel ? {[presetChannel]:[{id:uid(),name:"",budget:""}]} : {}
   );
+  const [useRestspend,setUseRestspend]=useState(false);
+  const [restspendAmount,setRestspendAmount]=useState("");
+
+  // Tilgode for this customer
+  const customerTasks=tasks.filter(t=>t.customerId===customer?.id&&!t.archived);
+  const tilgode=customerTasks.reduce((sum,t)=>{
+    return sum
+      +(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0)
+      +Object.entries(t.channelBudgets||{}).reduce((a,[key,bud])=>a+(bud-(t.spent?.[key]||0)),0);
+  },0);
 
   const selectedChannels=Object.keys(channelLines);
-  const total=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.budget||0),0);
+  const baseBudget=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.budget||0),0);
+  const restAmount=useRestspend?(+restspendAmount||0):0;
+  const total=baseBudget+restAmount;
   const bankAfter=(customer?.bank||0)-total;
 
   const toggleChannel=(ch)=>{
@@ -2205,14 +2268,14 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
     if(!form.title) return alert("Fyll inn kampanjenavn");
     if(!form.end) return alert("Fyll inn sluttdato");
     if(selectedChannels.length===0) return alert("Velg minst én kanal");
-    if(total<=0) return alert("Legg inn budsjett på minst én linje");
+    if(baseBudget<=0&&restAmount<=0) return alert("Legg inn budsjett på minst én linje");
     const channelBudgets={};
     const channels={};
     selectedChannels.forEach(ch=>{
       const base=ch.split(" · ")[0];
       channels[base]=[];
       channelLines[ch].forEach(l=>{
-        if(+l.budget>0) channelBudgets[`${ch} — ${l.name||form.title}`]=+l.budget;
+        if(+l.budget>0) channelBudgets[ch+" — "+(l.name||form.title)]=+l.budget;
       });
     });
     onSave({
@@ -2220,6 +2283,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
       start:form.start,end:form.end,budget:total,
       status:"green",channels,channelBudgets,
       spent:{},channelDates:{},archived:false,fromBriefId:null,
+      restspendUsed:restAmount,
     });
   };
 
@@ -2323,8 +2387,25 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave}) {
           </div>
         </div>
 
+        {/* Restspend */}
+        {tilgode>0&&selectedChannels.length>0&&(
+          <div style={{marginBottom:14,padding:"10px 14px",background:C.sandBg,borderRadius:9,border:"1px solid "+C.sandBd}}>
+            <label style={{display:"flex",alignItems:"center",gap:8,cursor:"pointer",marginBottom:0}}>
+              <input type="checkbox" checked={useRestspend} onChange={e=>setUseRestspend(e.target.checked)} style={{width:"auto"}}/>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.sandDeep}}>Bruk av restspend (tilgjengelig: {fmtNOK(tilgode)})</span>
+            </label>
+            {useRestspend&&(
+              <div style={{display:"flex",alignItems:"center",gap:8,marginTop:8}}>
+                <input type="number" value={restspendAmount} onChange={e=>setRestspendAmount(e.target.value)}
+                  placeholder={"Maks "+fmtNOK(tilgode)} style={{flex:1,textAlign:"right"}} max={tilgode}/>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep}}>NOK fra restspend</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {total>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginBottom:14,padding:"10px 14px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
-          <span style={{color:C.ink3}}>Totalt budsjett</span>
+          <span style={{color:C.ink3}}>Totalt budsjett{restAmount>0&&<span style={{color:C.sandDeep}}> (inkl. {fmtNOK(restAmount)} restspend)</span>}</span>
           <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
         </div>}
 
