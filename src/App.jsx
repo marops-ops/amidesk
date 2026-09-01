@@ -1169,12 +1169,102 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   );
 }
 
+// ══ Transfer Rest Modal ═══════════════════════════════════════════
+function TransferModal({line, custTasks, currentTaskId, onClose, onTransfer, onReturnToBank}) {
+  const [selected,setSelected]=useState(null);
+  const diff=line.budget-line.spent;
+  const isPositive=diff>=0;
+
+  // All active lines across all campaigns for this customer, excluding current line
+  const allLines=custTasks.flatMap(t=>
+    Object.entries(t.channelBudgets||{}).map(([flatKey,budget])=>({
+      flatKey, budget, taskId:t.id, taskTitle:t.title,
+      lineName:flatKey.includes(" — ")?flatKey.split(" — ").slice(1).join(" — "):flatKey,
+    }))
+  ).filter(l=>l.flatKey!==line.flatKey);
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal">
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,color:C.ink}}>Avslutt linje</h2>
+          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+        </div>
+
+        <div style={{background:C.cardAlt,borderRadius:9,padding:"12px 14px",marginBottom:20,border:"1px solid "+C.borderSoft}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:4}}>{line.label}</div>
+          <div style={{display:"flex",gap:16,fontFamily:"Roboto,sans-serif",fontSize:13}}>
+            <span>Budsjett: <strong>{fmtNOK(line.budget)}</strong></span>
+            <span>Brukt: <strong>{fmtNOK(line.spent)}</strong></span>
+            <span style={{color:isPositive?C.okFg:C.badFg,fontWeight:600}}>{isPositive?"Rest: +":"Overspend: "}{fmtNOK(Math.abs(diff))}</span>
+          </div>
+        </div>
+
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,marginBottom:12}}>
+          {isPositive?`Hva skal skje med ${fmtNOK(diff)}?`:`${fmtNOK(Math.abs(diff))} trekkes fra bank. Overfør underskudd til linje?`}
+        </div>
+
+        {/* Option 1: Return to bank */}
+        <div onClick={()=>setSelected("bank")}
+          style={{padding:"12px 14px",borderRadius:9,border:"1px solid "+(selected==="bank"?C.sand:C.border),background:selected==="bank"?C.sandBg:C.card,cursor:"pointer",marginBottom:8,transition:"all .15s"}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:selected==="bank"?C.sandDeep:C.ink}}>
+            {isPositive?"Returner til kundebank":"Trekk fra kundebank"}
+          </div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:2}}>
+            {isPositive?`Banken økes med ${fmtNOK(diff)}`:`Banken reduseres med ${fmtNOK(Math.abs(diff))}`}
+          </div>
+        </div>
+
+        {/* Option 2: Transfer to line */}
+        <div onClick={()=>setSelected("transfer")}
+          style={{padding:"12px 14px",borderRadius:9,border:"1px solid "+(selected==="transfer"?C.sand:C.border),background:selected==="transfer"?C.sandBg:C.card,cursor:"pointer",marginBottom:selected==="transfer"?0:16,transition:"all .15s"}}>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:selected==="transfer"?C.sandDeep:C.ink}}>Overfør til kampanjelinje</div>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:2}}>
+            {isPositive?"Resten legges til en annen linje sitt budsjett":"Underskuddet trekkes fra en annen linje sitt budsjett"}
+          </div>
+        </div>
+
+        {selected==="transfer"&&(
+          <div style={{border:"1px solid "+C.border,borderTop:"none",borderRadius:"0 0 9px 9px",padding:"10px 14px",marginBottom:16,background:C.cardAlt,maxHeight:200,overflowY:"auto"}}>
+            {allLines.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen andre aktive linjer tilgjengelig.</div>}
+            {allLines.map(l=>(
+              <div key={l.flatKey} onClick={()=>setSelected(l.flatKey)}
+                style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 10px",borderRadius:7,cursor:"pointer",background:selected===l.flatKey?C.sandBg:"transparent",marginBottom:2}}>
+                <div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>{l.lineName}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3}}>{l.taskTitle}</div>
+                </div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{fmtNOK(l.budget)}</div>
+                {selected===l.flatKey&&<CircleCheck size={16} color={C.sand}/>}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:"flex",gap:8}}>
+          <button className="btn" onClick={()=>{
+            if(!selected) return alert("Velg et alternativ");
+            if(selected==="bank") { onReturnToBank(); onClose(); }
+            else {
+              const targetLine=allLines.find(l=>l.flatKey===selected);
+              if(targetLine) { onTransfer(targetLine); onClose(); }
+            }
+          }} style={{background:C.sand,color:"#fff",padding:"10px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,flex:1}}>
+            Bekreft
+          </button>
+          <button className="btn" onClick={onClose} style={{background:C.borderSoft,color:C.ink,padding:"10px 16px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13}}>Avbryt</button>
+        </div>
+      </div>
+    </div>
+  );
+}
 function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session}) {
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(task.title);
   const [editingMeta,setEditingMeta]=useState(false);
   const [meta,setMeta]=useState({start:task.start,end:task.end,budget:task.budget});
   const [showEndConfirm,setShowEndConfirm]=useState(false);
+  const [transferLine,setTransferLine]=useState(null);
   const isEnded=task.end&&task.end<=today();
 
   const saveName=()=>{
@@ -1194,22 +1284,36 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     setShowEndConfirm(false);
   };
   const handleEndChannel=(line)=>{
-    const lineDiff=line.budget-line.spent;
-    if(confirm(`Avslutt "${line.label}"?\n${lineDiff>=0?`${fmtNOK(lineDiff)} returneres til bank`:`${fmtNOK(Math.abs(lineDiff))} trekkes fra bank`}`)){
-      if(adjustBank) adjustBank(task.customerId, lineDiff);
-      const newBudgets={...task.channelBudgets};
-      const newSpent={...task.spent};
-      delete newBudgets[line.flatKey];
-      delete newSpent[line.flatKey];
-      const archivedLines=[...(task.archivedLines||[]),{
-        flatKey:line.flatKey, label:line.label,
-        budget:line.budget, spent:line.spent,
-        start:line.chStart, end:today(), settledAt:today(),
-      }];
-      const remainingLines=Object.keys(newBudgets).length;
-      const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
-      if(remainingLines===0) updates.archived=true;
-      updateCampaign(task.id,updates);
+    setTransferLine(line);
+  };
+
+  const doEndChannel=(line, transferTarget=null)=>{
+    const diff=line.budget-line.spent;
+    const newBudgets={...task.channelBudgets};
+    const newSpent={...task.spent};
+    delete newBudgets[line.flatKey];
+    delete newSpent[line.flatKey];
+    const archivedLines=[...(task.archivedLines||[]),{
+      flatKey:line.flatKey, label:line.label,
+      budget:line.budget, spent:line.spent,
+      start:line.chStart, end:today(), settledAt:today(),
+    }];
+    const remainingLines=Object.keys(newBudgets).length;
+    const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
+    if(remainingLines===0) updates.archived=true;
+    updateCampaign(task.id,updates);
+
+    if(transferTarget){
+      // Transfer diff to target line's budget
+      const targetTask=custTasks.find(t=>t.id===transferTarget.taskId);
+      if(targetTask){
+        const newTargetBudgets={...targetTask.channelBudgets};
+        newTargetBudgets[transferTarget.flatKey]=(newTargetBudgets[transferTarget.flatKey]||0)+diff;
+        updateCampaign(targetTask.id,{channelBudgets:newTargetBudgets,budget:Object.values(newTargetBudgets).reduce((a,b)=>a+b,0)});
+      }
+    } else {
+      // Return to bank
+      if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
     }
   };
   const handleDeleteLine=(flatKey)=>{
@@ -1339,10 +1443,16 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
         </div>
       </div>
     </div>
+    {transferLine&&<TransferModal
+      line={transferLine}
+      custTasks={custTasks}
+      currentTaskId={task.id}
+      onClose={()=>setTransferLine(null)}
+      onReturnToBank={()=>doEndChannel(transferLine,null)}
+      onTransfer={(target)=>doEndChannel(transferLine,target)}
+    />}
   );
 }
-
-function getChannelLines(task) {
   // Use channelBudgets as source of truth — these have the actual named lines
   const budgets = task.channelBudgets || {};
   if (Object.keys(budgets).length === 0) {
