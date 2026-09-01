@@ -1242,7 +1242,9 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                 <div key={channelName}>
                   <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,marginBottom:6}}>
                     <div style={{display:"flex",alignItems:"center",gap:7}}>
-                      {icon&&<div style={{width:20,height:20,borderRadius:5,overflow:"hidden",flexShrink:0}}><img src={icon} alt="" style={{width:20,height:20,objectFit:"contain"}}/></div>}
+                      {icon&&<div style={{width:20,height:20,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff",padding:2,boxSizing:"border-box"}}>
+                        <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                      </div>}
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{channelName}</span>
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{channelLines.length} linje{channelLines.length!==1?"r":""} · {fmtNOK(channelLines.reduce((a,l)=>a+l.budget,0))}</span>
                     </div>
