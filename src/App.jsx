@@ -2255,42 +2255,88 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
         </div>
       )}
       {tab==="history"&&(
-        <div style={{display:"flex",flexDirection:"column",gap:8}}>
+        <div style={{display:"flex",flexDirection:"column",gap:0}}>
           {archivedBriefs.length===0&&[...activeTasks,...archivedTasks].every(t=>!(t.archivedLines||[]).length)&&
             <div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
-          {archivedBriefs.map(b=>(
-            <div key={b.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
-              <div style={{fontWeight:500,fontSize:14,color:C.ink}}>{b.title}</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Oppgave · Avsluttet</div>
-            </div>
-          ))}
-          {[...activeTasks,...archivedTasks].flatMap(task=>
-            (task.archivedLines||[]).map(line=>{
-              const icon=getChannelIcon((line.label||line.flatKey||"").split(" — ")[0]);
-              const rest=(line.budget||0)-(line.spent||0);
-              const pct=line.budget>0?Math.min(100,Math.round((line.spent||0)/line.budget*100)):0;
-              const lineName=(line.label||line.flatKey||"").includes(" — ")
-                ?(line.label||line.flatKey).split(" — ").slice(1).join(" — ")
-                :(line.label||line.flatKey||"");
-              return (
-                <div key={(line.flatKey||line.label)+task.id} className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
-                  {icon&&<div style={{width:24,height:24,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff"}}>
-                    <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                  </div>}
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lineName}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{line.start||""}{line.end?" → "+line.end:""}{line.settledAt?" · Avsluttet "+line.settledAt:""}</div>
+
+          {archivedBriefs.length>0&&(
+            <div style={{marginBottom:24}}>
+              <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:13,fontWeight:600,color:C.ink3,letterSpacing:".06em",textTransform:"uppercase",padding:"0 0 8px",borderBottom:"2px solid "+C.border,marginBottom:12}}>Oppgaver</div>
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                {archivedBriefs.map(b=>(
+                  <div key={b.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
+                    <div style={{fontWeight:500,fontSize:14,color:C.ink}}>{b.title}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Oppgave · Avsluttet</div>
                   </div>
-                  <div style={{textAlign:"right",flexShrink:0}}>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2}}>{fmtNOK(line.spent||0)} / {fmtNOK(line.budget||0)}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:rest>=0?C.okFg:C.badFg,marginTop:2}}>
-                      {rest>=0?"Rest +":"Overspend "}{fmtNOK(Math.abs(rest))}
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(()=>{
+            // Collect all archived lines with month
+            const allLines=[...activeTasks,...archivedTasks].flatMap(task=>
+              (task.archivedLines||[]).map(line=>({...line,taskId:task.id}))
+            );
+            if(allLines.length===0) return null;
+
+            // Group by month (use settledAt or end date)
+            const byMonth={};
+            allLines.forEach(line=>{
+              const dateStr=line.settledAt||line.end||"";
+              const d=dateStr?new Date(dateStr):null;
+              const key=d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"ukjent";
+              const label=d?d.toLocaleString("nb-NO",{month:"long",year:"numeric"}):"Ukjent periode";
+              if(!byMonth[key]) byMonth[key]={label,lines:[]};
+              byMonth[key].lines.push(line);
+            });
+
+            // Sort newest first
+            return Object.entries(byMonth)
+              .sort(([a],[b])=>b.localeCompare(a))
+              .map(([key,{label,lines}])=>{
+                const monthTotal=lines.reduce((a,l)=>a+(l.spent||0),0);
+                const monthBudget=lines.reduce((a,l)=>a+(l.budget||0),0);
+                const monthRest=monthBudget-monthTotal;
+                return (
+                  <div key={key} style={{marginBottom:28}}>
+                    <div style={{display:"flex",alignItems:"baseline",justifyContent:"space-between",padding:"0 0 8px",borderBottom:"2px solid "+C.border,marginBottom:12}}>
+                      <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:600,color:C.ink,textTransform:"capitalize"}}>{label}</div>
+                      <div style={{display:"flex",gap:16,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                        <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(monthTotal)}</strong></span>
+                        <span style={{color:monthRest>=0?C.okFg:C.badFg}}>Rest: <strong>{fmtNOK(monthRest)}</strong></span>
+                      </div>
+                    </div>
+                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                      {lines.map((line,i)=>{
+                        const icon=getChannelIcon((line.label||line.flatKey||"").split(" — ")[0]);
+                        const rest=(line.budget||0)-(line.spent||0);
+                        const lineName=(line.label||line.flatKey||"").includes(" — ")
+                          ?(line.label||line.flatKey).split(" — ").slice(1).join(" — ")
+                          :(line.label||line.flatKey||"");
+                        return (
+                          <div key={i} className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+                            {icon&&<div style={{width:24,height:24,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                              <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                            </div>}
+                            <div style={{flex:1,minWidth:0}}>
+                              <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lineName}</div>
+                              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{line.start||""}{line.end?" → "+line.end:""}</div>
+                            </div>
+                            <div style={{textAlign:"right",flexShrink:0}}>
+                              <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2}}>{fmtNOK(line.spent||0)} / {fmtNOK(line.budget||0)}</div>
+                              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:rest>=0?C.okFg:C.badFg,marginTop:2}}>
+                                {rest>=0?"Rest +":"Overspend "}{fmtNOK(Math.abs(rest))}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
-                </div>
-              );
-            })
-          )}
+                );
+              });
+          })()}
         </div>
       )}
       {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer} editableDepts={editableDepts}/>}
