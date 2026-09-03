@@ -373,10 +373,8 @@ const slugify = (name) => (name||"").toLowerCase()
       const {data: profileData} = await sb.from("profiles").select("favorite_customers, customer_order").eq("id", userId).single();
       if (profileData?.favorite_customers) setFavoriteCustomers(profileData.favorite_customers);
       if (profileData?.customer_order) setCustomerOrder(profileData.customer_order);
-      if (ADMIN_EMAILS.includes(session.user.email)) {
-        const { data: members } = await sb.from("profiles").select("*");
-        if (members) setTeamMembers(members);
-      }
+      const { data: members } = await sb.from("profiles").select("id,email,display_name,avatar_url,departments");
+      if (members) setTeamMembers(members);
       setLoading(false);
     }
     load();
@@ -541,8 +539,8 @@ const slugify = (name) => (name||"").toLowerCase()
         {(page==="customer-detail"&&activeCustomer)
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
-        {page==="team"&&isAdmin&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
-        {page==="team-member"&&isAdmin&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate}/>}
+        {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
+        {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
       </main>
 
       {addCampaignTarget&&<AddCampaignModal
@@ -694,24 +692,28 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
 function TeamPage({teamMembers, navigate}) {
   return (
     <div>
-      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28,color:C.ink}}>Team</h1>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
+      <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,marginBottom:28,color:C.ink,letterSpacing:"-.02em"}}>Team</h1>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
         {teamMembers.map(member=>{
           const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-          const adminMember=ADMIN_EMAILS.includes(member.email);
+          const isAdmin=ADMIN_EMAILS.includes(member.email);
+          const depts=(member.departments||[]);
           return (
-            <div key={member.id} className="card" style={{padding:"24px",cursor:"pointer"}} onClick={()=>navigate("team-member",{viewingUserId:member.id})}>
-              <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}>
+            <div key={member.id} className="card" style={{padding:"22px",cursor:"pointer"}} onClick={()=>navigate("team-member",{viewingUserId:member.id})}>
+              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
                 {member.avatar_url
-                  ?<img src={member.avatar_url} alt={member.display_name} style={{width:44,height:44,borderRadius:"50%"}}/>
-                  :<div style={{width:44,height:44,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+                  ?<img src={member.avatar_url} alt={member.display_name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                  :<div style={{width:56,height:56,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,flexShrink:0}}>{initials}</div>
                 }
-                <div>
-                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:500}}>{member.display_name||member.email.split("@")[0]}</div>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{member.email}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{member.display_name||member.email.split("@")[0]}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:2}}>{member.email}</div>
                 </div>
               </div>
-              {adminMember&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sand,background:`${C.sand}20`,padding:"2px 8px",borderRadius:8,letterSpacing:".04em"}}>Admin</span>}
+              <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                {isAdmin&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sand,background:C.sandBg,padding:"3px 9px",borderRadius:99,border:"1px solid "+C.sandBd}}>Admin</span>}
+                {depts.map(d=><span key={d} style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink2,background:C.borderSoft,padding:"3px 9px",borderRadius:99}}>{d}</span>)}
+              </div>
             </div>
           );
         })}
@@ -720,17 +722,22 @@ function TeamPage({teamMembers, navigate}) {
   );
 }
 
-// ══ Team Member Detail (admin only) ════════════════════════════════
-function TeamMemberPage({userId, teamMembers, customers, navigate}) {
+// ══ Team Member Detail ═════════════════════════════════════════════
+const DEPT_OPTIONS = ["Rådgiver","SEM","SOME","Programmatisk","Data & Analyse"];
+
+function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUpdateProfile}) {
   const [memberBriefs, setMemberBriefs] = useState([]);
   const [memberTasks, setMemberTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [deptDraft, setDeptDraft] = useState([]);
   const member = teamMembers.find(m=>m.id===userId);
+  const isOwnProfile = session?.user?.id === userId;
 
   useEffect(()=>{
     if(!userId) return;
     async function load() {
-      const [{ data: bData },{ data: tData }] = await Promise.all([
+      const [{data:bData},{data:tData}] = await Promise.all([
         sb.from("briefs").select("*").eq("owner_id",userId),
         sb.from("campaigns").select("*").eq("owner_id",userId),
       ]);
@@ -745,20 +752,56 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
   const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
   const activeBriefs=memberBriefs.filter(b=>!b.archived&&b.status!=="avsluttet");
   const activeTasks=memberTasks.filter(t=>!t.archived);
+  const depts=member.departments||[];
+
+  const saveProfile=async()=>{
+    await sb.from("profiles").update({departments:deptDraft}).eq("id",userId);
+    onUpdateProfile&&onUpdateProfile(userId,{departments:deptDraft});
+    setEditingProfile(false);
+  };
 
   return (
     <div>
-      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("team")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
+      <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:28}}>
+        <button className="btn" onClick={()=>navigate("team")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
         {member.avatar_url
-          ?<img src={member.avatar_url} style={{width:44,height:44,borderRadius:"50%"}}/>
-          :<div style={{width:44,height:44,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:14,fontWeight:500}}>{initials}</div>
+          ?<img src={member.avatar_url} style={{width:64,height:64,borderRadius:"50%",objectFit:"cover"}}/>
+          :<div style={{width:64,height:64,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600}}>{initials}</div>
         }
-        <div>
-          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:30,fontWeight:500,color:C.ink}}>{member.display_name||member.email.split("@")[0]}</h1>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{member.email}</div>
+        <div style={{flex:1}}>
+          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:28,fontWeight:600,color:C.ink}}>{member.display_name||member.email.split("@")[0]}</h1>
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginTop:2}}>{member.email}</div>
+          <div style={{display:"flex",gap:6,marginTop:6,flexWrap:"wrap"}}>
+            {depts.map(d=><span key={d} style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2,background:C.borderSoft,padding:"3px 10px",borderRadius:99}}>{d}</span>)}
+          </div>
         </div>
+        {isOwnProfile&&!editingProfile&&(
+          <button className="action-btn" onClick={()=>{setDeptDraft([...depts]);setEditingProfile(true);}}>Rediger profil</button>
+        )}
       </div>
+
+      {/* Edit profile */}
+      {editingProfile&&(
+        <div className="card" style={{padding:"20px 24px",marginBottom:24}}>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,marginBottom:14}}>Jeg hører til:</div>
+          <div style={{display:"flex",flexWrap:"wrap",gap:8,marginBottom:16}}>
+            {DEPT_OPTIONS.map(d=>{
+              const selected=deptDraft.includes(d);
+              return (
+                <button key={d} onClick={()=>setDeptDraft(prev=>selected?prev.filter(x=>x!==d):[...prev,d])}
+                  style={{padding:"7px 16px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:13,cursor:"pointer",border:"1px solid "+(selected?C.sand:C.border),background:selected?C.sandBg:"transparent",color:selected?C.sandDeep:C.ink2,transition:"all .15s",display:"flex",alignItems:"center",gap:6}}>
+                  {selected&&<CircleCheck size={14} color={C.sand}/>}{d}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{display:"flex",gap:8}}>
+            <button className="action-btn settle" onClick={saveProfile}>Lagre</button>
+            <button className="action-btn" onClick={()=>setEditingProfile(false)}><X size={12}/> Avbryt</button>
+          </div>
+        </div>
+      )}
+
       {loading?<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3}}>Laster…</div>:(
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
           <div>
@@ -768,8 +811,8 @@ function TeamMemberPage({userId, teamMembers, customers, navigate}) {
               {activeBriefs.map(b=>{
                 const cust=customers.find(c=>c.id===b.customerId);
                 return (
-                  <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:`3px solid ${C.sand}`}}>
-                    <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
+                  <div key={b.id} className="card" style={{padding:"12px 16px",borderLeft:"3px solid "+C.sand}}>
+                    <div style={{fontWeight:500,fontSize:14,color:C.ink}}>{b.title}</div>
                     <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{cust?.name} · {b.start} → {b.end}</div>
                   </div>
                 );
