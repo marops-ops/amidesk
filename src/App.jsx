@@ -1253,7 +1253,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
             onDragOver={e=>handleDragOver(e,customer.id)}
             onDrop={e=>handleDrop(e,customer.id)}
             onDragEnd={handleDragEnd}
-            style={{marginBottom:14,background:customer.colorPrimary?customer.colorPrimary+"18":C.card,borderRadius:14,border:"1px solid "+(dragOver===customer.id?C.sand:customer.colorPrimary?customer.colorPrimary+"44":C.border),overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)",transition:"border .15s",cursor:"grab"}}>
+            style={{marginBottom:14,background:customer.colorPrimary?customer.colorPrimary+"33":C.card,borderRadius:14,border:"1px solid "+(dragOver===customer.id?C.sand:customer.colorPrimary?customer.colorPrimary+"55":C.border),overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)",transition:"border .15s",cursor:"grab"}}>
             <div style={{display:"flex",alignItems:"center",gap:16,padding:"16px 18px",borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap",background:customer.colorPrimary||C.cardAlt}}>
               <CustomerAvatar customer={customer} size={68} fontSize={22}/>
               <div style={{flex:1,minWidth:0}}>
