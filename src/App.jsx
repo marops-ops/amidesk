@@ -1227,6 +1227,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
   const toggleCollapse = (id) => setCollapsedCustomers(prev=>({...prev,[id]:!prev[id]}));
+  const handleDragStart=(e,id)=>{dragSrc.current=id;e.dataTransfer.effectAllowed="move";};
   const handleDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
   const handleDrop=(e,targetId)=>{
     e.preventDefault();
