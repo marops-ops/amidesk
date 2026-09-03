@@ -693,26 +693,27 @@ function TeamPage({teamMembers, navigate}) {
   return (
     <div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,marginBottom:28,color:C.ink,letterSpacing:"-.02em"}}>Team</h1>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(340px,1fr))",gap:16}}>
         {teamMembers.map(member=>{
           const initials=(member.display_name||member.email).split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
           const isAdmin=ADMIN_EMAILS.includes(member.email);
           const depts=(member.departments||[]);
           return (
-            <div key={member.id} className="card" style={{padding:"22px",cursor:"pointer"}} onClick={()=>navigate("team-member",{viewingUserId:member.id})}>
-              <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:12}}>
+            <div key={member.id} className="card" style={{padding:"24px 26px",cursor:"pointer"}} onClick={()=>navigate("team-member",{viewingUserId:member.id})}>
+              <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:14}}>
                 {member.avatar_url
-                  ?<img src={member.avatar_url} alt={member.display_name} style={{width:56,height:56,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
-                  :<div style={{width:56,height:56,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,flexShrink:0}}>{initials}</div>
+                  ?<img src={member.avatar_url} alt={member.display_name} style={{width:60,height:60,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                  :<div style={{width:60,height:60,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,flexShrink:0}}>{initials}</div>
                 }
                 <div style={{flex:1,minWidth:0}}>
-                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16,fontWeight:600,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{member.display_name||member.email.split("@")[0]}</div>
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:2}}>{member.email}</div>
+                  <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:17,fontWeight:600,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{member.display_name||member.email.split("@")[0]}</div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginTop:3,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{member.email}</div>
                 </div>
               </div>
               <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-                {isAdmin&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.sand,background:C.sandBg,padding:"3px 9px",borderRadius:99,border:"1px solid "+C.sandBd}}>Admin</span>}
-                {depts.map(d=><span key={d} style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink2,background:C.borderSoft,padding:"3px 9px",borderRadius:99}}>{d}</span>)}
+                {isAdmin&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sand,background:C.sandBg,padding:"3px 10px",borderRadius:99,border:"1px solid "+C.sandBd}}>Admin</span>}
+                {depts.map(d=><span key={d} style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2,background:C.borderSoft,padding:"3px 10px",borderRadius:99}}>{d}</span>)}
+                {depts.length===0&&!isAdmin&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink4}}>Ingen avdeling satt</span>}
               </div>
             </div>
           );
