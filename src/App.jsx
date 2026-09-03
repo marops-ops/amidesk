@@ -1225,7 +1225,8 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 
   const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Object.keys(t.channelBudgets||{}).length,0);
 
-  const handleDragStart=(e,id)=>{dragSrc.current=id;e.dataTransfer.effectAllowed="move";};
+  const [collapsedCustomers, setCollapsedCustomers] = useState({});
+  const toggleCollapse = (id) => setCollapsedCustomers(prev=>({...prev,[id]:!prev[id]}));
   const handleDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
   const handleDrop=(e,targetId)=>{
     e.preventDefault();
@@ -1255,6 +1256,10 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
             onDragEnd={handleDragEnd}
             style={{marginBottom:14,background:customer.colorPrimary?customer.colorPrimary+"33":C.card,borderRadius:14,border:"1px solid "+(dragOver===customer.id?C.sand:customer.colorPrimary?customer.colorPrimary+"55":C.border),overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)",transition:"border .15s",cursor:"grab"}}>
             <div style={{display:"flex",alignItems:"center",gap:16,padding:"16px 18px",borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap",background:customer.colorPrimary||C.cardAlt}}>
+              <button className="btn" onClick={e=>{e.stopPropagation();toggleCollapse(customer.id);}}
+                style={{background:"none",padding:"2px",color:customer.colorPrimary?"rgba(255,255,255,.7)":C.ink3,flexShrink:0}}>
+                <ChevronDown size={18} style={{transform:collapsedCustomers[customer.id]?"rotate(-90deg)":"none",transition:"transform .2s"}}/>
+              </button>
               <CustomerAvatar customer={customer} size={68} fontSize={22}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||(customer.colorPrimary?"#fff":C.ink),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
@@ -1266,7 +1271,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 </button>
               </div>
             </div>
-            {custTasks.map((task,taskIdx)=>(
+            {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
               <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session}/>
             ))}
           </div>
@@ -1444,15 +1449,15 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
 
   const lines=getChannelLines(task);
   const grouped=groupLinesByChannel(lines);
+  const isFromBrief=!!task.fromBriefId;
 
   return (
     <>
     <div style={{borderBottom:"1px solid "+C.borderSoft}}>
-      {/* Campaign header — 2 lines */}
+      {/* Campaign header — only shown if from a brief */}
+      {isFromBrief&&(
       <div style={{background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
-        {/* Line 1: title + actions */}
         <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",flexWrap:"wrap"}}>
-          <ChevronDown size={15} color={C.ink3}/>
           {editingName?(
             <div style={{display:"flex",alignItems:"center",gap:4,flex:1}}>
               <input value={nameVal} onChange={e=>setNameVal(e.target.value)} onKeyDown={e=>e.key==="Enter"&&saveName()}
@@ -1480,8 +1485,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
             </div>
           )}
         </div>
-        {/* Line 2: meta */}
-        <div style={{display:"flex",alignItems:"center",gap:12,padding:"0 16px 10px 39px",flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,padding:"0 16px 10px 16px",flexWrap:"wrap"}}>
           <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.start+" → "+task.end}</span>
           <span style={{color:C.border}}>·</span>
           <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{fmtNOK(task.budget)}</span>
@@ -1499,6 +1503,23 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
           )}
         </div>
       </div>
+      )}
+
+      {/* For non-brief campaigns: show subtle delete/end actions */}
+      {!isFromBrief&&!showEndConfirm&&(isEnded)&&(
+        <div style={{display:"flex",gap:6,padding:"8px 14px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,flex:1}}>{task.title} · {task.start} → {task.end}</span>
+          {isEnded&&<button className="action-btn settle" onClick={()=>setShowEndConfirm(true)}><Wallet size={12}/> Avslutt kampanje</button>}
+          <button className="action-btn danger" onClick={()=>{if(confirm("Slett kampanjen?"))deleteCampaign(task.id);}}><Trash2 size={12}/> Slett</button>
+        </div>
+      )}
+      {!isFromBrief&&showEndConfirm&&(
+        <div style={{display:"flex",alignItems:"center",gap:6,background:C.badBg,padding:"8px 14px",borderBottom:"1px solid "+C.borderSoft}}>
+          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.badFg,flex:1}}>Gjøre opp bank og arkivere?</span>
+          <button className="action-btn settle" onClick={handleEndCampaign}>Ja, avslutt</button>
+          <button className="action-btn" onClick={()=>setShowEndConfirm(false)}><X size={11}/></button>
+        </div>
+      )}
 
       <div style={{overflowX:"auto"}}>
         <div style={{minWidth:860,padding:"0 0 12px"}}>
