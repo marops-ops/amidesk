@@ -1586,6 +1586,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const [budgetVal,setBudgetVal]=useState(line.budget||"");
   const [showActions,setShowActions]=useState(false);
   const [showDateEdit,setShowDateEdit]=useState(false);
+  const [pickMode,setPickMode]=useState(null); // null | "assign" | "share"
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
 
   const total = daysBetween(line.chStart, line.chEnd);
@@ -1718,12 +1719,28 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
       )}
 
       {showActions&&(
-        <div className="action-stripe">
-          <button className="action-btn" onClick={()=>{setShowActions(false);onAssignLine&&onAssignLine();}}><UserPlus size={13} strokeWidth={1.75}/> Tildel ressurs</button>
-          <button className="action-btn" onClick={()=>{setShowActions(false);onShareLine&&onShareLine();}}><Share2 size={13} strokeWidth={1.75}/> Del med kollega</button>
-          <button className="action-btn settle" onClick={()=>{setShowActions(false);onEndChannel&&onEndChannel(line);}}><Wallet size={13} strokeWidth={1.75}/> Avslutt — oppgjør til bank</button>
-          <button className="action-btn danger" onClick={()=>{setShowActions(false);onDeleteLine&&onDeleteLine(line.flatKey);}}><Trash2 size={13} strokeWidth={1.75}/> Slett — rest tilbake</button>
-          <button className="action-btn" onClick={()=>setShowActions(false)} style={{marginLeft:"auto"}}><X size={13}/></button>
+        <div className="action-stripe" style={{flexDirection:"column",alignItems:"stretch",gap:8}}>
+          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+            <button className={`action-btn${pickMode==="assign"?" settle":""}`} onClick={()=>setPickMode(pickMode==="assign"?null:"assign")}><UserPlus size={13} strokeWidth={1.75}/> Tildel ressurs</button>
+            <button className={`action-btn${pickMode==="share"?" settle":""}`} onClick={()=>setPickMode(pickMode==="share"?null:"share")}><Share2 size={13} strokeWidth={1.75}/> Del med kollega</button>
+            <button className="action-btn settle" onClick={()=>{setShowActions(false);setPickMode(null);onEndChannel&&onEndChannel(line);}}><Wallet size={13} strokeWidth={1.75}/> Avslutt — oppgjør til bank</button>
+            <button className="action-btn danger" onClick={()=>{setShowActions(false);setPickMode(null);onDeleteLine&&onDeleteLine(line.flatKey);}}><Trash2 size={13} strokeWidth={1.75}/> Slett — rest tilbake</button>
+            <button className="action-btn" onClick={()=>{setShowActions(false);setPickMode(null);}} style={{marginLeft:"auto"}}><X size={13}/></button>
+          </div>
+          {pickMode&&(
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 0"}}>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>{pickMode==="assign"?"Gi til:":"Del med:"}</span>
+              {AMIDAYS_STAFF.map(s=>(
+                <button key={s.id} className="action-btn" onClick={()=>{
+                  if(pickMode==="assign") onAssignLine&&onAssignLine(s);
+                  else onShareLine&&onShareLine(s);
+                  setShowActions(false);setPickMode(null);
+                }} style={{fontFamily:"Roboto,sans-serif",fontSize:11}}>
+                  {s.name.split(" ")[0]}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
