@@ -537,7 +537,7 @@ const slugify = (name) => (name||"").toLowerCase()
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite}/>}
         {(page==="customer-detail"&&activeCustomer)
-          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:null} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})}/>:null}
+          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
         {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
@@ -1995,7 +1995,7 @@ function DeptCard({dept, budget, spent, allTasks, onSave, canEdit}) {
   );
 }
 
-function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
+function BankTab({customer, activeTasks, archivedTasks, updateCustomer, editableDepts=[]}) {
   const allTasks=[...activeTasks,...archivedTasks];
   const deptBudgets=customer.deptBudgets||{};
   const spentPerDept={};
@@ -2045,17 +2045,29 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer}) {
           spent={spentPerDept[dept.key]||0}
           allTasks={allTasks}
           onSave={val=>saveDept(dept.key,val)}
-          canEdit={!!updateCustomer}/>
+          canEdit={editableDepts.includes(dept.key)}/>
       ))}
     </div>
   );
 }
 
-function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign}) {
+function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign, session, teamMembers=[]}) {
   const [tab,setTab]=useState("active");
-  const [bankMode,setBankMode]=useState(null); // null | "deposit" | "total"
+  const [bankMode,setBankMode]=useState(null); // null | "deposit"
+  const [bankDept,setBankDept]=useState("");
   const [bankInput,setBankInput]=useState("");
   const [showEdit,setShowEdit]=useState(false);
+
+  const userId=session?.user?.id;
+  const userProfile=teamMembers.find(m=>m.id===userId);
+  const isAdmin=ADMIN_EMAILS.includes(session?.user?.email||"");
+  const userDepts=userProfile?.departments||[];
+
+  // Which depts can this user edit
+  const editableDepts=isAdmin
+    ? DEPTS.map(d=>d.key)
+    : DEPTS.filter(d=>userDepts.some(ud=>d.label.toLowerCase()===ud.toLowerCase())).map(d=>d.key);
+
   const activeTasks=tasks.filter(t=>t.customerId===customer.id&&!t.archived);
   const archivedTasks=tasks.filter(t=>t.customerId===customer.id&&t.archived);
   const activeBriefs=briefs.filter(b=>b.customerId===customer.id&&!b.archived);
@@ -2078,15 +2090,12 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
 
   const saveBank=()=>{
     const val=+bankInput;
-    if(isNaN(val)||val<0) return;
-    if(bankMode==="deposit") {
-      updateCustomer(customer.id,{bank:(customer.bank||0)+val});
-    } else if(bankMode==="total") {
-      // New bank = total budget - already spent
-      const newBank=val-totalSpentHistorik;
-      updateCustomer(customer.id,{bank:newBank});
-    }
-    setBankMode(null);setBankInput("");
+    if(isNaN(val)||val<=0||!bankDept) return;
+    const dept=DEPTS.find(d=>d.key===bankDept);
+    if(!dept) return;
+    const newDeptBudgets={...(customer.deptBudgets||{}),[bankDept]:(customer.deptBudgets?.[bankDept]||0)+val};
+    updateCustomer(customer.id,{deptBudgets:newDeptBudgets,bank:(customer.bank||0)+val});
+    setBankMode(null);setBankInput("");setBankDept("");
   };
 
   return (
@@ -2110,28 +2119,28 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
             <div style={{display:"flex",alignItems:"center",gap:8,justifyContent:"flex-end"}}>
               <span style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:600,color:(customer.bank||0)<0?C.badFg:C.okFg}}>{fmtNOK(customer.bank||0)}</span>
-              {updateCustomer&&!bankMode&&(
-                <div style={{display:"flex",gap:4}}>
-                  <button className="action-btn" onClick={()=>{setBankInput("");setBankMode("deposit");}}>Innskudd</button>
-                  <button className="action-btn" onClick={()=>{setBankInput("");setBankMode("total");}}>Sett total</button>
-                </div>
+              {editableDepts.length>0&&!bankMode&&(
+                <button className="action-btn" onClick={()=>{setBankMode("deposit");setBankDept(editableDepts.length===1?editableDepts[0]:"");}}>+ Innskudd</button>
               )}
             </div>
-            {bankMode&&(
-              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:6,justifyContent:"flex-end",flexWrap:"wrap"}}>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,textAlign:"left"}}>
-                  {bankMode==="deposit"?"Legg til beløp:":"Totalbudsjett for perioden:"}
-                </div>
-                <input type="number" value={bankInput} onChange={e=>setBankInput(e.target.value)}
-                  style={{width:130,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="NOK" autoFocus/>
-                {bankMode==="total"&&bankInput&&(
-                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2,width:"100%",textAlign:"right"}}>
-                    Ny bank: <strong style={{color:(+bankInput-totalSpentHistorik)<0?C.badFg:C.okFg}}>{fmtNOK(+bankInput-totalSpentHistorik)}</strong>
-                    <span style={{color:C.ink3}}> (totalbudsjett − {fmtNOK(totalSpentHistorik)} brukt)</span>
-                  </div>
+            {bankMode==="deposit"&&(
+              <div style={{display:"flex",gap:6,alignItems:"center",marginTop:8,justifyContent:"flex-end",flexWrap:"wrap"}}>
+                {editableDepts.length>1&&(
+                  <select value={bankDept} onChange={e=>setBankDept(e.target.value)} style={{padding:"5px 8px",fontSize:12,width:"auto"}}>
+                    <option value="">Velg avdeling...</option>
+                    {DEPTS.filter(d=>editableDepts.includes(d.key)).map(d=><option key={d.key} value={d.key}>{d.label}</option>)}
+                  </select>
                 )}
+                {editableDepts.length===1&&(
+                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.sandDeep,background:C.sandBg,padding:"4px 10px",borderRadius:99}}>
+                    {DEPTS.find(d=>d.key===editableDepts[0])?.label}
+                  </span>
+                )}
+                <input type="number" value={bankInput} onChange={e=>setBankInput(e.target.value)}
+                  style={{width:130,textAlign:"right",padding:"5px 8px",fontSize:12}} placeholder="Beløp NOK" autoFocus
+                  onKeyDown={e=>e.key==="Enter"&&saveBank()}/>
                 <button className="action-btn settle" onClick={saveBank}>Lagre</button>
-                <button className="action-btn" onClick={()=>{setBankMode(null);setBankInput("");}}><X size={12}/></button>
+                <button className="action-btn" onClick={()=>{setBankMode(null);setBankInput("");setBankDept("");}}><X size={12}/></button>
               </div>
             )}
             {/* Tilgode */}
@@ -2284,7 +2293,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           )}
         </div>
       )}
-      {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer}/>}
+      {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer} editableDepts={editableDepts}/>}
       {tab==="hunch"&&(
         <div>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
