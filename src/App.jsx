@@ -540,7 +540,7 @@ const slugify = (name) => (name||"").toLowerCase()
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
-        {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
+        {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} isAdmin={isAdmin} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
       </main>
 
       {addCampaignTarget&&<AddCampaignModal
@@ -726,7 +726,7 @@ function TeamPage({teamMembers, navigate}) {
 // ══ Team Member Detail ═════════════════════════════════════════════
 const DEPT_OPTIONS = ["Rådgiver","SEM","SOME","Programmatisk","Data & Analyse"];
 
-function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUpdateProfile}) {
+function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUpdateProfile, isAdmin=false}) {
   const [memberBriefs, setMemberBriefs] = useState([]);
   const [memberTasks, setMemberTasks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -821,19 +821,65 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
             </div>
           </div>
           <div>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Kampanjelinjer ({activeTasks.length})</div>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen aktive kampanjer.</div>}
-              {activeTasks.map(t=>{
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Kampanjelinjer</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {activeTasks.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen aktive kampanjelinjer.</div>}
+              {activeTasks.flatMap(t=>{
                 const cust=customers.find(c=>c.id===t.customerId);
-                const totalSpent=Object.values(t.spent||{}).reduce((a,b)=>a+b,0);
-                return (
-                  <div key={t.id} className="card" style={{padding:"12px 16px"}}>
-                    <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:4}}>{cust?.name} · {t.start} → {t.end}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2}}>{fmtNOK(totalSpent)} / {fmtNOK(t.budget)}</div>
-                  </div>
-                );
+                return getChannelLines(t).map(line=>{
+                  const icon=getChannelIcon(line.label.split(" — ")[0]);
+                  const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
+                  const pct=line.budget>0?Math.min(100,Math.round(line.spent/line.budget*100)):0;
+                  return (
+                    <div key={line.flatKey} className="card" style={{padding:"10px 14px"}}>
+                      <div style={{display:"flex",alignItems:"center",gap:10}}>
+                        {icon&&<div style={{width:22,height:22,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                          <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                        </div>}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lineName}</div>
+                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3}}>{cust?.name} · {line.chStart} → {line.chEnd}</div>
+                        </div>
+                        <div style={{textAlign:"right",flexShrink:0}}>
+                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink2}}>{fmtNOK(line.spent)} / {fmtNOK(line.budget)}</div>
+                          <div style={{height:3,width:60,background:C.divider,borderRadius:99,marginTop:3,marginLeft:"auto"}}>
+                            <div style={{height:"100%",width:pct+"%",background:C.okBar,borderRadius:99}}/>
+                          </div>
+                        </div>
+                      </div>
+                      {/* Admin actions */}
+                      {isAdmin&&(
+                        <div style={{display:"flex",gap:6,marginTop:8,paddingTop:8,borderTop:"1px solid "+C.borderSoft}}>
+                          <select onChange={async e=>{
+                            const targetEmail=e.target.value;
+                            if(!targetEmail) return;
+                            const {data:profile}=await sb.from("profiles").select("id").eq("email",targetEmail).single();
+                            if(!profile){alert("Brukeren har ikke logget inn ennå.");return;}
+                            await sb.from("campaigns").update({owner_id:profile.id}).eq("id",t.id);
+                            e.target.value="";
+                          }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
+                            <option value="">Tildel til…</option>
+                            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                          </select>
+                          <select onChange={async e=>{
+                            const targetEmail=e.target.value;
+                            if(!targetEmail) return;
+                            const {data:profile}=await sb.from("profiles").select("id").eq("email",targetEmail).single();
+                            if(!profile){alert("Brukeren har ikke logget inn ennå.");return;}
+                            const cur=(await sb.from("campaigns").select("shared_with").eq("id",t.id).single()).data;
+                            const sw=[...((cur?.shared_with)||[])];
+                            if(!sw.includes(profile.id)) sw.push(profile.id);
+                            await sb.from("campaigns").update({shared_with:sw}).eq("id",t.id);
+                            e.target.value="";
+                          }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
+                            <option value="">Del med…</option>
+                            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                          </select>
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
               })}
             </div>
           </div>
