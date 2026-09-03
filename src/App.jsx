@@ -2101,19 +2101,21 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   return (
     <>
       <div>
-      <div style={{display:"flex",alignItems:"center",gap:16,marginBottom:28}}>
-        <button className="btn" onClick={()=>navigate("customers")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:3,fontFamily:"Roboto,sans-serif",fontSize:12}}>← Tilbake</button>
-        <CustomerAvatar customer={customer} size={48} fontSize={15}/>
-        <div style={{flex:1}}>
-          <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:500,color:C.ink}}>{customer.name}</h1>
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>{customer.industry} · {customer.contact}</div>
-        </div>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
-          {updateCustomer&&<div style={{display:"flex",gap:8}}>
-            <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
-              style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
-            <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>
-          </div>}
+      {/* Header */}
+      <div style={{marginBottom:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:6}}>
+          <button className="btn" onClick={()=>navigate("customers")} style={{background:C.borderSoft,color:C.ink,padding:"6px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:12,flexShrink:0}}>← Tilbake</button>
+          <CustomerAvatar customer={customer} size={48} fontSize={15}/>
+          <div style={{flex:1,minWidth:0}}>
+            <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:600,color:C.ink,letterSpacing:"-.02em",lineHeight:1.1}}>{customer.name}</h1>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginTop:3}}>{customer.industry}{customer.contact?" · "+customer.contact:""}</div>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
+            {updateCustomer&&<div style={{display:"flex",gap:8}}>
+              <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
+                style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
+              <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>
+            </div>}
           {/* Bank */}
           <div style={{textAlign:"right"}}>
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:4}}>Kundebank</div>
@@ -2165,6 +2167,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           </div>
         </div>
       </div>
+      <div style={{height:1,background:C.border,margin:"16px 0 0"}}/>
+      </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
         {["active","history","bank",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
@@ -2195,7 +2199,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             )}
             {activeTasks.length>0&&(
               <div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:8}}>Kampanjer</div>
+                <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:600,color:C.ink,marginBottom:10}}>Aktive kampanjelinjer</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
                   {activeTasks.flatMap(task=>{
                     const lines=getChannelLines(task);
