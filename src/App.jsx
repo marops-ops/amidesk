@@ -1481,6 +1481,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                   <div style={{display:"flex",flexDirection:"column"}}>
                     {channelLines.map(line=>(
                       <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
+                        onBudgetAdjust={(diff)=>adjustBank&&adjustBank(task.customerId,diff)}
                         onAssignLine={async(staff)=>{
                           const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
                           if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
@@ -1576,7 +1577,7 @@ function PacingBadge({status}) {
   return <span className="pacing-bad"><TrendingUp size={12} strokeWidth={2}/> Overspend</span>;
 }
 
-function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine}) {
+function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine, onBudgetAdjust}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(
@@ -1620,7 +1621,14 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
     setEditingName(false);
   };
   const saveBudget=()=>{
-    updateCampaign(task.id,{channelBudgets:{...task.channelBudgets,[line.flatKey]:budgetVal===""?0:+budgetVal}});
+    const newBudget=budgetVal===""?0:+budgetVal;
+    const oldBudget=line.budget||0;
+    const diff=newBudget-oldBudget;
+    updateCampaign(task.id,{
+      channelBudgets:{...task.channelBudgets,[line.flatKey]:newBudget},
+      budget:Object.values({...task.channelBudgets,[line.flatKey]:newBudget}).reduce((a,b)=>a+b,0),
+    });
+    if(diff!==0&&onBudgetAdjust) onBudgetAdjust(diff);
     setEditingBudget(false);
   };
   const saveDate=()=>{
