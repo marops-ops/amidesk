@@ -337,7 +337,7 @@ const slugify = (name) => (name||"").toLowerCase()
       email: u.email,
       display_name: u.user_metadata?.full_name || u.email.split("@")[0],
       avatar_url: u.user_metadata?.avatar_url || null,
-    }, { onConflict: "id" });
+    }, { onConflict: "id", ignoreDuplicates: false });
   }, [session]);
 
   // Popstate for URL routing
