@@ -365,13 +365,18 @@ const slugify = (name) => (name||"").toLowerCase()
     if (!session) return;
     const u = session.user;
     const staffEntry = AMIDAYS_STAFF.find(s=>s.email===u.email);
-    sb.from("profiles").upsert({
+    const avatarUrl = u.user_metadata?.avatar_url || u.user_metadata?.picture || null;
+    await sb.from("profiles").upsert({
       id: u.id,
       email: u.email,
       display_name: u.user_metadata?.full_name || u.email.split("@")[0],
-      avatar_url: u.user_metadata?.avatar_url || null,
+      avatar_url: avatarUrl,
       ...(staffEntry ? {departments: staffEntry.depts} : {}),
-    }, { onConflict: "id", ignoreDuplicates: false });
+    }, { onConflict: "id" });
+    // Force update avatar in case upsert didn't overwrite
+    if(avatarUrl) {
+      await sb.from("profiles").update({avatar_url: avatarUrl}).eq("id", u.id);
+    }
   }, [session]);
 
   // Popstate for URL routing
