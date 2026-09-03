@@ -1210,11 +1210,11 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
             onDrop={e=>handleDrop(e,customer.id)}
             onDragEnd={handleDragEnd}
             style={{marginBottom:14,background:C.card,borderRadius:14,border:"1px solid "+(dragOver===customer.id?C.sand:C.border),overflow:"hidden",boxShadow:"0 1px 2px rgba(43,47,54,.04)",transition:"border .15s",cursor:"grab"}}>
-            <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap",background:customer.colorPrimary||C.cardAlt}}>
-              <CustomerAvatar customer={customer} size={34} fontSize={12}/>
+            <div style={{display:"flex",alignItems:"center",gap:16,padding:"16px 18px",borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap",background:customer.colorPrimary||C.cardAlt}}>
+              <CustomerAvatar customer={customer} size={68} fontSize={22}/>
               <div style={{flex:1,minWidth:0}}>
-                <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:16.5,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||(customer.colorPrimary?"#fff":C.ink),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:customer.colorPrimary?"rgba(255,255,255,.7)":C.ink3,marginTop:2}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
+                <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||(customer.colorPrimary?"#fff":C.ink),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorPrimary?"rgba(255,255,255,.7)":C.ink3,marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
               </div>
               <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center"}}>
                 <button className="action-btn" onClick={()=>onAddCampaign(customer,null)} style={{background:customer.colorPrimary?"rgba(255,255,255,.2)":C.sand,color:customer.colorPrimary?customer.colorSecondary||"#fff":"#fff",borderColor:customer.colorPrimary?"rgba(255,255,255,.3)":C.sand}}>
