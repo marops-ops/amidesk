@@ -362,21 +362,23 @@ const slugify = (name) => (name||"").toLowerCase()
 
   // Upsert profile on login
   useEffect(() => {
-    if (!session) return;
-    const u = session.user;
-    const staffEntry = AMIDAYS_STAFF.find(s=>s.email===u.email);
-    const avatarUrl = u.user_metadata?.avatar_url || u.user_metadata?.picture || null;
-    await sb.from("profiles").upsert({
-      id: u.id,
-      email: u.email,
-      display_name: u.user_metadata?.full_name || u.email.split("@")[0],
-      avatar_url: avatarUrl,
-      ...(staffEntry ? {departments: staffEntry.depts} : {}),
-    }, { onConflict: "id" });
-    // Force update avatar in case upsert didn't overwrite
-    if(avatarUrl) {
-      await sb.from("profiles").update({avatar_url: avatarUrl}).eq("id", u.id);
+    async function syncProfile() {
+      if (!session) return;
+      const u = session.user;
+      const staffEntry = AMIDAYS_STAFF.find(s=>s.email===u.email);
+      const avatarUrl = u.user_metadata?.avatar_url || u.user_metadata?.picture || null;
+      await sb.from("profiles").upsert({
+        id: u.id,
+        email: u.email,
+        display_name: u.user_metadata?.full_name || u.email.split("@")[0],
+        avatar_url: avatarUrl,
+        ...(staffEntry ? {departments: staffEntry.depts} : {}),
+      }, { onConflict: "id" });
+      if(avatarUrl) {
+        await sb.from("profiles").update({avatar_url: avatarUrl}).eq("id", u.id);
+      }
     }
+    syncProfile();
   }, [session]);
 
   // Popstate for URL routing
