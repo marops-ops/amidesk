@@ -419,6 +419,20 @@ const slugify = (name) => (name||"").toLowerCase()
       setLoading(false);
     }
     load();
+
+    // Realtime: listen for new notifications
+    const channel = sb.channel("notifications-"+session.user.id)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "notifications",
+        filter: "user_id=eq."+session.user.id,
+      }, payload => {
+        setNotifications(prev=>[payload.new, ...prev]);
+      })
+      .subscribe();
+
+    return () => { sb.removeChannel(channel); };
   }, [session]);
 
   if (session === undefined) return (
