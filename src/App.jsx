@@ -13,31 +13,63 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ALLOWED_DOMAIN = "amidays.com";
-const ADMIN_EMAILS = ["robin@amidays.com","kaja@amidays.com","elisabeth@amidays.com","jorgen@amidays.com","marops@amidays.com"];
+const ADMIN_EMAILS = [
+  // Kanal-heads
+  "kaja@amidays.com",       // SOME head
+  "jorgen@amidays.com",     // SEM head
+  "elisabeth@amidays.com",  // Programmatisk head
+  "rebecca@amidays.com",    // SOME head
+  // Rådgivere og partnere
+  "arvid@amidays.com","jakob@amidays.com","lina@amidays.com",
+  "marianne@amidays.com","ole@amidays.com","simen@amidays.com","trine@amidays.com",
+  // Data & Analyse
+  "robin@amidays.com",
+  // Økonomi
+  "magnus@amidays.com",
+  // System
+  "marops@amidays.com",
+  // NB: Jonas, Markus (SEO), Naritsa, Signe (Design) er IKKE admin
+];
 
 const AMIDAYS_STAFF = [
-  {id:"arvid",    name:"Arvid Cedergren",            email:"arvid@amidays.com"},
-  {id:"christina",name:"Christina Veliz",             email:"christina@amidays.com"},
-  {id:"elisabeth",name:"Elisabeth Gullikstad Albech", email:"elisabeth@amidays.com"},
-  {id:"jakob",    name:"Jakob Skåltveit",             email:"jakob@amidays.com"},
-  {id:"jenny",    name:"Jenny Duers",                 email:"jenny@amidays.com"},
-  {id:"jonas",    name:"Jonas Aam",                   email:"jonas@amidays.com"},
-  {id:"jorgen",   name:"Jørgen Aasbrein Vågen",       email:"jorgen@amidays.com"},
-  {id:"kaja",     name:"Kaja Augestad Sølvesen",      email:"kaja@amidays.com"},
-  {id:"lina",     name:"Lina Agdestein",              email:"lina@amidays.com"},
-  {id:"magnus",   name:"Magnus Leirfall",             email:"magnus@amidays.com"},
-  {id:"marianne", name:"Marianne Eskeland",           email:"marianne@amidays.com"},
-  {id:"markus",   name:"Markus Syljusveen",           email:"markus@amidays.com"},
-  {id:"marte",    name:"Marte Økland",                email:"marte@amidays.com"},
-  {id:"mikael",   name:"Mikael Strand Blomquist",     email:"mikael@amidays.com"},
-  {id:"trine",    name:"Trine Kvam Hviding",          email:"trine@amidays.com"},
-  {id:"naritsa",  name:"Naritsa Larsen Risbø",        email:"naritsa@amidays.com"},
-  {id:"ole",      name:"Ole Kristian Ullereng",       email:"ole@amidays.com"},
-  {id:"rebecca",  name:"Rebecca Økland",              email:"rebecca@amidays.com"},
-  {id:"robin",    name:"Robin Askevold",              email:"robin@amidays.com"},
-  {id:"signe",    name:"Signe Bjerke Thon Brekke",   email:"signe@amidays.com"},
-  {id:"simen",    name:"Simen Kronvall",              email:"simen@amidays.com"},
+  {id:"arvid",    name:"Arvid Cedergren",            email:"arvid@amidays.com",    depts:["Rådgiver","Data & Analyse"]},
+  {id:"christina",name:"Christina Veliz",             email:"christina@amidays.com", depts:["SOME"]},
+  {id:"elisabeth",name:"Elisabeth Gullikstad Albech", email:"elisabeth@amidays.com", depts:["Programmatisk"]},
+  {id:"jakob",    name:"Jakob Skåltveit",             email:"jakob@amidays.com",    depts:["Rådgiver"]},
+  {id:"jenny",    name:"Jenny Duers",                 email:"jenny@amidays.com",    depts:["SEM"]},
+  {id:"jonas",    name:"Jonas Aam",                   email:"jonas@amidays.com",    depts:["SEO"]},
+  {id:"jorgen",   name:"Jørgen Aasbrein Vågen",       email:"jorgen@amidays.com",   depts:["SEM"]},
+  {id:"kaja",     name:"Kaja Augestad Sølvesen",      email:"kaja@amidays.com",     depts:["SOME"]},
+  {id:"lina",     name:"Lina Agdestein",              email:"lina@amidays.com",     depts:["Rådgiver"]},
+  {id:"magnus",   name:"Magnus Leirfall",             email:"magnus@amidays.com",   depts:["Økonomi"]},
+  {id:"marianne", name:"Marianne Eskeland",           email:"marianne@amidays.com", depts:["Rådgiver"]},
+  {id:"markus",   name:"Markus Syljusveen",           email:"markus@amidays.com",   depts:["SEO"]},
+  {id:"marte",    name:"Marte Økland",                email:"marte@amidays.com",    depts:["Programmatisk","SOME"]},
+  {id:"mikael",   name:"Mikael Strand Blomquist",     email:"mikael@amidays.com",   depts:["SEO","SOME"]},
+  {id:"trine",    name:"Trine Kvam Hviding",          email:"trine@amidays.com",    depts:["Rådgiver"]},
+  {id:"naritsa",  name:"Naritsa Larsen Risbø",        email:"naritsa@amidays.com",  depts:["Design"]},
+  {id:"ole",      name:"Ole Kristian Ullereng",       email:"ole@amidays.com",      depts:["Rådgiver"]},
+  {id:"rebecca",  name:"Rebecca Økland",              email:"rebecca@amidays.com",  depts:["SOME"]},
+  {id:"robin",    name:"Robin Askevold",              email:"robin@amidays.com",    depts:["Data & Analyse","SOME","SEM"]},
+  {id:"signe",    name:"Signe Bjerke Thon Brekke",   email:"signe@amidays.com",    depts:["Design"]},
+  {id:"simen",    name:"Simen Kronvall",              email:"simen@amidays.com",    depts:["Rådgiver"]},
 ];
+
+// Channel → dept mapping for filtering assign/share lists
+const CHANNEL_DEPT_MAP = {
+  "SOME":           ["Meta","Hunch - Meta","Snapchat","Hunch - Snapchat","TikTok","LinkedIn","Pinterest","Reddit","Apple Search Ads","TikTok Search Ads"],
+  "SEM":            ["Google Ads","Microsoft Ads"],
+  "Programmatisk":  ["DV360","Kobler","ReadPeak","Adnuntius","Hawk"],
+};
+
+// Get relevant staff for a channel
+function staffForChannel(channelName) {
+  const dept = Object.entries(CHANNEL_DEPT_MAP).find(([,chs])=>
+    chs.some(ch=>channelName.toLowerCase().includes(ch.toLowerCase()))
+  )?.[0];
+  if(!dept) return AMIDAYS_STAFF; // fallback: all
+  return AMIDAYS_STAFF.filter(s=>s.depts.includes(dept));
+}
 
 const C = {
   // flater
@@ -332,11 +364,13 @@ const slugify = (name) => (name||"").toLowerCase()
   useEffect(() => {
     if (!session) return;
     const u = session.user;
+    const staffEntry = AMIDAYS_STAFF.find(s=>s.email===u.email);
     sb.from("profiles").upsert({
       id: u.id,
       email: u.email,
       display_name: u.user_metadata?.full_name || u.email.split("@")[0],
       avatar_url: u.user_metadata?.avatar_url || null,
+      ...(staffEntry ? {departments: staffEntry.depts} : {}),
     }, { onConflict: "id", ignoreDuplicates: false });
   }, [session]);
 
@@ -859,7 +893,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Tildel til…</option>
-                            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                            {staffForChannel(line.flatKey.split(" — ")[0]).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
                           </select>
                           <select onChange={async e=>{
                             const targetEmail=e.target.value;
@@ -873,7 +907,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Del med…</option>
-                            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                            {staffForChannel(line.flatKey.split(" — ")[0]).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
                           </select>
                         </div>
                       )}
@@ -1850,7 +1884,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           {pickMode&&(
             <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 0"}}>
               <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>{pickMode==="assign"?"Gi til:":"Del med:"}</span>
-              {AMIDAYS_STAFF.map(s=>(
+              {staffForChannel(line.flatKey.split(" — ")[0]).map(s=>(
                 <button key={s.id} className="action-btn" onClick={()=>{
                   if(pickMode==="assign") onAssignLine&&onAssignLine(s);
                   else onShareLine&&onShareLine(s);
