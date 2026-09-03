@@ -2188,18 +2188,29 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
               <div>
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,letterSpacing:".07em",textTransform:"uppercase",color:C.ink3,marginBottom:8}}>Kampanjer</div>
                 <div style={{display:"flex",flexDirection:"column",gap:8}}>
-                  {activeTasks.map(task=>{
-                    const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
-                    return (
-                      <div key={task.id} className="card" style={{padding:"12px 16px",display:"flex",alignItems:"center",gap:12,cursor:"pointer"}} onClick={()=>navigate("task-detail",{taskId:task.id})}>
-                        <div style={{flex:1}}>
-                          <div style={{fontWeight:500,fontSize:14}}>{task.title}</div>
-                          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.start} → {task.end}</div>
+                  {activeTasks.flatMap(task=>{
+                    const lines=getChannelLines(task);
+                    return lines.map(line=>{
+                      const icon=getChannelIcon(line.label.split(" — ")[0]);
+                      const pct=line.budget>0?Math.min(100,Math.round(line.spent/line.budget*100)):0;
+                      return (
+                        <div key={line.flatKey} className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+                          {icon&&<div style={{width:24,height:24,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                            <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                          </div>}
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label}</div>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{line.chStart} → {line.chEnd}</div>
+                          </div>
+                          <div style={{textAlign:"right",flexShrink:0}}>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2}}>{fmtNOK(line.spent)} / {fmtNOK(line.budget)}</div>
+                            <div style={{height:4,width:80,background:C.divider,borderRadius:99,marginTop:4}}>
+                              <div style={{height:"100%",width:pct+"%",background:C.okBar,borderRadius:99}}/>
+                            </div>
+                          </div>
                         </div>
-                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,textAlign:"right",color:C.ink2}}>{fmtNOK(totalSpent)} / {fmtNOK(task.budget)}</div>
-                        <StatusDot status={task.status} onChange={s=>updateCampaign(task.id,{status:s})}/>
-                      </div>
-                    );
+                      );
+                    });
                   })}
                 </div>
               </div>
@@ -2236,19 +2247,41 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       )}
       {tab==="history"&&(
         <div style={{display:"flex",flexDirection:"column",gap:8}}>
-          {[...archivedBriefs,...archivedTasks].length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
+          {archivedBriefs.length===0&&[...activeTasks,...archivedTasks].every(t=>!(t.archivedLines||[]).length)&&
+            <div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"40px 0",textAlign:"center"}}>Ingen historikk ennå.</div>}
           {archivedBriefs.map(b=>(
             <div key={b.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
-              <div style={{fontWeight:500,fontSize:14}}>{b.title}</div>
+              <div style={{fontWeight:500,fontSize:14,color:C.ink}}>{b.title}</div>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Oppgave · Avsluttet</div>
             </div>
           ))}
-          {archivedTasks.map(t=>(
-            <div key={t.id} className="card" style={{padding:"12px 16px",opacity:.7}}>
-              <div style={{fontWeight:500,fontSize:14}}>{t.title}</div>
-              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Kampanje · {t.start} → {t.end} · {fmtNOK(t.budget)}</div>
-            </div>
-          ))}
+          {[...activeTasks,...archivedTasks].flatMap(task=>
+            (task.archivedLines||[]).map(line=>{
+              const icon=getChannelIcon((line.label||line.flatKey||"").split(" — ")[0]);
+              const rest=(line.budget||0)-(line.spent||0);
+              const pct=line.budget>0?Math.min(100,Math.round((line.spent||0)/line.budget*100)):0;
+              const lineName=(line.label||line.flatKey||"").includes(" — ")
+                ?(line.label||line.flatKey).split(" — ").slice(1).join(" — ")
+                :(line.label||line.flatKey||"");
+              return (
+                <div key={(line.flatKey||line.label)+task.id} className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
+                  {icon&&<div style={{width:24,height:24,borderRadius:5,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                    <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                  </div>}
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{lineName}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:1}}>{line.start||""}{line.end?" → "+line.end:""}{line.settledAt?" · Avsluttet "+line.settledAt:""}</div>
+                  </div>
+                  <div style={{textAlign:"right",flexShrink:0}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2}}>{fmtNOK(line.spent||0)} / {fmtNOK(line.budget||0)}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:rest>=0?C.okFg:C.badFg,marginTop:2}}>
+                      {rest>=0?"Rest +":"Overspend "}{fmtNOK(Math.abs(rest))}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       )}
       {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer}/>}
