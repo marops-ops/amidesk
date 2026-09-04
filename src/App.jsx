@@ -63,6 +63,15 @@ const CHANNEL_DEPT_MAP = {
   "Programmatisk":  ["DV360","Kobler","ReadPeak","Adnuntius","Hawk"],
 };
 
+
+// Filter staff by dept label
+function staffByDept(dept) {
+  return AMIDAYS_STAFF.filter(s=>s.depts.includes(dept));
+}
+const ADVISORS = AMIDAYS_STAFF.filter(s=>s.depts.includes("Rådgiver"));
+const CHANNEL_STAFF = AMIDAYS_STAFF.filter(s=>
+  s.depts.some(d=>["SOME","SEM","Programmatisk","Data & Analyse","SEO"].includes(d))
+);
 // Get relevant staff for a channel
 function staffForChannel(channelName) {
   const dept = Object.entries(CHANNEL_DEPT_MAP).find(([,chs])=>
@@ -1074,7 +1083,7 @@ function EditCustomerModal({customer, onClose, onSave}) {
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
           <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
             <option value="">Velg rådgiver...</option>
-            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+            {ADVISORS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
           {form.advisorId&&(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===form.advisorId);return s?<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginTop:6}}>{s.email}</div>:null;})()}
         </div>
@@ -1090,9 +1099,12 @@ function EditCustomerModal({customer, onClose, onSave}) {
               <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"center"}}>
                 <select value={r.staffId} onChange={e=>updateResource(i,{staffId:e.target.value})} style={{width:"100%"}}>
                   <option value="">Velg person...</option>
-                  {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  {CHANNEL_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
+                <select value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}}>
+                  <option value="">Velg avdeling...</option>
+                  {["SOME","SEM","Programmatisk","SEO","Data & Analyse","Rådgiver","Design","Økonomi"].map(d=><option key={d} value={d}>{d}</option>)}
+                </select>
                 <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:"1px solid "+C.badFg+"40",padding:"4px 8px",borderRadius:3}}><Trash2 size={14}/></button>
               </div>
             ))}
@@ -2626,7 +2638,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
           <div><label>Ressurs</label>
             <select value={form.assignedTo} onChange={e=>setForm(f=>({...f,assignedTo:e.target.value}))} style={{width:"100%"}}>
               <option value="">Ikke tildelt</option>
-              {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+              {CHANNEL_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
           </div>
         </div>
@@ -3058,7 +3070,7 @@ function CreateCustomerModal({onClose, onSave}) {
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:10,letterSpacing:".05em",textTransform:"uppercase"}}>Rådgiver</div>
           <select value={form.advisorId} onChange={e=>setForm(f=>({...f,advisorId:e.target.value}))} style={{width:"100%"}}>
             <option value="">Velg rådgiver...</option>
-            {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+            {ADVISORS.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
           </select>
         </div>
 
@@ -3073,9 +3085,12 @@ function CreateCustomerModal({onClose, onSave}) {
               <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 1fr auto",gap:8,alignItems:"center"}}>
                 <select value={r.staffId} onChange={e=>updateResource(i,{staffId:e.target.value})} style={{width:"100%"}}>
                   <option value="">Velg person...</option>
-                  {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                  {CHANNEL_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
-                <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
+                <select value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}}>
+                  <option value="">Velg avdeling...</option>
+                  {["SOME","SEM","Programmatisk","SEO","Data & Analyse","Rådgiver","Design","Økonomi"].map(d=><option key={d} value={d}>{d}</option>)}
+                </select>
                 <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:"1px solid "+C.badFg+"40",padding:"4px 8px",borderRadius:3}}><Trash2 size={14}/></button>
               </div>
             ))}
