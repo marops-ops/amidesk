@@ -2362,7 +2362,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             </div>
             <div className="card" style={{padding:"16px 18px"}}>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Rådgiver</div>
-              {customer.advisorId?(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);return s?<div><div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{s.name}</div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>✉️ {s.email}</div></div>:null;})():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen rådgiver tildelt.</div>}
+              {customer.advisorId?(()=>{const s=AMIDAYS_STAFF.find(x=>x.id===customer.advisorId);return s?<div><div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,marginBottom:4}}>{s.name}</div><div style={{display:"flex",alignItems:"center",gap:5,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}><Mail size={12} color={C.ink4}/>{s.email}</div></div>:null;})():<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink4}}>Ingen rådgiver tildelt.</div>}
             </div>
             {(customer.resources||[]).length>0&&(
               <div className="card" style={{padding:"16px 18px"}}>
