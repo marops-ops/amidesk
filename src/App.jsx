@@ -14,6 +14,8 @@ const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZ
 const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const ALLOWED_DOMAIN = "amidays.com";
+const SUPER_ADMIN_EMAILS = ["robin@amidays.com","marops@amidays.com"];
+
 const ADMIN_EMAILS = [
   // Kanal-heads
   "kaja@amidays.com",       // SOME head
@@ -314,7 +316,7 @@ const parseUrl = () => {
   if (path === "/oppgaver") return {page:"briefs", slug:null};
   if (path.startsWith("/kunder/")) return {page:"customer-detail", slug:path.replace("/kunder/","")};
   if (path === "/kunder") return {page:"customers", slug:null};
-  if (path === "/team") return {page:"team", slug:null};
+  if (path === "/andres") return {page:"others", slug:null};
   if (path.startsWith("/team/")) return {page:"team-member", slug:path.replace("/team/","")};
   if (path.startsWith("/oppgave/")) return {page:"brief-detail", slug:path.replace("/oppgave/","")};
   if (path.startsWith("/kampanje/")) return {page:"task-detail", slug:path.replace("/kampanje/","")};
@@ -335,6 +337,7 @@ const slugify = (name) => (name||"").toLowerCase()
   const [notifications, setNotifications] = useState([]);
   const [favoriteCustomers, setFavoriteCustomers] = useState([]);
   const [customerOrder, setCustomerOrder] = useState([]);
+  const [othersTasks, setOthersTasks] = useState([]);
 
   // Auth listener
   useEffect(() => {
@@ -413,25 +416,25 @@ const slugify = (name) => (name||"").toLowerCase()
         sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
 
-      // Admin: load all campaigns. Others: own + shared
-      let allTaskRows = [];
-      if (isAdminUser) {
-        const { data: allC } = await sb.from("campaigns").select("*");
-        allTaskRows = allC || [];
-      } else {
-        const [{ data: tOwned }, { data: tShared }] = await Promise.all([
-          sb.from("campaigns").select("*").eq("owner_id", userId),
-          sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
-        ]);
-        const seen = new Set();
-        allTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; });
-      }
+      // Own campaigns + shared
+      const [{ data: tOwned }, { data: tShared }] = await Promise.all([
+        sb.from("campaigns").select("*").eq("owner_id", userId),
+        sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
+      ]);
+      const seenT = new Set();
+      const ownTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; });
 
       if (cData) setCustomers(cData.map(rowToCustomer));
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
       const seenB = new Set();
       setBriefs(allBriefs.filter(b=>{ if(seenB.has(b.id)) return false; seenB.add(b.id); return true; }).map(rowToBrief));
-      setTasks(allTaskRows.map(rowToCampaign));
+      setTasks(ownTaskRows.map(rowToCampaign));
+
+      // For admins: load others' campaigns
+      if (isAdminUser) {
+        const { data: othersC } = await sb.from("campaigns").select("*").neq("owner_id", userId).eq("archived", false);
+        if(othersC) setOthersTasks(othersC.map(rowToCampaign));
+      }
       if (nData) setNotifications(nData);
       // Load favorites from profile
       const {data: profileData} = await sb.from("profiles").select("favorite_customers, customer_order").eq("id", userId).single();
@@ -473,6 +476,7 @@ const slugify = (name) => (name||"").toLowerCase()
     else if (p==="campaigns") path = "/kampanjelinjer";
     else if (p==="briefs")    path = "/oppgaver";
     else if (p==="team")      path = "/team";
+    else if (p==="others")    path = "/andres";
     else if (p==="customers") path = "/kunder";
     else if (p==="customer-detail" && extra.customerId) {
       const c = customers.find(c=>c.id===extra.customerId);
@@ -618,6 +622,7 @@ const slugify = (name) => (name||"").toLowerCase()
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
+        {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign}/>}
         {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} isAdmin={isAdmin} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
       </main>
 
@@ -691,19 +696,21 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
     {id:"campaigns",   label:"Kampanjelinjer",  Icon:List},
     {id:"briefs",      label:"Oppgaver",        Icon:ClipboardList},
     {id:"customers",   label:"Kunder",          Icon:Building2},
-    ...(isAdmin?[{id:"team",label:"Team",Icon:Users}]:[]),
+    {id:"team",        label:"Team",            Icon:Users},
+    ...(isAdmin?[{id:"others",label:"Andres kampanjer",Icon:Users,adminLabel:true}]:[]),
   ];
 
   return (
     <aside style={{width:232,background:C.sidebar,display:"flex",flexDirection:"column",padding:"24px 14px",borderRight:`1px solid ${C.border}`,gap:2,flexShrink:0,position:"relative"}}>
       <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,color:C.ink,padding:"0 10px 24px",letterSpacing:"-.02em"}}>AmiDesk</div>
 
-      {navItems.map(({id,label,Icon})=>(
+      {navItems.map(({id,label,Icon,adminLabel})=>(
         <div key={id}
           className={`nav-item${page===id||page===id+"-detail"||page==="team-member"&&id==="team"?" active":""}`}
           onClick={()=>navigate(id)}>
           <Icon size={16} strokeWidth={1.75}/>
-          {label}
+          <span style={{flex:1}}>{label}</span>
+          {adminLabel&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.sand,letterSpacing:".06em",textTransform:"uppercase"}}>admin</span>}
         </div>
       ))}
 
@@ -767,6 +774,107 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
 }
 
 // ══ Team Page (admin only) ═════════════════════════════════════════
+function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, updateCampaign}) {
+  const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(session?.user?.email||"");
+  const userEmail = session?.user?.email||"";
+  const userStaff = AMIDAYS_STAFF.find(s=>s.email===userEmail);
+  const userDepts = userStaff?.depts||[];
+
+  // Determine which dept channels this admin manages
+  const managedChannels = isSuperAdmin ? null : // null = all
+    Object.entries(CHANNEL_DEPT_MAP)
+      .filter(([dept])=>userDepts.includes(dept))
+      .flatMap(([,chs])=>chs);
+
+  // Filter tasks by managed channels (if not super-admin)
+  const filtered = tasks.filter(t=>{
+    if(isSuperAdmin) return true;
+    return Object.keys(t.channelBudgets||{}).some(key=>{
+      const ch=key.split(" — ")[0];
+      return managedChannels?.some(mc=>ch.toLowerCase().includes(mc.toLowerCase()));
+    });
+  });
+
+  // Group by owner
+  const byOwner = {};
+  filtered.forEach(t=>{
+    const ownerId=t.ownerId||"unassigned";
+    if(!byOwner[ownerId]) byOwner[ownerId]=[];
+    byOwner[ownerId].push(t);
+  });
+
+  return (
+    <div>
+      <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:28}}>
+        <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:32,fontWeight:600,color:C.ink,letterSpacing:"-.02em"}}>Andres kampanjer</h1>
+        <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sand,letterSpacing:".08em",textTransform:"uppercase"}}>admin</span>
+      </div>
+      {Object.entries(byOwner).map(([ownerId,ownerTasks])=>{
+        const profile=teamMembers.find(m=>m.id===ownerId);
+        const staff=AMIDAYS_STAFF.find(s=>s.email===profile?.email);
+        const name=profile?.display_name||staff?.name||"Ukjent";
+        const initials=name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+        const depts=(profile?.departments||staff?.depts||[]);
+
+        return (
+          <div key={ownerId} style={{marginBottom:24,background:C.card,borderRadius:14,border:"1px solid rgba(43,47,54,.18)",overflow:"hidden",boxShadow:"0 4px 16px rgba(43,47,54,.08)"}}>
+            {/* Owner header */}
+            <div style={{display:"flex",alignItems:"center",gap:12,padding:"14px 18px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+              {profile?.avatar_url
+                ?<img src={profile.avatar_url} alt={name} style={{width:36,height:36,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                :<div style={{width:36,height:36,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:12,fontWeight:600,flexShrink:0}}>{initials}</div>
+              }
+              <div style={{flex:1}}>
+                <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:600,color:C.ink}}>{name}</div>
+                <div style={{display:"flex",gap:5,marginTop:3,flexWrap:"wrap"}}>
+                  {depts.map(d=><span key={d} style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,background:C.borderSoft,padding:"2px 8px",borderRadius:99}}>{d}</span>)}
+                </div>
+              </div>
+              <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{ownerTasks.length} kampanje{ownerTasks.length!==1?"r":""}</div>
+            </div>
+
+            {/* Campaign lines */}
+            <div style={{overflowX:"auto"}}>
+              <div style={{minWidth:860,padding:"0 0 8px"}}>
+                <div style={{display:"grid",gridTemplateColumns:LINE_GRID,gap:12,padding:"7px 12px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+                  {["LINJE","FORBRUK MOT PLAN","BRUKT","BUDSJETT","KR/DAG","PACING",""].map(h=>(
+                    <div key={h} style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,letterSpacing:".1em",textTransform:"uppercase",color:C.ink4}}>{h}</div>
+                  ))}
+                </div>
+                <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:10}}>
+                  {ownerTasks.filter(t=>!t.archived).map(task=>{
+                    const cust=customers.find(c=>c.id===task.customerId);
+                    const lines=getChannelLines(task);
+                    if(!lines.length) return null;
+                    return (
+                      <div key={task.id}>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:4,display:"flex",gap:8}}>
+                          <span style={{fontWeight:500,color:C.ink2}}>{cust?.name}</span>
+                          <span>·</span>
+                          <span>{task.title}</span>
+                        </div>
+                        {lines.map(line=>(
+                          <CampaignLineRow key={line.flatKey} line={line} task={task}
+                            updateCampaign={updateCampaign}
+                            onEndChannel={()=>{}}
+                            onDeleteLine={()=>{}}/>
+                        ))}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {Object.keys(byOwner).length===0&&(
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.ink3,textAlign:"center",padding:"60px 0"}}>Ingen andres kampanjelinjer å vise.</div>
+      )}
+    </div>
+  );
+}
+
 function TeamPage({teamMembers, navigate}) {
   return (
     <div>
