@@ -2367,7 +2367,24 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             {(customer.resources||[]).length>0&&(
               <div className="card" style={{padding:"16px 18px"}}>
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Ressurser</div>
-                {(customer.resources||[]).map((r,i)=>{const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);return s?(<div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:28,height:28,borderRadius:"50%",background:C.borderSoft,color:C.ink,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"Roboto,sans-serif",fontSize:10,fontWeight:500,flexShrink:0}}>{s.name.split(" ").map(w=>w[0]).join("").slice(0,2)}</div><div><div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500}}>{s.name}</div>{r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{r.department}</div>}</div></div>):null;})}
+                {(customer.resources||[]).map((r,i)=>{
+                  const s=AMIDAYS_STAFF.find(x=>x.id===r.staffId);
+                  const profile=teamMembers.find(m=>m.email===s?.email);
+                  if(!s) return null;
+                  const initials=s.name.split(" ").map(w=>w[0]).join("").slice(0,2);
+                  return (
+                    <div key={i} style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}>
+                      {profile?.avatar_url
+                        ?<img src={profile.avatar_url} alt={s.name} style={{width:32,height:32,borderRadius:"50%",objectFit:"cover",flexShrink:0}}/>
+                        :<div style={{width:32,height:32,borderRadius:"50%",background:C.sandBg,color:C.sandDeep,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Montserrat',sans-serif",fontSize:11,fontWeight:600,flexShrink:0}}>{initials}</div>
+                      }
+                      <div>
+                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:500,color:C.ink}}>{s.name}</div>
+                        {r.department&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{r.department}</div>}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
