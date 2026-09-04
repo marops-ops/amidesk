@@ -404,21 +404,34 @@ const slugify = (name) => (name||"").toLowerCase()
     if (!session) return;
     async function load() {
       const userId = session.user.id;
-      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: tOwned }, { data: tShared }, { data: nData }] = await Promise.all([
+      const isAdminUser = ADMIN_EMAILS.includes(session.user.email);
+
+      const [{ data: cData }, { data: bOwned }, { data: bShared }, { data: nData }] = await Promise.all([
         sb.from("customers").select("*"),
         sb.from("briefs").select("*").eq("owner_id", userId),
         sb.from("briefs").select("*").filter("shared_with", "cs", `["${userId}"]`),
-        sb.from("campaigns").select("*").eq("owner_id", userId),
-        sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
         sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
       ]);
+
+      // Admin: load all campaigns. Others: own + shared
+      let allTaskRows = [];
+      if (isAdminUser) {
+        const { data: allC } = await sb.from("campaigns").select("*");
+        allTaskRows = allC || [];
+      } else {
+        const [{ data: tOwned }, { data: tShared }] = await Promise.all([
+          sb.from("campaigns").select("*").eq("owner_id", userId),
+          sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
+        ]);
+        const seen = new Set();
+        allTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ if(seen.has(t.id)) return false; seen.add(t.id); return true; });
+      }
+
       if (cData) setCustomers(cData.map(rowToCustomer));
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
       const seenB = new Set();
       setBriefs(allBriefs.filter(b=>{ if(seenB.has(b.id)) return false; seenB.add(b.id); return true; }).map(rowToBrief));
-      const allTasks = [...(tOwned||[]), ...(tShared||[])];
-      const seenT = new Set();
-      setTasks(allTasks.filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; }).map(rowToCampaign));
+      setTasks(allTaskRows.map(rowToCampaign));
       if (nData) setNotifications(nData);
       // Load favorites from profile
       const {data: profileData} = await sb.from("profiles").select("favorite_customers, customer_order").eq("id", userId).single();
