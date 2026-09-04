@@ -1402,6 +1402,30 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
               <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session}/>
             ))}
+            {!collapsedCustomers[customer.id]&&custTasks.length>0&&(()=>{
+              const allLines=custTasks.flatMap(t=>getChannelLines(t));
+              const totalBudget=allLines.reduce((a,l)=>a+(l.budget||0),0);
+              const totalSpent=allLines.reduce((a,l)=>a+(l.spent||0),0);
+              const totalDayBudget=allLines.reduce((a,l)=>{
+                const total=daysBetween(l.chStart,l.chEnd);
+                const elapsed=Math.min(Math.max(daysBetween(l.chStart,today()),0),total);
+                const left=total-elapsed;
+                return a+(left>0?Math.max(0,(l.budget-l.spent)/left):0);
+              },0);
+              return (
+                <div style={{display:"flex",gap:24,padding:"12px 18px",borderTop:"1px solid "+C.borderSoft,background:C.cardAlt}}>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                    Totalt budsjett: <strong style={{color:C.ink}}>{fmtNOK(totalBudget)}</strong>
+                  </div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                    Totalt brukt: <strong style={{color:C.ink}}>{fmtNOK(totalSpent)}</strong>
+                  </div>
+                  <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                    Dagsbudsjett: <strong style={{color:C.sand}}>{fmtNOK(Math.round(totalDayBudget))}/dag</strong>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         );
       })}
@@ -2760,8 +2784,15 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
   const [form,setForm]=useState({title:"",start:today(),end:""});
   const [openCohort,setOpenCohort]=useState(null);
   const [channelLines,setChannelLines]=useState(
-    presetChannel ? {[presetChannel]:[{id:uid(),name:"",budget:"",restspend:""}]} : {}
+    presetChannel ? {[presetChannel]:[{id:uid(),name:"",budget:"",restspend:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:""}]}]} : {}
   );
+
+  // Ad group nomenclature per channel type
+  const adGroupLabel=(ch)=>{
+    if(CHANNEL_DEPT_MAP["SEM"]?.some(c=>ch.includes(c))) return "Ad sets";
+    if(CHANNEL_DEPT_MAP["Programmatisk"]?.some(c=>ch.includes(c))) return "Line items";
+    return "Ad groups";
+  };
 
   // Tilgode for this customer — include archived tasks' archivedLines
   const allCustomerTasks=tasks.filter(t=>t.customerId===customer?.id);
@@ -2786,12 +2817,12 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
         delete next[ch];
         return next;
       }
-      return {...prev,[ch]:[{id:uid(),name:"",budget:"",restspend:""}]};
+      return {...prev,[ch]:[{id:uid(),name:"",budget:"",restspend:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:""}]}]};
     });
     setOpenCohort(null);
   };
 
-  const addLine=(ch)=>setChannelLines(prev=>({...prev,[ch]:[...prev[ch],{id:uid(),name:"",budget:"",restspend:""}]}));
+  const addLine=(ch)=>setChannelLines(prev=>({...prev,[ch]:[...prev[ch],{id:uid(),name:"",budget:"",restspend:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:""}]}]}));
   const removeLine=(ch,id)=>setChannelLines(prev=>({...prev,[ch]:prev[ch].filter(l=>l.id!==id)}));
   const updateLine=(ch,id,field,val)=>setChannelLines(prev=>({
     ...prev,[ch]:prev[ch].map(l=>l.id===id?{...l,[field]:val}:l)
@@ -2809,7 +2840,16 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       channels[base]=[];
       channelLines[ch].forEach(l=>{
         const lineBudget=(+l.budget||0)+(+l.restspend||0);
-        if(lineBudget>0) channelBudgets[ch+" — "+(l.name||form.title)]=lineBudget;
+        if(lineBudget>0) {
+          const lineKey=ch+" — "+(l.name||form.title);
+          channelBudgets[lineKey]=lineBudget;
+          // Store ad groups as sub-keys
+          if(l.useAdGroups&&l.adGroups?.length>0) {
+            l.adGroups.forEach(g=>{
+              if(+g.budget>0) channelBudgets[lineKey+" / "+(g.name||"Ad group")]=+g.budget;
+            });
+          }
+        }
       });
     });
     onSave({
@@ -2879,20 +2919,65 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
                       <div/>
                     </div>}
                     {channelLines[ch].map((l,idx)=>(
-                      <div key={l.id} style={{display:"grid",gridTemplateColumns:tilgode>0?"1fr 120px 120px auto":"1fr 120px auto",gap:8,alignItems:"center"}}>
-                        <input value={l.name} onChange={e=>updateLine(ch,l.id,"name",e.target.value)}
-                          placeholder={form.title||"Linjenavn"}/>
-                        <input type="number" value={l.budget} onChange={e=>updateLine(ch,l.id,"budget",e.target.value)}
-                          placeholder="0" style={{textAlign:"right"}}/>
-                        {tilgode>0&&<div style={{position:"relative"}}>
-                          <input type="number" value={l.restspend||""} onChange={e=>updateLine(ch,l.id,"restspend",e.target.value)}
-                            placeholder="0" style={{textAlign:"right",background:C.sandBg,borderColor:C.sandBd,paddingRight:8}}/>
-                        </div>}
-                        {channelLines[ch].length>1&&(
-                          <button className="btn" onClick={()=>removeLine(ch,l.id)}
-                            style={{background:"none",color:C.badFg,padding:"4px 8px",border:"1px solid "+C.badBg,borderRadius:8}}>✕</button>
+                      <div key={l.id} style={{background:C.bg,borderRadius:9,padding:"10px 12px",marginBottom:6}}>
+                        {/* Line row */}
+                        <div style={{display:"grid",gridTemplateColumns:tilgode>0?"1fr 120px 120px auto":"1fr 120px auto",gap:8,alignItems:"center",marginBottom:6}}>
+                          <input value={l.name} onChange={e=>updateLine(ch,l.id,"name",e.target.value)}
+                            placeholder={form.title||"Linjenavn"}/>
+                          <input type="number" value={l.useAdGroups?l.adGroups.reduce((a,g)=>a+(+g.budget||0),0)||"":l.budget}
+                            onChange={e=>!l.useAdGroups&&updateLine(ch,l.id,"budget",e.target.value)}
+                            placeholder="0" style={{textAlign:"right",background:l.useAdGroups?C.borderSoft:"",color:l.useAdGroups?C.ink3:C.ink}}
+                            readOnly={l.useAdGroups}/>
+                          {tilgode>0&&<div>
+                            <input type="number" value={l.restspend||""} onChange={e=>updateLine(ch,l.id,"restspend",e.target.value)}
+                              placeholder="0" style={{textAlign:"right",background:C.sandBg,borderColor:C.sandBd}}/>
+                          </div>}
+                          {channelLines[ch].length>1&&(
+                            <button className="btn" onClick={()=>removeLine(ch,l.id)}
+                              style={{background:"none",color:C.badFg,padding:"4px 8px",border:"1px solid "+C.badBg,borderRadius:8}}><X size={12}/></button>
+                          )}
+                        </div>
+                        {/* Ad groups toggle */}
+                        <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",marginBottom:l.useAdGroups?8:0}}>
+                          <input type="checkbox" checked={l.useAdGroups||false}
+                            onChange={e=>updateLine(ch,l.id,"useAdGroups",e.target.checked)}
+                            style={{width:"auto"}}/>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Legg til {adGroupLabel(ch).toLowerCase()}</span>
+                        </label>
+                        {/* Ad groups */}
+                        {l.useAdGroups&&(
+                          <div style={{marginLeft:16,display:"flex",flexDirection:"column",gap:6}}>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink4,letterSpacing:".07em",textTransform:"uppercase",marginBottom:2}}>{adGroupLabel(ch)}</div>
+                            {(l.adGroups||[]).map((g,gi)=>(
+                              <div key={g.id} style={{display:"grid",gridTemplateColumns:"1fr 110px auto",gap:6,alignItems:"center"}}>
+                                <input value={g.name} onChange={e=>{
+                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,name:e.target.value}:ag);
+                                  updateLine(ch,l.id,"adGroups",newGroups);
+                                }} placeholder={adGroupLabel(ch).slice(0,-1)+" "+(gi+1)} style={{fontSize:12}}/>
+                                <input type="number" value={g.budget||""} onChange={e=>{
+                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,budget:e.target.value}:ag);
+                                  updateLine(ch,l.id,"adGroups",newGroups);
+                                  // Sync total budget
+                                  const newTotal=newGroups.reduce((a,ag)=>a+(+ag.budget||0),0);
+                                  updateLine(ch,l.id,"budget",newTotal||"");
+                                }} placeholder="0" style={{textAlign:"right",fontSize:12}}/>
+                                {(l.adGroups||[]).length>1&&<button className="btn" onClick={()=>{
+                                  const newGroups=l.adGroups.filter((_,ai)=>ai!==gi);
+                                  updateLine(ch,l.id,"adGroups",newGroups);
+                                  updateLine(ch,l.id,"budget",newGroups.reduce((a,ag)=>a+(+ag.budget||0),0)||"");
+                                }} style={{background:"none",color:C.badFg,padding:"2px 6px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={10}/></button>}
+                              </div>
+                            ))}
+                            <button className="action-btn" style={{alignSelf:"flex-start"}} onClick={()=>{
+                              updateLine(ch,l.id,"adGroups",[...(l.adGroups||[]),{id:uid(),name:"",budget:""}]);
+                            }}><Plus size={11}/> Legg til</button>
+                            {l.adGroups?.reduce((a,g)=>a+(+g.budget||0),0)>0&&(
+                              <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3}}>
+                                Total: <strong style={{color:C.ink}}>{fmtNOK(l.adGroups.reduce((a,g)=>a+(+g.budget||0),0))}</strong>
+                              </div>
+                            )}
+                          </div>
                         )}
-                        {channelLines[ch].length===1&&tilgode>0&&<div/>}
                       </div>
                     ))}
                     {tilgode>0&&(+channelLines[ch].reduce((a,l)=>a+(+l.restspend||0),0)>0)&&(
