@@ -2722,6 +2722,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           })()}
         </div>
       )}
+      {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer} editableDepts={editableDepts}/>}
       {tab==="log"&&<ActivityLogTab customerId={customer.id}/>}
       {tab==="hunch"&&(
         <div>
