@@ -228,6 +228,7 @@ const rowToCampaign = r => ({
   lineAssignments:r.line_assignments||{},
   sharedWith:r.shared_with||[],
   lastSpendUpdate:r.last_spend_update||null,
+  lastSpendUpdateBy:r.last_spend_update_by||null,
   archivedLines:r.archived_lines||[],
   restspendUsed:r.restspend_used||0,
 });
@@ -241,6 +242,7 @@ const campaignToRow = t => ({
   line_assignments:t.lineAssignments||{},
   shared_with:t.sharedWith||[],
   last_spend_update:t.lastSpendUpdate||null,
+  last_spend_update_by:t.lastSpendUpdateBy||null,
   archived_lines:t.archivedLines||[],
   restspend_used:t.restspendUsed||0,
 });
@@ -499,7 +501,17 @@ const slugify = (name) => (name||"").toLowerCase()
     if (updated) await sb.from("customers").update({bank: updated.bank}).eq("id", customerId);
   };
 
-  const toggleFavorite = async (customerId) => {
+  const logActivity = async (customerId, campaignId, type, description) => {
+    const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Ukjent";
+    await sb.from("activity_log").insert({
+      customer_id: customerId,
+      campaign_id: campaignId,
+      user_id: session?.user?.id || null,
+      user_name: userName,
+      type,
+      description,
+    });
+  };
     const next = favoriteCustomers.includes(customerId)
       ? favoriteCustomers.filter(id=>id!==customerId)
       : [...favoriteCustomers, customerId];
@@ -614,7 +626,7 @@ const slugify = (name) => (name||"").toLowerCase()
 
       <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px",background:C.bg,color:C.ink}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert} session={session}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder} logActivity={logActivity}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={isAdmin?()=>setShowCreateCustomer(true):null} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite}/>}
@@ -1458,7 +1470,7 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity}) {
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
 
@@ -1524,7 +1536,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               </div>
             </div>
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
-              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session}/>
+              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session} logActivity={logActivity}/>
             ))}
             {!collapsedCustomers[customer.id]&&custTasks.length>0&&(()=>{
               const allLines=custTasks.flatMap(t=>getChannelLines(t));
@@ -1646,7 +1658,7 @@ function TransferModal({line, custTasks, currentTaskId, onClose, onTransfer, onR
     </div>
   );
 }
-function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session}) {
+function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session, logActivity}) {
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(task.title);
   const [editingMeta,setEditingMeta]=useState(false);
@@ -1823,6 +1835,8 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                     {channelLines.map(line=>(
                       <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
                         onBudgetAdjust={(diff)=>adjustBank&&adjustBank(task.customerId,diff)}
+                        logActivity={logActivity}
+                        session={session}
                         onAssignLine={async(staff)=>{
                           const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
                           if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
@@ -1918,7 +1932,7 @@ function PacingBadge({status}) {
   return <span className="pacing-bad"><TrendingUp size={12} strokeWidth={2}/> Overspend</span>;
 }
 
-function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine, onBudgetAdjust}) {
+function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine, onBudgetAdjust, logActivity, session}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(
@@ -1948,7 +1962,9 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
 
   const saveSpent=()=>{
     const v=spentVal===""?0:+spentVal;
-    updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:v},lastSpendUpdate:new Date().toISOString()});
+    const userName=session?.user?.user_metadata?.full_name||session?.user?.email?.split("@")[0]||"";
+    updateCampaign(task.id,{spent:{...task.spent,[line.flatKey]:v},lastSpendUpdate:new Date().toISOString(),lastSpendUpdateBy:userName});
+    logActivity&&logActivity(task.customerId,task.id,"spend_updated",`Spend oppdatert på "${lineName}": ${fmtNOK(v)}`);
   };
   const saveName=()=>{
     if(!nameVal.trim()){setEditingName(false);return;}
@@ -1970,11 +1986,14 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
       budget:Object.values({...task.channelBudgets,[line.flatKey]:newBudget}).reduce((a,b)=>a+b,0),
     });
     if(diff!==0&&onBudgetAdjust) onBudgetAdjust(diff);
+    if(diff!==0) logActivity&&logActivity(task.customerId,task.id,"budget_changed",`Budsjett endret på "${lineName}": ${fmtNOK(oldBudget)} → ${fmtNOK(newBudget)}`);
     setEditingBudget(false);
   };
   const saveDate=()=>{
     const nd={...(task.channelDates||{}),[line.flatKey]:{start:dateVal.start,end:dateVal.end}};
-    updateCampaign(task.id,{channelDates:nd});setShowDateEdit(false);
+    updateCampaign(task.id,{channelDates:nd});
+    logActivity&&logActivity(task.customerId,task.id,"date_changed",`Dato endret på "${lineName}": ${dateVal.start} → ${dateVal.end}`);
+    setShowDateEdit(false);
   };
 
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
@@ -2026,6 +2045,9 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           <input type="number" value={spentVal} onChange={e=>setSpentVal(e.target.value)}
             onBlur={saveSpent} onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
             placeholder="0" style={{width:"100%",padding:"5px 8px",fontSize:12,textAlign:"right",fontWeight:500,borderRadius:8}}/>
+          {task.lastSpendUpdate&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.ink4,marginTop:2,textAlign:"right",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+            {task.lastSpendUpdateBy&&task.lastSpendUpdateBy.split(" ")[0]+" · "}{new Date(task.lastSpendUpdate).toLocaleDateString("nb-NO")}
+          </div>}
         </div>
 
         <div>
@@ -2271,6 +2293,68 @@ function DeptCard({dept, budget, spent, allTasks, onSave, canEdit}) {
   );
 }
 
+function ActivityLogTab({customerId}) {
+  const [logs, setLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(()=>{
+    async function load() {
+      const {data} = await sb.from("activity_log")
+        .select("*")
+        .eq("customer_id", customerId)
+        .order("created_at", {ascending:false})
+        .limit(100);
+      if(data) setLogs(data);
+      setLoading(false);
+    }
+    load();
+  },[customerId]);
+
+  const typeLabel=(type)=>{
+    if(type==="spend_updated") return {label:"Spend oppdatert", color:C.okFg, bg:C.okBg};
+    if(type==="budget_changed") return {label:"Budsjett endret", color:C.warnFg, bg:C.warnBg};
+    if(type==="date_changed") return {label:"Dato endret", color:C.infoFg||C.sand, bg:C.sandBg};
+    if(type==="line_settled") return {label:"Linje avsluttet", color:C.badFg, bg:C.badBg};
+    return {label:type, color:C.ink3, bg:C.borderSoft};
+  };
+
+  if(loading) return <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,padding:"20px 0"}}>Laster logg…</div>;
+  if(!logs.length) return <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,textAlign:"center",padding:"40px 0"}}>Ingen aktivitet logget ennå.</div>;
+
+  // Group by date
+  const byDate={};
+  logs.forEach(l=>{
+    const d=new Date(l.created_at).toLocaleDateString("nb-NO",{day:"numeric",month:"long",year:"numeric"});
+    if(!byDate[d]) byDate[d]=[];
+    byDate[d].push(l);
+  });
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:20}}>
+      {Object.entries(byDate).map(([date,entries])=>(
+        <div key={date}>
+          <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:13,fontWeight:600,color:C.ink,marginBottom:8,paddingBottom:6,borderBottom:"1px solid "+C.border}}>{date}</div>
+          <div style={{display:"flex",flexDirection:"column",gap:6}}>
+            {entries.map(log=>{
+              const {label,color,bg}=typeLabel(log.type);
+              const time=new Date(log.created_at).toLocaleTimeString("nb-NO",{hour:"2-digit",minute:"2-digit"});
+              return (
+                <div key={log.id} style={{display:"flex",alignItems:"flex-start",gap:10,padding:"10px 14px",background:C.card,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+                  <span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color,background:bg,padding:"2px 8px",borderRadius:99,whiteSpace:"nowrap",flexShrink:0,marginTop:1}}>{label}</span>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink}}>{log.description}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>{log.user_name} · {time}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function BankTab({customer, activeTasks, archivedTasks, updateCustomer, editableDepts=[]}) {
   const allTasks=[...activeTasks,...archivedTasks];
   const deptBudgets=customer.deptBudgets||{};
@@ -2447,9 +2531,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
       </div>
 
       <div style={{display:"flex",borderBottom:`1px solid ${C.border}`,marginBottom:20}}>
-        {["active","history","bank",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
+        {["active","history","bank","log",...(hunchEntries.length>0?["hunch"]:[])].map(t=>(
           <div key={t} className={`tab${tab===t?" active":""}`} onClick={()=>setTab(t)}>
-            {t==="active"?"Aktive":t==="history"?"Historikk":t==="bank"?"Bank":"Hunch fees"}
+            {t==="active"?"Aktive":t==="history"?"Historikk":t==="bank"?"Bank":t==="log"?"Aktivitetslogg":"Hunch fees"}
           </div>
         ))}
       </div>
@@ -2636,7 +2720,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           })()}
         </div>
       )}
-      {tab==="bank"&&<BankTab customer={customer} activeTasks={activeTasks} archivedTasks={archivedTasks} updateCustomer={updateCustomer} editableDepts={editableDepts}/>}
+      {tab==="log"&&<ActivityLogTab customerId={customer.id}/>}
       {tab==="hunch"&&(
         <div>
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:16}}>5% tech fee trekkes automatisk fra budsjett på Hunch-kanaler.</div>
