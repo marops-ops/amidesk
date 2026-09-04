@@ -6,6 +6,7 @@ import {
   ChevronDown, ChevronRight, ArrowRight,
   UserPlus, Share2, Wallet, Trash2, Upload, Calendar,
   CircleCheck, TrendingDown, TrendingUp, Clock, Pencil,
+  Phone, Mail, Star, Globe,
 } from "lucide-react";
 
 const SUPABASE_URL = "https://qrmbtlkjfvokkxdwoxrg.supabase.co";
@@ -1025,7 +1026,7 @@ function EditCustomerModal({customer, onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Rediger kunde</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
         {/* Logo + farger */}
@@ -1092,7 +1093,7 @@ function EditCustomerModal({customer, onClose, onSave}) {
                   {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
                 <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
-                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:`1px solid ${C.badFg}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:"1px solid "+C.badFg+"40",padding:"4px 8px",borderRadius:3}}><Trash2 size={14}/></button>
               </div>
             ))}
             {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen ressurser lagt til.</div>}
@@ -1169,7 +1170,7 @@ function Dashboard({tasks, customers, briefs, updateBrief, deleteBrief, navigate
                     )}
                     {hasCampaign&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep,padding:"5px 10px",background:`${C.sandDeep}18`,borderRadius:3}}>✓ Kampanje opprettet</span>}
                     <button className="btn" onClick={e=>{e.stopPropagation();if(confirm("Slett oppgaven permanent?\nTilknyttede kampanjelinjer slettes også."))deleteBrief(brief.id);}}
-                      style={{background:"none",color:C.ink3,fontSize:14,padding:"4px 6px"}}>🗑</button>
+                      style={{background:"none",color:C.ink3,fontSize:14,padding:"4px 6px"}}><Trash2 size={14}/></button>
                   </div>
                 </div>
               );
@@ -1402,7 +1403,7 @@ function TransferModal({line, custTasks, currentTaskId, onClose, onTransfer, onR
       <div className="modal">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:20,fontWeight:600,color:C.ink}}>Avslutt linje</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
         <div style={{background:C.cardAlt,borderRadius:9,padding:"12px 14px",marginBottom:20,border:"1px solid "+C.borderSoft}}>
@@ -2006,7 +2007,7 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
               {/* Favorite star */}
               <button className="btn" onClick={e=>{e.stopPropagation();toggleFavorite&&toggleFavorite(c.id);}}
                 style={{position:"absolute",top:14,right:14,background:"none",color:isFav?"#E8B84B":C.ink4,fontSize:18,padding:"2px 4px",lineHeight:1,border:"none"}}>
-                {isFav?"★":"☆"}
+                {isFav?<Star size={16} fill={C.sand} color={C.sand}/>:<Star size={16} color={C.ink4}/>}
               </button>
               <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:14,paddingRight:28}}>
                 <CustomerAvatar customer={c} size={44} fontSize={14}/>
@@ -2342,9 +2343,9 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
             </div>
             <div className="card" style={{padding:"16px 18px"}}>
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,letterSpacing:".08em",textTransform:"uppercase",color:C.ink3,marginBottom:10}}>Kundekontakt</div>
-              {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,marginBottom:4}}>{customer.contactName}</div>}
-              {customer.contactPhone&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:2}}>📞 {customer.contactPhone}</div>}
-              {customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>✉️ {customer.contactEmail}</div>}
+              {customer.contactName&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:500,color:C.ink,marginBottom:6}}>{customer.contactName}</div>}
+              {customer.contactPhone&&<div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:4}}><Phone size={12} color={C.ink4}/>{customer.contactPhone}</div>}
+              {customer.contactEmail&&<div style={{display:"flex",alignItems:"center",gap:6,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}><Mail size={12} color={C.ink4}/>{customer.contactEmail}</div>}
               {!customer.contactName&&!customer.contactEmail&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen kontakt registrert.</div>}
             </div>
             <div className="card" style={{padding:"16px 18px"}}>
@@ -2496,7 +2497,7 @@ function ChannelDropdown({channels, onChange}) {
             return items.map(sub=>{
               const key=sub?`${ch} · ${sub}`:ch;
               return <span key={key} style={{fontFamily:"Roboto,sans-serif",fontSize:11,background:`${C.sand}30`,color:C.sand,padding:"2px 8px",borderRadius:8,display:"flex",alignItems:"center",gap:4}}>
-                {key}<span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}>✕</span>
+                {key}<span style={{cursor:"pointer",opacity:.7}} onClick={()=>sub?toggleSub(ch,sub):toggleChannel(ch)}><X size={11}/></span>
               </span>;
             });
           })}
@@ -2612,7 +2613,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny oppgave</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
@@ -2670,7 +2671,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
                         <div key={cl.id} style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center"}}>
                           <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} placeholder="Linjenavn"/>
                           <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{textAlign:"right"}} placeholder="0"/>
-                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.badFg,fontSize:13,padding:"2px 4px",border:"1px solid "+C.badBg,borderRadius:6}}>✕</button>}
+                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.badFg,padding:"2px 4px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={13}/></button>}
                         </div>
                       ))}
                     </div>
@@ -2783,7 +2784,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny kampanje — {customer.name}</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
         {/* Bank */}
@@ -2946,7 +2947,7 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
       <div className="modal modal-lg">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Lag kampanje fra oppgave</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
         {cust&&(
           <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
@@ -3020,7 +3021,7 @@ function CreateCustomerModal({onClose, onSave}) {
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kunde</h2>
-          <button className="btn" onClick={onClose} style={{background:"none",fontSize:20,color:C.ink3}}>✕</button>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
         {/* Farger */}
@@ -3075,7 +3076,7 @@ function CreateCustomerModal({onClose, onSave}) {
                   {AMIDAYS_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
                 </select>
                 <input value={r.department} onChange={e=>updateResource(i,{department:e.target.value})} style={{width:"100%"}} placeholder="Avdeling / rolle"/>
-                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:`1px solid ${C.badFg}40`,padding:"4px 8px",borderRadius:3,fontSize:13}}>🗑</button>
+                <button className="btn" onClick={()=>removeResource(i)} style={{background:"none",color:C.badFg,border:"1px solid "+C.badFg+"40",padding:"4px 8px",borderRadius:3}}><Trash2 size={14}/></button>
               </div>
             ))}
             {form.resources.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3}}>Ingen ressurser lagt til.</div>}
