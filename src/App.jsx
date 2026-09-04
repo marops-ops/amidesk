@@ -846,19 +846,35 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                     const cust=customers.find(c=>c.id===task.customerId);
                     const lines=getChannelLines(task);
                     if(!lines.length) return null;
+                    const grouped=groupLinesByChannel(lines);
                     return (
-                      <div key={task.id}>
-                        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:4,display:"flex",gap:8}}>
-                          <span style={{fontWeight:500,color:C.ink2}}>{cust?.name}</span>
-                          <span>·</span>
-                          <span>{task.title}</span>
+                      <div key={task.id} style={{marginBottom:12}}>
+                        <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0 8px",borderBottom:"1px solid "+C.borderSoft,marginBottom:8}}>
+                          <CustomerAvatar customer={cust||{}} size={30} fontSize={11}/>
+                          <div>
+                            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:600,color:C.ink}}>{cust?.name||"Ukjent kunde"}</div>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.title}</div>
+                          </div>
                         </div>
-                        {lines.map(line=>(
-                          <CampaignLineRow key={line.flatKey} line={line} task={task}
-                            updateCampaign={updateCampaign}
-                            onEndChannel={()=>{}}
-                            onDeleteLine={()=>{}}/>
-                        ))}
+                        {Object.entries(grouped).map(([channelName,channelLines])=>{
+                          const icon=getChannelIcon(channelName);
+                          return (
+                            <div key={channelName} style={{marginBottom:6}}>
+                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"0 0 4px",borderBottom:"1px solid "+C.borderSoft}}>
+                                {icon&&<div style={{width:18,height:18,borderRadius:4,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                                  <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                                </div>}
+                                <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink2}}>{channelName}</span>
+                              </div>
+                              {channelLines.map(line=>(
+                                <CampaignLineRow key={line.flatKey} line={line} task={task}
+                                  updateCampaign={updateCampaign}
+                                  onEndChannel={()=>{}}
+                                  onDeleteLine={()=>{}}/>
+                              ))}
+                            </div>
+                          );
+                        })}
                       </div>
                     );
                   })}
@@ -1499,7 +1515,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               <CustomerAvatar customer={customer} size={68} fontSize={22}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,cursor:"pointer",color:customer.colorSecondary||(customer.colorPrimary?"#fff":C.ink),overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}} onClick={()=>navigate("customer-detail",{customerId:customer.id})}>{customer.name}</div>
-                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorPrimary?"rgba(255,255,255,.7)":C.ink3,marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
+                <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorSecondary||(customer.colorPrimary?"rgba(255,255,255,.85)":C.ink3),marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
               </div>
               <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center"}}>
                 <button className="action-btn" onClick={()=>onAddCampaign(customer,null)} style={{background:customer.colorPrimary?"rgba(255,255,255,.2)":C.sand,color:customer.colorPrimary?customer.colorSecondary||"#fff":"#fff",borderColor:customer.colorPrimary?"rgba(255,255,255,.3)":C.sand}}>
