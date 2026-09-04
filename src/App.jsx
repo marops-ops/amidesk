@@ -2046,7 +2046,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
             onBlur={saveSpent} onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
             placeholder="0" style={{width:"100%",padding:"5px 8px",fontSize:12,textAlign:"right",fontWeight:500,borderRadius:8}}/>
           {task.lastSpendUpdate&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.ink4,marginTop:2,textAlign:"right",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-            {task.lastSpendUpdateBy&&task.lastSpendUpdateBy.split(" ")[0]+" · "}{new Date(task.lastSpendUpdate).toLocaleDateString("nb-NO")}
+            {task.lastSpendUpdateBy?task.lastSpendUpdateBy.split(" ")[0]+" · ":""}{new Date(task.lastSpendUpdate).toLocaleDateString("nb-NO")}
           </div>}
         </div>
 
