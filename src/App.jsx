@@ -512,6 +512,8 @@ const slugify = (name) => (name||"").toLowerCase()
       description,
     });
   };
+
+  const toggleFavorite = async (customerId) => {
     const next = favoriteCustomers.includes(customerId)
       ? favoriteCustomers.filter(id=>id!==customerId)
       : [...favoriteCustomers, customerId];
