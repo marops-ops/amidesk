@@ -1926,7 +1926,7 @@ function groupLinesByChannel(lines) {
 }
 
 
-const LINE_GRID = "minmax(186px,1.5fr) minmax(146px,1.2fr) 90px 92px 118px 104px 30px";
+const LINE_GRID = "minmax(160px,1fr) minmax(180px,1.8fr) 100px 110px 130px 115px 30px";
 
 function PacingBadge({status}) {
   if(status==="ok")    return <span className="pacing-ok"><CircleCheck size={12} strokeWidth={2}/> Pacing OK</span>;
@@ -2043,11 +2043,11 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           </div>
         </div>
 
-        <div>
+        <div style={{position:"relative"}}>
           <input type="number" value={spentVal} onChange={e=>setSpentVal(e.target.value)}
             onBlur={saveSpent} onKeyDown={e=>e.key==="Enter"&&(saveSpent(),e.target.blur())}
             placeholder="0" style={{width:"100%",padding:"5px 8px",fontSize:12,textAlign:"right",fontWeight:500,borderRadius:8}}/>
-          {task.lastSpendUpdate&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:9,color:C.ink4,marginTop:2,textAlign:"right",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+          {task.lastSpendUpdate&&<div style={{position:"absolute",right:0,top:"100%",fontFamily:"Roboto,sans-serif",fontSize:9,color:C.ink4,whiteSpace:"nowrap",marginTop:1}}>
             {task.lastSpendUpdateBy?task.lastSpendUpdateBy.split(" ")[0]+" · ":""}{new Date(task.lastSpendUpdate).toLocaleDateString("nb-NO")}
           </div>}
         </div>
