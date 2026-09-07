@@ -679,7 +679,7 @@ const slugify = (name) => (name||"").toLowerCase()
           await sb.from("briefs").upsert(briefToRow(withOwner));
           setShowCreateBrief(false);
         }}/>}
-      {showCreateCustomer&&isAdmin&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
+      {showCreateCustomer&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
         onSave={async c=>{setCustomers(p=>[...p,c]);await sb.from("customers").upsert(customerToRow(c));setShowCreateCustomer(false);}}/>}
       {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers}
         onClose={()=>setBriefToConvert(null)}
@@ -1185,7 +1185,7 @@ function EditCustomerModal({customer, onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Rediger kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600,color:C.ink}}>Rediger kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
@@ -3284,7 +3284,7 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg">
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500}}>Lag kampanje fra oppgave</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:C.ink}}>Lag kampanje fra oppgave</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
         {cust&&(
@@ -3358,7 +3358,7 @@ function CreateCustomerModal({onClose, onSave}) {
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600}}>Ny kunde</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:24,fontWeight:600,color:C.ink}}>Ny kunde</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
