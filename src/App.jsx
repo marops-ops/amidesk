@@ -1857,6 +1857,23 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                         }}
                       />
                     ))}
+                    {channelLines.length>1&&(()=>{
+                      const chBudget=channelLines.reduce((a,l)=>a+(l.budget||0),0);
+                      const chSpent=channelLines.reduce((a,l)=>a+(l.spent||0),0);
+                      const chDayBudget=channelLines.reduce((a,l)=>{
+                        const total=daysBetween(l.chStart,l.chEnd);
+                        const elapsed=Math.min(Math.max(daysBetween(l.chStart,today()),0),total);
+                        const left=total-elapsed;
+                        return a+(left>0?Math.max(0,(l.budget-l.spent)/left):0);
+                      },0);
+                      return (
+                        <div style={{display:"flex",gap:20,padding:"6px 10px",background:C.bg,borderRadius:8,margin:"4px 0 8px",border:"1px solid "+C.borderSoft}}>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Totalt: <strong style={{color:C.ink}}>{fmtNOK(chBudget)}</strong></span>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Brukt: <strong style={{color:C.ink}}>{fmtNOK(chSpent)}</strong></span>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Kr/dag: <strong style={{color:C.sand}}>{fmtNOK(Math.round(chDayBudget))}</strong></span>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               );
