@@ -220,7 +220,8 @@ const rowToBrief = r => ({
 });
 const rowToCampaign = r => ({
   id:r.id, customerId:r.customer_id, title:r.title,
-  start:r.start_date, end:r.end_date, budget:r.budget||0,
+  start:r.start_date, end:r.end_date,
+  budget:r.budget || Object.entries(r.channel_budgets||{}).filter(([k])=>!k.endsWith("__parent__")).reduce((a,[,b])=>a+b,0),
   status:r.status, archived:r.archived,
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   spent:r.spent||{}, channelDates:r.channel_dates||{},
@@ -578,12 +579,10 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   const deleteCampaign = async (id) => {
-    const task = tasks.find(t=>t.id===id) || othersTasks.find(t=>t.id===id);
+    const task = [...tasks, ...othersTasks].find(t=>t.id===id);
     if(task) {
-      const budgetFromLines = Object.entries(task.channelBudgets||{})
-        .filter(([k])=>!k.endsWith("__parent__"))
-        .reduce((a,[,b])=>a+b,0);
-      const refund = budgetFromLines || task.budget || 0;
+      // Use task.budget — this is what was originally deducted from bank at creation
+      const refund = task.budget || 0;
       if(refund>0) await adjustBank(task.customerId, refund);
       // Log deletion
       const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Ukjent";
