@@ -572,6 +572,9 @@ const slugify = (name) => (name||"").toLowerCase()
 
   const deleteBrief = async (id) => {
     const linked = tasks.filter(t=>t.fromBriefId===id);
+    for(const t of linked) {
+      if(t.budget>0) await adjustBank(t.customerId, t.budget);
+    }
     setBriefs(prev=>prev.filter(b=>b.id!==id));
     setTasks(prev=>prev.filter(t=>t.fromBriefId!==id));
     await sb.from("briefs").delete().eq("id",id);
@@ -581,21 +584,18 @@ const slugify = (name) => (name||"").toLowerCase()
   const deleteCampaign = async (id) => {
     const task = [...tasks, ...othersTasks].find(t=>t.id===id);
     if(task) {
-      // Use task.budget — this is what was originally deducted from bank at creation
       const refund = task.budget || 0;
       if(refund>0) await adjustBank(task.customerId, refund);
-      // Log deletion
       const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Ukjent";
       await sb.from("activity_log").insert({
-        customer_id: task.customerId,
-        campaign_id: task.id,
-        user_id: session?.user?.id||null,
-        user_name: userName,
+        customer_id: task.customerId, campaign_id: task.id,
+        user_id: session?.user?.id||null, user_name: userName,
         type: "campaign_deleted",
         description: `Kampanje slettet: "${task.title}" — ${fmtNOK(refund)} returnert til bank`,
       });
     }
     setTasks(prev=>prev.filter(t=>t.id!==id));
+    setOthersTasks(prev=>prev.filter(t=>t.id!==id));
     await sb.from("campaigns").delete().eq("id",id);
   };
 
@@ -1871,11 +1871,9 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     }
   };
   const handleDeleteLine=(flatKey)=>{
-    if(!confirm(`Slett linjen "${flatKey}" permanent?`)) return;
+    if(!confirm(`Slett linjen permanent?`)) return;
     const lineBudget=task.channelBudgets?.[flatKey]||0;
-    const lineSpent=task.spent?.[flatKey]||0;
-    const diff=lineBudget-lineSpent;
-    if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
+    if(adjustBank&&lineBudget>0) adjustBank(task.customerId, lineBudget);
     const newBudgets={...task.channelBudgets};
     const newSpent={...task.spent};
     const newDates={...task.channelDates};
@@ -2208,7 +2206,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
       channelBudgets:{...task.channelBudgets,[line.flatKey]:newBudget},
       budget:Object.values({...task.channelBudgets,[line.flatKey]:newBudget}).reduce((a,b)=>a+b,0),
     });
-    if(diff!==0&&onBudgetAdjust) onBudgetAdjust(diff);
+    if(diff!==0&&onBudgetAdjust) onBudgetAdjust(-diff);
     if(diff!==0) logActivity&&logActivity(task.customerId,task.id,"budget_changed",`Budsjett endret på "${lineName}": ${fmtNOK(oldBudget)} → ${fmtNOK(newBudget)}`);
     setEditingBudget(false);
   };
