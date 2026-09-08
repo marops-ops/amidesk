@@ -1472,6 +1472,38 @@ function BriefDetail({brief, updateBrief, deleteBrief, customers, navigate, setB
 }
 
 // ══ Campaign Page ══════════════════════════════════════════════════
+function AddLineModal({task, channel, onClose, onSave}) {
+  const [name,setName]=useState("");
+  const [budget,setBudget]=useState("");
+  const icon=getChannelIcon(channel);
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:420}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:10}}>
+            {icon&&<div style={{width:24,height:24,borderRadius:5,overflow:"hidden",background:"#fff"}}><img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/></div>}
+            <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:C.ink}}>Ny linje — {channel}</h2>
+          </div>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={18}/></button>
+        </div>
+        <div style={{marginBottom:12}}>
+          <label>Linjenavn</label>
+          <input value={name} onChange={e=>setName(e.target.value)} placeholder="f.eks. Trafikk — Adset 1" autoFocus/>
+        </div>
+        <div style={{marginBottom:20}}>
+          <label>Budsjett (NOK)</label>
+          <input type="number" value={budget} onChange={e=>setBudget(e.target.value)} placeholder="0" style={{textAlign:"right"}}
+            onKeyDown={e=>e.key==="Enter"&&name&&+budget>0&&onSave(name,+budget)}/>
+        </div>
+        <button className="btn" onClick={()=>{if(!name||!+budget)return alert("Fyll inn navn og budsjett");onSave(name,+budget);}}
+          style={{background:C.sand,color:"#fff",padding:"11px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>
+          Legg til linje
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity}) {
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
@@ -1491,6 +1523,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   const countLines=(custTasks)=>custTasks.reduce((sum,t)=>sum+Object.keys(t.channelBudgets||{}).length,0);
 
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
+  const [addLineTarget, setAddLineTarget] = useState(null);
   const toggleCollapse = (id) => setCollapsedCustomers(prev=>({...prev,[id]:!prev[id]}));
   const handleDragStart=(e,id)=>{dragSrc.current=id;e.dataTransfer.effectAllowed="move";};
   const handleDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
@@ -1510,6 +1543,18 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
     <div>
       <h1 style={{fontFamily:"'Montserrat',sans-serif",fontSize:36,fontWeight:500,marginBottom:28,color:C.ink}}>Kampanjelinjer</h1>
       {grouped.length===0&&<div style={{fontFamily:"Roboto,sans-serif",color:C.ink3,padding:"60px 0",textAlign:"center"}}>Ingen aktive kampanjelinjer.</div>}
+      {addLineTarget&&<AddLineModal
+        task={addLineTarget.task}
+        channel={addLineTarget.channel}
+        onClose={()=>setAddLineTarget(null)}
+        onSave={(name,budget)=>{
+          const key=addLineTarget.channel+" — "+name;
+          const newBudgets={...addLineTarget.task.channelBudgets,[key]:budget};
+          updateCampaign(addLineTarget.task.id,{channelBudgets:newBudgets,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)});
+          adjustBank&&adjustBank(addLineTarget.task.customerId,-budget);
+          setAddLineTarget(null);
+        }}
+      />}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
@@ -1538,7 +1583,13 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               </div>
             </div>
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
-              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch)=>onAddCampaign(customer,{task,channel:ch})} session={session} logActivity={logActivity}/>
+              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch,existingTask)=>{
+                if(existingTask) {
+                  setAddLineTarget({task:existingTask,channel:ch});
+                } else {
+                  onAddCampaign(customer,{task,channel:ch});
+                }
+              }} session={session} logActivity={logActivity}/>
             ))}
             {!collapsedCustomers[customer.id]&&custTasks.length>0&&(()=>{
               const allLines=custTasks.flatMap(t=>getChannelLines(t));
@@ -1831,7 +1882,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{channelName}</span>
                       <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{channelLines.length} linje{channelLines.length!==1?"r":""} · {fmtNOK(channelLines.reduce((a,l)=>a+l.budget,0))}</span>
                     </div>
-                    <button className="action-btn" onClick={()=>onAddCampaign&&onAddCampaign(channelName)}><Plus size={12}/> Linje</button>
+                    <button className="action-btn" onClick={()=>onAddCampaign&&onAddCampaign(channelName,task)}><Plus size={12}/> Linje</button>
                   </div>
                   <div style={{display:"flex",flexDirection:"column"}}>
                     {channelLines.map(line=>(
