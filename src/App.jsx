@@ -1893,19 +1893,18 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                   <div style={{display:"flex",flexDirection:"column"}}>
                     {channelLines.map(line=>{
                       if(line.isParent){
-                        // Render as a group header
-                        const adSetBudget=channelLines.filter(l=>!l.isParent&&l.label.includes(line.label.split(" — ")[1]||"")).reduce((a,l)=>a+l.budget,0);
                         return (
-                          <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 4px 4px",borderBottom:"1px solid "+C.borderSoft,marginBottom:4,marginTop:8}}>
-                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink2}}>{line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label}</span>
-                            {adSetBudget>0&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>— {fmtNOK(adSetBudget)} totalt</span>}
+                          <div key={line.flatKey} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px 4px",borderBottom:"1px dashed "+C.borderDash,marginBottom:4,marginTop:6}}>
+                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{line.label}</span>
+                            <div style={{display:"flex",gap:16,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                              <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(line.spent)}</strong></span>
+                              <span>Totalt: <strong style={{color:C.ink}}>{fmtNOK(line.budget)}</strong></span>
+                            </div>
                           </div>
                         );
                       }
-                      // Check if this is an ad set (contains " / ")
-                      const isAdSet=line.label.includes(" / ");
                       return (
-                        <div key={line.flatKey} style={{marginLeft:isAdSet?12:0}}>
+                        <div key={line.flatKey} style={{marginLeft:line.isAdSet?16:0}}>
                           <CampaignLineRow line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
                             onBudgetAdjust={(diff)=>adjustBank&&adjustBank(task.customerId,diff)}
                             logActivity={logActivity}
@@ -1978,21 +1977,68 @@ function getChannelLines(task) {
         const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
         const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
         const hunch=isHunch(flatKey);
-        return{flatKey,label:flatKey,budget:0,netBudget:0,spent,hunch,chStart,chEnd,baseChannel:ch,isParent:false};
+        return{flatKey,label:flatKey,budget:0,netBudget:0,spent,hunch,chStart,chEnd,baseChannel:ch,isParent:false,isAdSet:false};
       });
     });
   }
-  return Object.entries(budgets).map(([flatKey, budget])=>{
-    const isParent=flatKey.endsWith("__parent__");
-    const displayKey=isParent?flatKey.replace("__parent__",""):flatKey;
-    const baseChannel=displayKey.split(" — ")[0].split(" · ")[0];
-    const spent=task.spent?.[flatKey]??0;
-    const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
-    const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
-    const hunch=isHunch(displayKey);
-    const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-    return{flatKey,label:displayKey,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent};
+  // Detect ad sets: flatKey contains " — ParentName / AdSetName"
+  const allEntries = Object.entries(budgets).filter(([k])=>!k.endsWith("__parent__"));
+  const lines = [];
+  const seenParents = new Set();
+  
+  allEntries.forEach(([flatKey, budget])=>{
+    const baseChannel=flatKey.split(" — ")[0].split(" · ")[0];
+    const afterChannel=flatKey.includes(" — ")?flatKey.split(" — ").slice(1).join(" — "):"";
+    const isAdSet=afterChannel.includes(" / ");
+    
+    if(isAdSet) {
+      const parentName=afterChannel.split(" / ")[0];
+      const parentKey=baseChannel+" — "+parentName;
+      
+      // Add parent row once
+      if(!seenParents.has(parentKey)) {
+        seenParents.add(parentKey);
+        // Calculate total budget for this parent from all its ad sets
+        const parentBudget=allEntries
+          .filter(([k])=>k.startsWith(parentKey+" / "))
+          .reduce((a,[,b])=>a+b,0);
+        const parentSpent=allEntries
+          .filter(([k])=>k.startsWith(parentKey+" / "))
+          .reduce((a,[k])=>a+(task.spent?.[k]||0),0);
+        const chEnd=(task.channelDates?.[parentKey]?.end)||task.end;
+        const chStart=(task.channelDates?.[parentKey]?.start)||task.start;
+        lines.push({
+          flatKey:parentKey+"__parent__",
+          label:parentName,
+          budget:parentBudget,
+          netBudget:parentBudget,
+          spent:parentSpent,
+          hunch:false,
+          chStart,chEnd,
+          baseChannel,
+          isParent:true,
+          isAdSet:false,
+        });
+      }
+      
+      // Add ad set row
+      const adSetName=afterChannel.split(" / ").slice(1).join(" / ");
+      const spent=task.spent?.[flatKey]??0;
+      const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
+      const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
+      const hunch=isHunch(flatKey);
+      const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
+      lines.push({flatKey,label:adSetName,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:true});
+    } else {
+      const spent=task.spent?.[flatKey]??0;
+      const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
+      const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
+      const hunch=isHunch(flatKey);
+      const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
+      lines.push({flatKey,label:afterChannel||flatKey,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:false});
+    }
   });
+  return lines;
 }
 
 function groupLinesByChannel(lines) {
@@ -2001,14 +2047,6 @@ function groupLinesByChannel(lines) {
     const ch = line.baseChannel || line.flatKey;
     if (!groups[ch]) groups[ch] = [];
     groups[ch].push(line);
-  });
-  // Sort: parents first, then their children
-  Object.keys(groups).forEach(ch=>{
-    groups[ch].sort((a,b)=>{
-      if(a.isParent) return -1;
-      if(b.isParent) return 1;
-      return 0;
-    });
   });
   return groups;
 }
@@ -3138,19 +3176,22 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       const base=ch.split(" · ")[0];
       channels[base]=[];
       channelLines[ch].forEach(l=>{
-        if(l.useAdGroups&&l.adGroups?.length>0) {
-          const parentKey=ch+" — "+( l.name||form.title)+"__parent__";
-          channelBudgets[parentKey]=0; // parent = 0 budget, just a label
-          const restPerAdGroup=(+l.restspend||0)/Math.max(1,l.adGroups.filter(g=>+g.budget>0).length);
+        const lineName=l.name||form.title;
+        if(l.useAdGroups&&l.adGroups?.filter(g=>+g.budget>0).length>0) {
+          // Store ad sets under parent key format: "Channel — ParentName / AdSetName"
           l.adGroups.forEach(g=>{
             if(+g.budget>0) {
-              const key=ch+" — "+(l.name||form.title)+" / "+(g.name||"Ad group");
-              channelBudgets[key]=+g.budget+Math.round(restPerAdGroup);
+              channelBudgets[ch+" — "+lineName+" / "+(g.name||"Ad set")]=+g.budget;
             }
           });
+          // Restspend goes on first ad set
+          if(+l.restspend>0) {
+            const firstKey=Object.keys(channelBudgets).find(k=>k.startsWith(ch+" — "+lineName+" / "));
+            if(firstKey) channelBudgets[firstKey]+=(+l.restspend);
+          }
         } else {
           const lineBudget=(+l.budget||0)+(+l.restspend||0);
-          if(lineBudget>0) channelBudgets[ch+" — "+(l.name||form.title)]=lineBudget;
+          if(lineBudget>0) channelBudgets[ch+" — "+lineName]=lineBudget;
         }
       });
     });
