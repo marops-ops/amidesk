@@ -94,6 +94,13 @@ function canCreateCampaigns(email) {
   return true;
 }
 
+// Ad group nomenclature per channel type — delt mellom AddCampaignModal og AddLineModal
+function adGroupLabel(ch) {
+  if(CHANNEL_DEPT_MAP["SEM"]?.some(c=>ch.includes(c))) return "Ad sets";
+  if(CHANNEL_DEPT_MAP["Programmatisk"]?.some(c=>ch.includes(c))) return "Line items";
+  return "Ad groups";
+}
+
 const C = {
   // flater
   bg:         "#F4F1EB",
@@ -3318,13 +3325,6 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
   const [channelLines,setChannelLines]=useState(
     presetChannel ? {[presetChannel]:[{id:uid(),name:"",budget:"",restspend:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:"",start:"",end:""}]}]} : {}
   );
-
-  // Ad group nomenclature per channel type
-  const adGroupLabel=(ch)=>{
-    if(CHANNEL_DEPT_MAP["SEM"]?.some(c=>ch.includes(c))) return "Ad sets";
-    if(CHANNEL_DEPT_MAP["Programmatisk"]?.some(c=>ch.includes(c))) return "Line items";
-    return "Ad groups";
-  };
 
   // Tilgode for this customer — include archived tasks' archivedLines
   const allCustomerTasks=tasks.filter(t=>t.customerId===cust?.id);
