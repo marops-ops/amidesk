@@ -1895,7 +1895,10 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const remaining=Object.keys(newBudgets).filter(k=>k.split(" — ")[0].split(" · ")[0]===base);
     const newChannels={...task.channels};
     if(remaining.length===0) delete newChannels[base];
-    updateCampaign(task.id,{channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)});
+    const totalRemaining=Object.keys(newBudgets).length;
+    const updates={channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
+    if(totalRemaining===0) updates.archived=true;
+    updateCampaign(task.id,updates);
     logActivity&&logActivity(task.customerId,task.id,"line_deleted",`Linje slettet: "${lineLabel}" — ${fmtNOK(lineBudget)} returnert til bank`);
   };
 
