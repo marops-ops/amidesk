@@ -3373,33 +3373,34 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
                           <div style={{marginLeft:16,display:"flex",flexDirection:"column",gap:6}}>
                             <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink4,letterSpacing:".07em",textTransform:"uppercase",marginBottom:2}}>{adGroupLabel(ch)}</div>
                             {(l.adGroups||[]).map((g,gi)=>(
-                              <div key={g.id} style={{display:"grid",gridTemplateColumns:"1fr 110px auto",gap:6,alignItems:"center"}}>
-                                <input value={g.name} onChange={e=>{
-                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,name:e.target.value}:ag);
-                                  updateLine(ch,l.id,"adGroups",newGroups);
-                                }} placeholder={adGroupLabel(ch).slice(0,-1)+" "+(gi+1)} style={{fontSize:12}}/>
-                                <input type="number" value={g.budget||""} onChange={e=>{
-                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,budget:e.target.value}:ag);
-                                  updateLine(ch,l.id,"adGroups",newGroups);
-                                  const newTotal=newGroups.reduce((a,ag)=>a+(+ag.budget||0),0);
-                                  updateLine(ch,l.id,"budget",newTotal||"");
-                                }} placeholder="0" style={{textAlign:"right",fontSize:12}}/>
-                              </div>
-                              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6,marginTop:4}}>
-                                <input type="date" value={g.start||""} onChange={e=>{
-                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,start:e.target.value}:ag);
-                                  updateLine(ch,l.id,"adGroups",newGroups);
-                                }} style={{fontSize:11,padding:"4px 7px"}}/>
-                                <input type="date" value={g.end||""} onChange={e=>{
-                                  const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,end:e.target.value}:ag);
-                                  updateLine(ch,l.id,"adGroups",newGroups);
-                                }} style={{fontSize:11,padding:"4px 7px"}}/>
-
-                                {(l.adGroups||[]).length>1&&<button className="btn" onClick={()=>{
-                                  const newGroups=l.adGroups.filter((_,ai)=>ai!==gi);
-                                  updateLine(ch,l.id,"adGroups",newGroups);
-                                  updateLine(ch,l.id,"budget",newGroups.reduce((a,ag)=>a+(+ag.budget||0),0)||"");
-                                }} style={{background:"none",color:C.badFg,padding:"2px 6px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={10}/></button>}
+                              <div key={g.id} style={{background:C.cardAlt,borderRadius:8,padding:"8px 10px",marginBottom:6,border:"1px solid "+C.borderSoft}}>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 110px auto",gap:6,alignItems:"center",marginBottom:6}}>
+                                  <input value={g.name} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,name:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} placeholder={adGroupLabel(ch).slice(0,-1)+" "+(gi+1)} style={{fontSize:12}}/>
+                                  <input type="number" value={g.budget||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,budget:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                    const newTotal=newGroups.reduce((a,ag)=>a+(+ag.budget||0),0);
+                                    updateLine(ch,l.id,"budget",newTotal||"");
+                                  }} placeholder="0" style={{textAlign:"right",fontSize:12}}/>
+                                  {(l.adGroups||[]).length>1&&<button className="btn" onClick={()=>{
+                                    const newGroups=l.adGroups.filter((_,ai)=>ai!==gi);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                    updateLine(ch,l.id,"budget",newGroups.reduce((a,ag)=>a+(+ag.budget||0),0)||"");
+                                  }} style={{background:"none",color:C.badFg,padding:"2px 6px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={10}/></button>}
+                                </div>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                                  <input type="date" value={g.start||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,start:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} style={{fontSize:11,padding:"4px 7px"}}/>
+                                  <input type="date" value={g.end||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,end:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} style={{fontSize:11,padding:"4px 7px"}}/>
+                                </div>
                               </div>
                             ))}
                             <button className="action-btn" style={{alignSelf:"flex-start"}} onClick={()=>{
