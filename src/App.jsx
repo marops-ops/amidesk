@@ -575,7 +575,10 @@ const slugify = (name) => (name||"").toLowerCase()
 
   const deleteCampaign = async (id) => {
     const task = tasks.find(t=>t.id===id);
-    if(task?.budget) await adjustBank(task.customerId, task.budget);
+    if(task) {
+      const totalBudget = Object.values(task.channelBudgets||{}).reduce((a,b)=>a+b,0)||task.budget||0;
+      if(totalBudget>0) await adjustBank(task.customerId, totalBudget);
+    }
     setTasks(prev=>prev.filter(t=>t.id!==id));
     await sb.from("campaigns").delete().eq("id",id);
   };
