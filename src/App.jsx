@@ -3067,16 +3067,18 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       const base=ch.split(" · ")[0];
       channels[base]=[];
       channelLines[ch].forEach(l=>{
-        const lineBudget=(+l.budget||0)+(+l.restspend||0);
-        if(lineBudget>0) {
-          const lineKey=ch+" — "+(l.name||form.title);
-          channelBudgets[lineKey]=lineBudget;
-          // Store ad groups as sub-keys
-          if(l.useAdGroups&&l.adGroups?.length>0) {
-            l.adGroups.forEach(g=>{
-              if(+g.budget>0) channelBudgets[lineKey+" / "+(g.name||"Ad group")]=+g.budget;
-            });
-          }
+        if(l.useAdGroups&&l.adGroups?.length>0) {
+          // Only store ad group lines — NOT the parent line (avoids double counting)
+          const restPerAdGroup=(+l.restspend||0)/Math.max(1,l.adGroups.filter(g=>+g.budget>0).length);
+          l.adGroups.forEach(g=>{
+            if(+g.budget>0) {
+              const key=ch+" — "+(g.name||"Ad group");
+              channelBudgets[key]=+g.budget+Math.round(restPerAdGroup);
+            }
+          });
+        } else {
+          const lineBudget=(+l.budget||0)+(+l.restspend||0);
+          if(lineBudget>0) channelBudgets[ch+" — "+(l.name||form.title)]=lineBudget;
         }
       });
     });
