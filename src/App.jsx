@@ -6,7 +6,7 @@ import {
   ChevronDown, ChevronRight, ArrowRight,
   UserPlus, Share2, Wallet, Trash2, Upload, Calendar,
   CircleCheck, TrendingDown, TrendingUp, Clock, Pencil,
-  Phone, Mail, Star, Globe,
+  Phone, Mail, Star, Globe, Pause, Play,
 } from "lucide-react";
 
 const SUPABASE_URL = "https://qrmbtlkjfvokkxdwoxrg.supabase.co";
@@ -236,6 +236,7 @@ const rowToCampaign = r => ({
   status:r.status, archived:r.archived,
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
   spent:r.spent||{}, channelDates:r.channel_dates||{},
+  pausedLines:r.paused_lines||{},
   fromBriefId:r.from_brief_id, ownerId:r.owner_id,
   lineAssignments:r.line_assignments||{},
   sharedWith:r.shared_with||[],
@@ -250,6 +251,7 @@ const campaignToRow = t => ({
   status:t.status, archived:t.archived,
   channels:t.channels, channel_budgets:t.channelBudgets,
   spent:t.spent, channel_dates:t.channelDates||{},
+  paused_lines:t.pausedLines||{},
   from_brief_id:t.fromBriefId||null, owner_id:t.ownerId||null,
   line_assignments:t.lineAssignments||{},
   shared_with:t.sharedWith||[],
@@ -641,6 +643,7 @@ const slugify = (name) => (name||"").toLowerCase()
         .pacing-ok{display:inline-flex;align-items:center;gap:4px;color:${C.okFg};background:${C.okBg};padding:3px 9px;border-radius:99px;font-size:10px;font-family:Roboto,sans-serif;white-space:nowrap;flex-shrink:0}
         .pacing-warn{display:inline-flex;align-items:center;gap:4px;color:${C.warnFg};background:${C.warnBg};padding:3px 9px;border-radius:99px;font-size:10px;font-family:Roboto,sans-serif;white-space:nowrap;flex-shrink:0}
         .pacing-bad{display:inline-flex;align-items:center;gap:4px;color:${C.badFg};background:${C.badBg};padding:3px 9px;border-radius:99px;font-size:10px;font-family:Roboto,sans-serif;white-space:nowrap;flex-shrink:0}
+        .pacing-neutral{display:inline-flex;align-items:center;gap:4px;color:${C.ink3};background:${C.borderSoft};padding:3px 9px;border-radius:99px;font-size:10px;font-family:Roboto,sans-serif;white-space:nowrap;flex-shrink:0}
         .tab{cursor:pointer;padding:8px 16px;font-family:Roboto,sans-serif;font-size:13px;border-bottom:2px solid transparent;transition:all .15s;color:${C.ink3}}
         .tab.active{border-bottom-color:${C.sand};color:${C.ink}}.tab:hover:not(.active){border-bottom-color:${C.border}}
         select option{background:${C.card};color:${C.ink}}
@@ -836,7 +839,7 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
   const userStaff = AMIDAYS_STAFF.find(s=>s.email===userEmail);
   const userDepts = userStaff?.depts||[];
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
-  const toggleCollapse = (key) => setCollapsedCustomers(prev=>({...prev,[key]:!prev[key]}));
+  const toggleCollapse = (key) => setCollapsedCustomers(prev=>({...prev,[key]: prev[key]===undefined ? false : !prev[key]}));
 
   // Determine which dept channels this admin manages
   const managedChannels = isSuperAdmin ? null : // null = all
@@ -919,7 +922,7 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                       const cust=customers.find(c=>c.id===custId);
                       const custTasks=byCustomer[custId];
                       const collapseKey=ownerId+"::"+custId;
-                      const isCollapsed=!!collapsedCustomers[collapseKey];
+                      const isCollapsed=collapsedCustomers[collapseKey]===undefined?true:collapsedCustomers[collapseKey];
                       const totalLines=custTasks.reduce((sum,t)=>sum+getChannelLines(t).filter(l=>!l.isParent).length,0);
                       return (
                         <div key={custId} style={{border:"1px solid "+C.borderSoft,borderRadius:10,overflow:"hidden"}}>
@@ -1733,6 +1736,11 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorSecondary||(customer.colorPrimary?"rgba(255,255,255,.85)":C.ink3),marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
               </div>
               <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center"}}>
+                {canAddCampaign&&custTasks.length>0&&<button className="action-btn danger" onClick={()=>{
+                  if(confirm(`Slett ALLE ${custTasks.length} kampanje(r) for ${customer.name}?\nDette kan ikke angres.`)){
+                    (async()=>{ for(const t of custTasks) await deleteCampaign(t.id); })();
+                  }
+                }}><Trash2 size={13}/> Slett alle</button>}
                 {canAddCampaign&&<button className="action-btn" onClick={()=>onAddCampaign(customer,null)} style={{background:customer.colorPrimary?"rgba(255,255,255,.2)":C.sand,color:customer.colorPrimary?customer.colorSecondary||"#fff":"#fff",borderColor:customer.colorPrimary?"rgba(255,255,255,.3)":C.sand}}>
                   <Plus size={13}/> Kampanje
                 </button>}
@@ -2189,14 +2197,14 @@ function getChannelLines(task) {
       const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
       const hunch=isHunch(flatKey);
       const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-      lines.push({flatKey,label:adSetName,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:true});
+      lines.push({flatKey,label:adSetName,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:true,paused:!!(task.pausedLines?.[flatKey])});
     } else {
       const spent=task.spent?.[flatKey]??0;
       const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
       const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
       const hunch=isHunch(flatKey);
       const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-      lines.push({flatKey,label:afterChannel||flatKey,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:false});
+      lines.push({flatKey,label:afterChannel||flatKey,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent:false,isAdSet:false,paused:!!(task.pausedLines?.[flatKey])});
     }
   });
   return lines;
@@ -2216,6 +2224,8 @@ function groupLinesByChannel(lines) {
 const LINE_GRID = "minmax(160px,1fr) minmax(180px,1.8fr) 100px 110px 130px 115px 30px";
 
 function PacingBadge({status}) {
+  if(status==="paused") return <span className="pacing-neutral"><Pause size={12} strokeWidth={2}/> Pauset</span>;
+  if(status==="not_started") return <span className="pacing-neutral"><Clock size={12} strokeWidth={2}/> Ikke startet</span>;
   if(status==="ok")    return <span className="pacing-ok"><CircleCheck size={12} strokeWidth={2}/> Pacing OK</span>;
   if(status==="under") return <span className="pacing-warn"><TrendingDown size={12} strokeWidth={2}/> Underspend</span>;
   return <span className="pacing-bad"><TrendingUp size={12} strokeWidth={2}/> Overspend</span>;
@@ -2239,10 +2249,13 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const left = total - elapsed;
   const pct = line.budget>0 ? line.spent/line.budget : 0;
   const exp = total>0 ? elapsed/total : 0;
+  const notStarted = line.chStart && line.chStart>today();
   let status = "ok";
-  if(pct < exp-0.10) status="under";
+  if(line.paused) status="paused";
+  else if(notStarted) status="not_started";
+  else if(pct < exp-0.10) status="under";
   else if(pct > exp+0.08) status="over";
-  const barColor = status==="ok"?C.okBar:status==="under"?C.warnBar:C.badBar;
+  const barColor = status==="ok"?C.okBar:status==="under"?C.warnBar:status==="over"?C.badBar:C.ink4;
   const krPerDag = left>0 ? Math.max(0,(line.budget-line.spent)/left) : 0;
 
   const lastUpdate = task.lastSpendUpdate ? new Date(task.lastSpendUpdate) : (line.chStart ? new Date(line.chStart) : null);
@@ -2286,7 +2299,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   };
 
   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
-  const staleStyle = isStale ? {background:C.staleRow,boxShadow:"inset 3px 0 0 "+C.staleEdge} : {background:C.card};
+  const staleStyle = line.paused ? {background:C.borderSoft,opacity:.7} : isStale ? {background:C.staleRow,boxShadow:"inset 3px 0 0 "+C.staleEdge} : {background:C.card};
 
   return (
     <div style={{borderRadius:10,border:"1px solid "+C.borderSoft,overflow:"hidden",marginBottom:4,...staleStyle}}>
@@ -2312,7 +2325,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
               style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,cursor:"pointer",display:"inline-flex",alignItems:"center",gap:3,borderBottom:"1px dashed "+C.borderDash,paddingBottom:1}}>
               <Calendar size={10} color={C.ink4}/> {line.chStart+" → "+line.chEnd}
             </span>
-            {isStale&&<span style={{display:"inline-flex",alignItems:"center",gap:3,background:C.warnBg,color:C.warnFg,padding:"1px 7px",borderRadius:99,fontSize:9.5,fontFamily:"Roboto,sans-serif",whiteSpace:"nowrap"}}>
+            {isStale&&!line.paused&&!notStarted&&<span style={{display:"inline-flex",alignItems:"center",gap:3,background:C.warnBg,color:C.warnFg,padding:"1px 7px",borderRadius:99,fontSize:9.5,fontFamily:"Roboto,sans-serif",whiteSpace:"nowrap"}}>
               <Clock size={9} strokeWidth={2}/> {daysSince}d uten oppdatering
             </span>}
             {line.hunch&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,color:C.sandDeep,background:C.sandBg,padding:"1px 7px",borderRadius:99}}>Hunch −5%</span>}
@@ -2383,6 +2396,13 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
             <button className={`action-btn${pickMode==="assign"?" settle":""}`} onClick={()=>setPickMode(pickMode==="assign"?null:"assign")}><UserPlus size={13} strokeWidth={1.75}/> Tildel ressurs</button>
             <button className={`action-btn${pickMode==="share"?" settle":""}`} onClick={()=>setPickMode(pickMode==="share"?null:"share")}><Share2 size={13} strokeWidth={1.75}/> Del med kollega</button>
+            <button className="action-btn" onClick={()=>{
+              const next={...(task.pausedLines||{})};
+              if(line.paused) delete next[line.flatKey]; else next[line.flatKey]=true;
+              updateCampaign(task.id,{pausedLines:next});
+              logActivity&&logActivity(task.customerId,task.id,line.paused?"line_resumed":"line_paused",`${line.paused?"Gjenopptok":"Pauset"} "${lineName}"`);
+              setShowActions(false);setPickMode(null);
+            }}>{line.paused?<><Play size={13} strokeWidth={1.75}/> Gjenoppta</>:<><Pause size={13} strokeWidth={1.75}/> Pause</>}</button>
             <button className="action-btn settle" onClick={()=>{setShowActions(false);setPickMode(null);onEndChannel&&onEndChannel(line);}}><Wallet size={13} strokeWidth={1.75}/> Avslutt — oppgjør til bank</button>
             <button className="action-btn danger" onClick={()=>{setShowActions(false);setPickMode(null);onDeleteLine&&onDeleteLine(line.flatKey);}}><Trash2 size={13} strokeWidth={1.75}/> Slett — rest tilbake</button>
             <button className="action-btn" onClick={()=>{setShowActions(false);setPickMode(null);}} style={{marginLeft:"auto"}}><X size={13}/></button>
@@ -2613,6 +2633,8 @@ function ActivityLogTab({customerId}) {
     if(type==="campaign_transferred") return {label:"Kampanje overført", color:C.sand, bg:C.sandBg};
     if(type==="campaign_shared") return {label:"Kampanje delt", color:C.sand, bg:C.sandBg};
     if(type==="campaign_budget_changed") return {label:"Budsjett endret", color:C.warnFg, bg:C.warnBg};
+    if(type==="line_paused") return {label:"Linje pauset", color:C.ink3, bg:C.borderSoft};
+    if(type==="line_resumed") return {label:"Linje gjenopptatt", color:C.okFg, bg:C.okBg};
     return {label:type, color:C.ink3, bg:C.borderSoft};
   };
 
