@@ -424,7 +424,13 @@ const slugify = (name) => (name||"").toLowerCase()
         sb.from("campaigns").select("*").filter("shared_with", "cs", `["${userId}"]`),
       ]);
       const seenT = new Set();
-      const ownTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ if(seenT.has(t.id)) return false; seenT.add(t.id); return true; });
+      const ownTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ 
+        if(seenT.has(t.id)) return false; 
+        seenT.add(t.id); 
+        // Skip campaigns with no lines
+        if(Object.keys(t.channel_budgets||{}).filter(k=>!k.endsWith("__parent__")).length===0 && !t.archived) return false;
+        return true; 
+      });
 
       if (cData) setCustomers(cData.map(rowToCustomer));
       const allBriefs = [...(bOwned||[]), ...(bShared||[])];
