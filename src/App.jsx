@@ -582,11 +582,21 @@ const slugify = (name) => (name||"").toLowerCase()
   const deleteCampaign = async (id) => {
     const task = tasks.find(t=>t.id===id);
     if(task) {
-      const budget = task.budget
-        || Object.entries(task.channelBudgets||{})
-            .filter(([k])=>!k.endsWith("__parent__"))
-            .reduce((a,[,b])=>a+b,0);
-      if(budget>0) await adjustBank(task.customerId, budget);
+      const budgetFromLines = Object.entries(task.channelBudgets||{})
+        .filter(([k])=>!k.endsWith("__parent__"))
+        .reduce((a,[,b])=>a+b,0);
+      const refund = budgetFromLines || task.budget || 0;
+      if(refund>0) await adjustBank(task.customerId, refund);
+      // Log deletion
+      const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split("@")[0] || "Ukjent";
+      await sb.from("activity_log").insert({
+        customer_id: task.customerId,
+        campaign_id: task.id,
+        user_id: session?.user?.id||null,
+        user_name: userName,
+        type: "campaign_deleted",
+        description: `Kampanje slettet: "${task.title}" — ${fmtNOK(refund)} returnert til bank`,
+      });
     }
     setTasks(prev=>prev.filter(t=>t.id!==id));
     await sb.from("campaigns").delete().eq("id",id);
@@ -1825,6 +1835,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const totalSpent=Object.values(task.spent||{}).reduce((a,b)=>a+b,0);
     const diff=task.budget-totalSpent;
     if(adjustBank) await adjustBank(task.customerId, diff);
+    logActivity&&logActivity(task.customerId,task.id,"campaign_settled",`Kampanje avsluttet: "${task.title}" — ${diff>=0?fmtNOK(diff)+" returnert til bank":"Overspend "+fmtNOK(Math.abs(diff))}`);
     await updateCampaign(task.id,{end:today(),archived:true});
     setShowEndConfirm(false);
   };
@@ -1846,6 +1857,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const remainingLines=Object.keys(newBudgets).length;
     const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
     if(remainingLines===0) updates.archived=true;
+    logActivity&&logActivity(task.customerId,task.id,"line_settled",`Linje avsluttet: "${line.label}" — ${diff>=0?"Rest "+fmtNOK(diff)+" returnert":"Overspend "+fmtNOK(Math.abs(diff))}`);
     updateCampaign(task.id,updates);
 
     if(transferTarget){
@@ -2527,8 +2539,10 @@ function ActivityLogTab({customerId}) {
   const typeLabel=(type)=>{
     if(type==="spend_updated") return {label:"Spend oppdatert", color:C.okFg, bg:C.okBg};
     if(type==="budget_changed") return {label:"Budsjett endret", color:C.warnFg, bg:C.warnBg};
-    if(type==="date_changed") return {label:"Dato endret", color:C.infoFg||C.sand, bg:C.sandBg};
+    if(type==="date_changed") return {label:"Dato endret", color:C.sand, bg:C.sandBg};
     if(type==="line_settled") return {label:"Linje avsluttet", color:C.badFg, bg:C.badBg};
+    if(type==="campaign_settled") return {label:"Kampanje avsluttet", color:C.badFg, bg:C.badBg};
+    if(type==="campaign_deleted") return {label:"Kampanje slettet", color:C.ink3, bg:C.borderSoft};
     return {label:type, color:C.ink3, bg:C.borderSoft};
   };
 
