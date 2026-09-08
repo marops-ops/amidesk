@@ -816,6 +816,8 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
   const userEmail = session?.user?.email||"";
   const userStaff = AMIDAYS_STAFF.find(s=>s.email===userEmail);
   const userDepts = userStaff?.depts||[];
+  const [collapsedCustomers, setCollapsedCustomers] = useState({});
+  const toggleCollapse = (key) => setCollapsedCustomers(prev=>({...prev,[key]:!prev[key]}));
 
   // Determine which dept channels this admin manages
   const managedChannels = isSuperAdmin ? null : // null = all
@@ -879,42 +881,71 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                   ))}
                 </div>
                 <div style={{padding:"8px 12px",display:"flex",flexDirection:"column",gap:10}}>
-                  {ownerTasks.filter(t=>!t.archived).map(task=>{
-                    const cust=customers.find(c=>c.id===task.customerId);
-                    const lines=getChannelLines(task);
-                    if(!lines.length) return null;
-                    const grouped=groupLinesByChannel(lines);
-                    return (
-                      <div key={task.id} style={{marginBottom:12}}>
-                        <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0 8px",borderBottom:"1px solid "+C.borderSoft,marginBottom:8}}>
-                          <CustomerAvatar customer={cust||{}} size={30} fontSize={11}/>
-                          <div>
-                            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:15,fontWeight:600,color:C.ink}}>{cust?.name||"Ukjent kunde"}</div>
-                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{task.title}</div>
-                          </div>
-                        </div>
-                        {Object.entries(grouped).map(([channelName,channelLines])=>{
-                          const icon=getChannelIcon(channelName);
-                          return (
-                            <div key={channelName} style={{marginBottom:6}}>
-                              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"0 0 4px",borderBottom:"1px solid "+C.borderSoft}}>
-                                {icon&&<div style={{width:18,height:18,borderRadius:4,overflow:"hidden",flexShrink:0,background:"#fff"}}>
-                                  <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
-                                </div>}
-                                <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink2}}>{channelName}</span>
-                              </div>
-                              {channelLines.map(line=>(
-                                <CampaignLineRow key={line.flatKey} line={line} task={task}
-                                  updateCampaign={updateCampaign}
-                                  onEndChannel={()=>{}}
-                                  onDeleteLine={()=>{}}/>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
+                  {(()=>{
+                    const activeOwnerTasks=ownerTasks.filter(t=>!t.archived).filter(t=>getChannelLines(t).length>0);
+                    const byCustomer={};
+                    activeOwnerTasks.forEach(t=>{
+                      if(!byCustomer[t.customerId]) byCustomer[t.customerId]=[];
+                      byCustomer[t.customerId].push(t);
+                    });
+                    const sortedCustomerIds=Object.keys(byCustomer).sort((a,b)=>{
+                      const na=customers.find(c=>c.id===a)?.name||"";
+                      const nb=customers.find(c=>c.id===b)?.name||"";
+                      return na.localeCompare(nb,"nb");
+                    });
+                    if(sortedCustomerIds.length===0) return (
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,padding:"12px 0"}}>Ingen aktive kampanjelinjer.</div>
                     );
-                  })}
+                    return sortedCustomerIds.map(custId=>{
+                      const cust=customers.find(c=>c.id===custId);
+                      const custTasks=byCustomer[custId];
+                      const collapseKey=ownerId+"::"+custId;
+                      const isCollapsed=!!collapsedCustomers[collapseKey];
+                      const totalLines=custTasks.reduce((sum,t)=>sum+getChannelLines(t).filter(l=>!l.isParent).length,0);
+                      return (
+                        <div key={custId} style={{border:"1px solid "+C.borderSoft,borderRadius:10,overflow:"hidden"}}>
+                          <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",background:C.cardAlt,cursor:"pointer"}} onClick={()=>toggleCollapse(collapseKey)}>
+                            <ChevronDown size={14} style={{transform:isCollapsed?"rotate(-90deg)":"none",transition:"transform .2s",color:C.ink3,flexShrink:0}}/>
+                            <CustomerAvatar customer={cust||{}} size={26} fontSize={10}/>
+                            <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{cust?.name||"Ukjent kunde"}</div>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginLeft:"auto"}}>{totalLines} linje{totalLines!==1?"r":""}</div>
+                          </div>
+                          {!isCollapsed&&(
+                            <div style={{padding:"10px"}}>
+                              {custTasks.map(task=>{
+                                const lines=getChannelLines(task);
+                                const grouped=groupLinesByChannel(lines);
+                                return (
+                                  <div key={task.id} style={{marginBottom:12}}>
+                                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:6}}>{task.title}</div>
+                                    {Object.entries(grouped).map(([channelName,channelLines])=>{
+                                      const icon=getChannelIcon(channelName);
+                                      return (
+                                        <div key={channelName} style={{marginBottom:6}}>
+                                          <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,padding:"0 0 4px",borderBottom:"1px solid "+C.borderSoft}}>
+                                            {icon&&<div style={{width:18,height:18,borderRadius:4,overflow:"hidden",flexShrink:0,background:"#fff"}}>
+                                              <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>
+                                            </div>}
+                                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink2}}>{channelName}</span>
+                                          </div>
+                                          {channelLines.map(line=>(
+                                            <CampaignLineRow key={line.flatKey} line={line} task={task}
+                                              updateCampaign={updateCampaign}
+                                              onEndChannel={()=>{}}
+                                              onDeleteLine={()=>{}}/>
+                                          ))}
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    });
+                  })()}
                 </div>
               </div>
             </div>
@@ -2404,7 +2435,8 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
 
   const filtered=customers
     .filter(c=>showOnlyFavorites?favoriteCustomers.includes(c.id):true)
-    .filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.industry||"").toLowerCase().includes(search.toLowerCase()));
+    .filter(c=>c.name.toLowerCase().includes(search.toLowerCase())||(c.industry||"").toLowerCase().includes(search.toLowerCase()))
+    .sort((a,b)=>a.name.localeCompare(b.name,"nb"));
 
   return (
     <div>
