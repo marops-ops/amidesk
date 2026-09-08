@@ -1563,6 +1563,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
         const accent=customer.colorPrimary||CUSTOMER_COLORS[groupIdx%CUSTOMER_COLORS.length];
         const lineCount=countLines(custTasks);
+        if(lineCount===0) return null;
         return (
           <div key={customer.id}
             draggable
