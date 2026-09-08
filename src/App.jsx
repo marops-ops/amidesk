@@ -576,7 +576,7 @@ const slugify = (name) => (name||"").toLowerCase()
   const deleteCampaign = async (id) => {
     const task = tasks.find(t=>t.id===id);
     if(task) {
-      const totalBudget = Object.values(task.channelBudgets||{}).reduce((a,b)=>a+b,0)||task.budget||0;
+      const totalBudget = Object.entries(task.channelBudgets||{}).filter(([k])=>!k.endsWith("__parent__")).reduce((a,[,b])=>a+b,0)||task.budget||0;
       if(totalBudget>0) await adjustBank(task.customerId, totalBudget);
     }
     setTasks(prev=>prev.filter(t=>t.id!==id));
@@ -1598,7 +1598,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               }} session={session} logActivity={logActivity}/>
             ))}
             {!collapsedCustomers[customer.id]&&custTasks.length>0&&(()=>{
-              const allLines=custTasks.flatMap(t=>getChannelLines(t));
+              const allLines=custTasks.flatMap(t=>getChannelLines(t)).filter(l=>!l.isParent);
               const totalBudget=allLines.reduce((a,l)=>a+(l.budget||0),0);
               const totalSpent=allLines.reduce((a,l)=>a+(l.spent||0),0);
               const totalDayBudget=allLines.reduce((a,l)=>{
@@ -1891,32 +1891,48 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                     <button className="action-btn" onClick={()=>onAddCampaign&&onAddCampaign(channelName,task)}><Plus size={12}/> Linje</button>
                   </div>
                   <div style={{display:"flex",flexDirection:"column"}}>
-                    {channelLines.map(line=>(
-                      <CampaignLineRow key={line.flatKey} line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
-                        onBudgetAdjust={(diff)=>adjustBank&&adjustBank(task.customerId,diff)}
-                        logActivity={logActivity}
-                        session={session}
-                        onAssignLine={async(staff)=>{
-                          const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
-                          if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
-                          await updateCampaign(task.id,{ownerId:profile.id});
-                          const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
-                          await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_given",message:senderName+" ga deg kampanjen \""+task.title+"\"",brief_id:null,read:false});
-                        }}
-                        onShareLine={async(staff)=>{
-                          const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
-                          if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
-                          const newShared=[...(task.sharedWith||[])];
-                          if(!newShared.includes(profile.id)) newShared.push(profile.id);
-                          await updateCampaign(task.id,{sharedWith:newShared});
-                          const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
-                          await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte kampanjen \""+task.title+"\" med deg",brief_id:null,read:false});
-                        }}
-                      />
-                    ))}
+                    {channelLines.map(line=>{
+                      if(line.isParent){
+                        // Render as a group header
+                        const adSetBudget=channelLines.filter(l=>!l.isParent&&l.label.includes(line.label.split(" — ")[1]||"")).reduce((a,l)=>a+l.budget,0);
+                        return (
+                          <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 4px 4px",borderBottom:"1px solid "+C.borderSoft,marginBottom:4,marginTop:8}}>
+                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink2}}>{line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label}</span>
+                            {adSetBudget>0&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>— {fmtNOK(adSetBudget)} totalt</span>}
+                          </div>
+                        );
+                      }
+                      // Check if this is an ad set (contains " / ")
+                      const isAdSet=line.label.includes(" / ");
+                      return (
+                        <div key={line.flatKey} style={{marginLeft:isAdSet?12:0}}>
+                          <CampaignLineRow line={line} task={task} updateCampaign={updateCampaign} onEndChannel={handleEndChannel} onDeleteLine={handleDeleteLine}
+                            onBudgetAdjust={(diff)=>adjustBank&&adjustBank(task.customerId,diff)}
+                            logActivity={logActivity}
+                            session={session}
+                            onAssignLine={async(staff)=>{
+                              const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+                              if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+                              await updateCampaign(task.id,{ownerId:profile.id});
+                              const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+                              await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_given",message:senderName+" ga deg kampanjen \""+task.title+"\"",brief_id:null,read:false});
+                            }}
+                            onShareLine={async(staff)=>{
+                              const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+                              if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+                              const newShared=[...(task.sharedWith||[])];
+                              if(!newShared.includes(profile.id)) newShared.push(profile.id);
+                              await updateCampaign(task.id,{sharedWith:newShared});
+                              const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+                              await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte kampanjen \""+task.title+"\" med deg",brief_id:null,read:false});
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
                     {channelLines.length>1&&(()=>{
-                      const chBudget=channelLines.reduce((a,l)=>a+(l.budget||0),0);
-                      const chSpent=channelLines.reduce((a,l)=>a+(l.spent||0),0);
+                      const chBudget=channelLines.filter(l=>!l.isParent).reduce((a,l)=>a+(l.budget||0),0);
+                      const chSpent=channelLines.filter(l=>!l.isParent).reduce((a,l)=>a+(l.spent||0),0);
                       const chDayBudget=channelLines.reduce((a,l)=>{
                         const total=daysBetween(l.chStart,l.chEnd);
                         const elapsed=Math.min(Math.max(daysBetween(l.chStart,today()),0),total);
@@ -1952,49 +1968,47 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
 }
 
 function getChannelLines(task) {
-  // Use channelBudgets as source of truth — these have the actual named lines
   const budgets = task.channelBudgets || {};
   if (Object.keys(budgets).length === 0) {
-    // Fallback: derive from channels structure
     return Object.entries(task.channels||{}).flatMap(([ch,subs])=>{
       const items=(subs&&subs.length>0)?subs:[null];
       return items.map(sub=>{
         const flatKey=sub?`${ch} · ${sub}`:ch;
-        const budget=0;
         const spent=task.spent?.[flatKey]??0;
         const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
         const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
-        const dl=daysLeft(chEnd);
-        const dayBudget=dl>0?Math.round((budget-spent)/dl):0;
-        const p=pacing(spent,budget,chStart,chEnd);
         const hunch=isHunch(flatKey);
-        const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-        return{flatKey,label:flatKey,budget,netBudget,spent,dayBudget,dl,p,hunch,chStart,chEnd,baseChannel:ch};
+        return{flatKey,label:flatKey,budget:0,netBudget:0,spent,hunch,chStart,chEnd,baseChannel:ch,isParent:false};
       });
     });
   }
   return Object.entries(budgets).map(([flatKey, budget])=>{
-    // baseChannel is everything before " — "
-    const baseChannel = flatKey.split(" — ")[0].split(" · ")[0];
+    const isParent=flatKey.endsWith("__parent__");
+    const displayKey=isParent?flatKey.replace("__parent__",""):flatKey;
+    const baseChannel=displayKey.split(" — ")[0].split(" · ")[0];
     const spent=task.spent?.[flatKey]??0;
     const chEnd=(task.channelDates?.[flatKey]?.end)||task.end;
     const chStart=(task.channelDates?.[flatKey]?.start)||task.start;
-    const dl=daysLeft(chEnd);
-    const dayBudget=dl>0?Math.round((budget-spent)/dl):0;
-    const p=pacing(spent,budget,chStart,chEnd);
-    const hunch=isHunch(flatKey);
+    const hunch=isHunch(displayKey);
     const netBudget=hunch?Math.round(budget*(1-HUNCH_FEE)):budget;
-    return{flatKey,label:flatKey,budget,netBudget,spent,dayBudget,dl,p,hunch,chStart,chEnd,baseChannel};
+    return{flatKey,label:displayKey,budget,netBudget,spent,hunch,chStart,chEnd,baseChannel,isParent};
   });
 }
 
-// Group lines by base channel for display
 function groupLinesByChannel(lines) {
   const groups = {};
   lines.forEach(line => {
     const ch = line.baseChannel || line.flatKey;
     if (!groups[ch]) groups[ch] = [];
     groups[ch].push(line);
+  });
+  // Sort: parents first, then their children
+  Object.keys(groups).forEach(ch=>{
+    groups[ch].sort((a,b)=>{
+      if(a.isParent) return -1;
+      if(b.isParent) return 1;
+      return 0;
+    });
   });
   return groups;
 }
@@ -3125,11 +3139,12 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       channels[base]=[];
       channelLines[ch].forEach(l=>{
         if(l.useAdGroups&&l.adGroups?.length>0) {
-          // Only store ad group lines — NOT the parent line (avoids double counting)
+          const parentKey=ch+" — "+( l.name||form.title)+"__parent__";
+          channelBudgets[parentKey]=0; // parent = 0 budget, just a label
           const restPerAdGroup=(+l.restspend||0)/Math.max(1,l.adGroups.filter(g=>+g.budget>0).length);
           l.adGroups.forEach(g=>{
             if(+g.budget>0) {
-              const key=ch+" — "+(g.name||"Ad group");
+              const key=ch+" — "+(l.name||form.title)+" / "+(g.name||"Ad group");
               channelBudgets[key]=+g.budget+Math.round(restPerAdGroup);
             }
           });
