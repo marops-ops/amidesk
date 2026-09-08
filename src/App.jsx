@@ -657,7 +657,7 @@ const slugify = (name) => (name||"").toLowerCase()
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
-        {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign}/>}
+        {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign} logActivity={logActivity}/>}
         {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} isAdmin={isAdmin} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
       </main>
 
@@ -671,6 +671,7 @@ const slugify = (name) => (name||"").toLowerCase()
           await adjustBank(campaign.customerId,-campaign.budget);
           setTasks(p=>[...p,withOwner]);
           await sb.from("campaigns").upsert(campaignToRow(withOwner));
+          logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Ny kampanje opprettet: "${campaign.title}" — ${fmtNOK(campaign.budget)}`);
           setAddCampaignTarget(null);
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} tasks={tasks} onClose={()=>setShowCreateBrief(false)}
@@ -711,6 +712,7 @@ const slugify = (name) => (name||"").toLowerCase()
           setTasks(p=>[...p,withOwner]);
           await sb.from("campaigns").upsert(campaignToRow(withOwner));
           await updateBrief(briefId,{status:"startet"});
+          logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Kampanje opprettet fra oppgave: "${campaign.title}" — ${fmtNOK(campaign.budget)}`);
           setBriefToConvert(null);
         }}/>}
     </div>
@@ -809,7 +811,7 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
 }
 
 // ══ Team Page (admin only) ═════════════════════════════════════════
-function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, updateCampaign}) {
+function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, updateCampaign, logActivity}) {
   const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(session?.user?.email||"");
   const userEmail = session?.user?.email||"";
   const userStaff = AMIDAYS_STAFF.find(s=>s.email===userEmail);
@@ -1093,6 +1095,8 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             const {data:profile}=await sb.from("profiles").select("id").eq("email",targetEmail).single();
                             if(!profile){alert("Brukeren har ikke logget inn ennå.");return;}
                             await sb.from("campaigns").update({owner_id:profile.id}).eq("id",t.id);
+                            const staffMember=AMIDAYS_STAFF.find(s=>s.email===targetEmail);
+                            logActivity&&logActivity(t.customerId,t.id,"campaign_transferred",`Kampanje "${t.title}" overført til ${staffMember?.name||targetEmail}`);
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Tildel til…</option>
@@ -1107,6 +1111,8 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             const sw=[...((cur?.shared_with)||[])];
                             if(!sw.includes(profile.id)) sw.push(profile.id);
                             await sb.from("campaigns").update({shared_with:sw}).eq("id",t.id);
+                            const staffMember=AMIDAYS_STAFF.find(s=>s.email===targetEmail);
+                            logActivity&&logActivity(t.customerId,t.id,"campaign_shared",`Kampanje "${t.title}" delt med ${staffMember?.name||targetEmail}`);
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Del med…</option>
@@ -1825,7 +1831,11 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   };
   const saveMeta=()=>{
     if(!meta.end) return;
-    updateCampaign(task.id,{start:meta.start,end:meta.end,budget:+meta.budget||task.budget});
+    const oldBudget=task.budget||0;
+    const newBudget=+meta.budget||task.budget;
+    const diff=newBudget-oldBudget;
+    updateCampaign(task.id,{start:meta.start,end:meta.end,budget:newBudget});
+    if(diff!==0) logActivity&&logActivity(task.customerId,task.id,"campaign_budget_changed",`Budsjett endret på "${task.title}": ${fmtNOK(oldBudget)} → ${fmtNOK(newBudget)}`);
     setEditingMeta(false);
   };
   const handleEndCampaign=async()=>{
@@ -1873,6 +1883,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
   const handleDeleteLine=(flatKey)=>{
     if(!confirm(`Slett linjen permanent?`)) return;
     const lineBudget=task.channelBudgets?.[flatKey]||0;
+    const lineLabel=flatKey.includes(" — ")?flatKey.split(" — ").slice(1).join(" — "):flatKey;
     if(adjustBank&&lineBudget>0) adjustBank(task.customerId, lineBudget);
     const newBudgets={...task.channelBudgets};
     const newSpent={...task.spent};
@@ -1885,6 +1896,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
     const newChannels={...task.channels};
     if(remaining.length===0) delete newChannels[base];
     updateCampaign(task.id,{channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)});
+    logActivity&&logActivity(task.customerId,task.id,"line_deleted",`Linje slettet: "${lineLabel}" — ${fmtNOK(lineBudget)} returnert til bank`);
   };
 
   const lines=getChannelLines(task);
@@ -2008,6 +2020,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                               await updateCampaign(task.id,{ownerId:profile.id});
                               const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
                               await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_given",message:senderName+" ga deg kampanjen \""+task.title+"\"",brief_id:null,read:false});
+                              logActivity&&logActivity(task.customerId,task.id,"campaign_transferred",`Kampanje "${task.title}" overført til ${staff.name}`);
                             }}
                             onShareLine={async(staff)=>{
                               const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
@@ -2017,6 +2030,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                               await updateCampaign(task.id,{sharedWith:newShared});
                               const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
                               await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte kampanjen \""+task.title+"\" med deg",brief_id:null,read:false});
+                              logActivity&&logActivity(task.customerId,task.id,"campaign_shared",`Kampanje "${task.title}" delt med ${staff.name}`);
                             }}
                           />
                         </div>
@@ -2538,6 +2552,11 @@ function ActivityLogTab({customerId}) {
     if(type==="line_settled") return {label:"Linje avsluttet", color:C.badFg, bg:C.badBg};
     if(type==="campaign_settled") return {label:"Kampanje avsluttet", color:C.badFg, bg:C.badBg};
     if(type==="campaign_deleted") return {label:"Kampanje slettet", color:C.ink3, bg:C.borderSoft};
+    if(type==="campaign_created") return {label:"Kampanje opprettet", color:C.okFg, bg:C.okBg};
+    if(type==="line_deleted") return {label:"Linje slettet", color:C.ink3, bg:C.borderSoft};
+    if(type==="campaign_transferred") return {label:"Kampanje overført", color:C.sand, bg:C.sandBg};
+    if(type==="campaign_shared") return {label:"Kampanje delt", color:C.sand, bg:C.sandBg};
+    if(type==="campaign_budget_changed") return {label:"Budsjett endret", color:C.warnFg, bg:C.warnBg};
     return {label:type, color:C.ink3, bg:C.borderSoft};
   };
 
