@@ -427,8 +427,6 @@ const slugify = (name) => (name||"").toLowerCase()
       const ownTaskRows = [...(tOwned||[]), ...(tShared||[])].filter(t=>{ 
         if(seenT.has(t.id)) return false; 
         seenT.add(t.id); 
-        // Skip campaigns with no lines
-        if(Object.keys(t.channel_budgets||{}).filter(k=>!k.endsWith("__parent__")).length===0 && !t.archived) return false;
         return true; 
       });
 
@@ -580,7 +578,7 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   const deleteCampaign = async (id) => {
-    const task = tasks.find(t=>t.id===id);
+    const task = tasks.find(t=>t.id===id) || othersTasks.find(t=>t.id===id);
     if(task) {
       const budgetFromLines = Object.entries(task.channelBudgets||{})
         .filter(([k])=>!k.endsWith("__parent__"))
