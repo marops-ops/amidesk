@@ -577,14 +577,16 @@ const slugify = (name) => (name||"").toLowerCase()
 
   const updateCampaign = async (id, changes) => {
     let updated;
-    setTasks(prev => {
-      const next = prev.map(t => {
-        if(t.id!==id) return t;
-        updated = {...t,...changes};
-        return updated;
-      });
-      return next;
-    });
+    setTasks(prev => prev.map(t => {
+      if(t.id!==id) return t;
+      updated = {...t,...changes};
+      return updated;
+    }));
+    setOthersTasks(prev => prev.map(t => {
+      if(t.id!==id) return t;
+      updated = {...t,...changes};
+      return updated;
+    }));
     // Wait for state to settle then write to DB
     await new Promise(r=>setTimeout(r,0));
     if(updated) await sb.from("campaigns").update(campaignToRow(updated)).eq("id",id);
@@ -688,12 +690,15 @@ const slugify = (name) => (name||"").toLowerCase()
         presetChannel={addCampaignTarget.presetChannel}
         tasks={tasks}
         onClose={()=>setAddCampaignTarget(null)}
-        onSave={async campaign=>{
-          const withOwner={...campaign,ownerId:session.user.id};
-          await adjustBank(campaign.customerId,-campaign.budget);
-          setTasks(p=>[...p,withOwner]);
-          await sb.from("campaigns").upsert(campaignToRow(withOwner));
-          logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Ny kampanje opprettet: "${campaign.title}" — ${fmtNOK(campaign.budget)}`);
+        onSave={async campaignsArr=>{
+          for(const campaign of campaignsArr){
+            const withOwner={...campaign,ownerId:session.user.id};
+            await adjustBank(campaign.customerId,-campaign.budget);
+            setTasks(p=>[...p,withOwner]);
+            await sb.from("campaigns").upsert(campaignToRow(withOwner));
+            const channelName=Object.keys(campaign.channels)[0]||"";
+            logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Ny kampanje opprettet: "${campaign.title}" (${channelName}) — ${fmtNOK(campaign.budget)}`);
+          }
           setAddCampaignTarget(null);
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} tasks={tasks} onClose={()=>setShowCreateBrief(false)}
@@ -727,14 +732,17 @@ const slugify = (name) => (name||"").toLowerCase()
         onSave={async c=>{setCustomers(p=>[...p,c]);await sb.from("customers").upsert(customerToRow(c));setShowCreateCustomer(false);}}/>}
       {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers}
         onClose={()=>setBriefToConvert(null)}
-        onSave={async (campaign,briefId)=>{
-          const withOwner = {...campaign, ownerId: session.user.id};
-          const cust = customers.find(c=>c.id===campaign.customerId);
-          if (cust) await adjustBank(campaign.customerId, -campaign.budget);
-          setTasks(p=>[...p,withOwner]);
-          await sb.from("campaigns").upsert(campaignToRow(withOwner));
+        onSave={async (campaignsArr,briefId)=>{
+          for(const campaign of campaignsArr){
+            const withOwner = {...campaign, ownerId: session.user.id};
+            const cust = customers.find(c=>c.id===campaign.customerId);
+            if (cust) await adjustBank(campaign.customerId, -campaign.budget);
+            setTasks(p=>[...p,withOwner]);
+            await sb.from("campaigns").upsert(campaignToRow(withOwner));
+            const channelName=Object.keys(campaign.channels)[0]||"";
+            logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Kampanje opprettet fra oppgave: "${campaign.title}" (${channelName}) — ${fmtNOK(campaign.budget)}`);
+          }
           await updateBrief(briefId,{status:"startet"});
-          logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Kampanje opprettet fra oppgave: "${campaign.title}" — ${fmtNOK(campaign.budget)}`);
           setBriefToConvert(null);
         }}/>}
     </div>
@@ -847,6 +855,23 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
   const userDepts = userStaff?.depts||[];
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
   const toggleCollapse = (key) => setCollapsedCustomers(prev=>({...prev,[key]: prev[key]===undefined ? false : !prev[key]}));
+  const [shareAllFor, setShareAllFor] = useState(null);
+
+  const shareAllCampaigns=async(custTasksToShare,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+    for(const t of custTasksToShare){
+      const cur=(await sb.from("campaigns").select("shared_with").eq("id",t.id).single()).data;
+      const sw=[...((cur?.shared_with)||[])];
+      if(!sw.includes(profile.id)) sw.push(profile.id);
+      await sb.from("campaigns").update({shared_with:sw}).eq("id",t.id);
+      logActivity&&logActivity(t.customerId,t.id,"campaign_shared",`Kampanje "${t.title}" delt med ${staff.name} (del alt)`);
+    }
+    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+    await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte alle kampanjer for en kunde med deg",brief_id:null,read:false});
+    setShareAllFor(null);
+    alert("Delt! Oppdatering vises ved neste innlasting av siden.");
+  };
 
   // Determine which dept channels this admin manages
   const managedChannels = isSuperAdmin ? null : // null = all
@@ -937,8 +962,20 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                             <ChevronDown size={14} style={{transform:isCollapsed?"rotate(-90deg)":"none",transition:"transform .2s",color:C.ink3,flexShrink:0}}/>
                             <CustomerAvatar customer={cust||{}} size={26} fontSize={10}/>
                             <div style={{fontFamily:"'Montserrat',sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{cust?.name||"Ukjent kunde"}</div>
-                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginLeft:"auto"}}>{totalLines} linje{totalLines!==1?"r":""}</div>
+                            <button className="action-btn" onClick={e=>{e.stopPropagation();setShareAllFor(shareAllFor===collapseKey?null:collapseKey);}} style={{marginLeft:"auto",fontSize:10.5,padding:"3px 9px"}}><Share2 size={11}/> Del alt</button>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>{totalLines} linje{totalLines!==1?"r":""}</div>
                           </div>
+                          {shareAllFor===collapseKey&&(
+                            <div className="action-stripe" style={{flexWrap:"wrap"}}>
+                              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>Del alle {custTasks.length} kampanje(r) med:</span>
+                              {AMIDAYS_STAFF.slice().sort((a,b)=>a.name.localeCompare(b.name,"nb")).map(s=>(
+                                <button key={s.id} className="action-btn" onClick={()=>shareAllCampaigns(custTasks,s)} style={{fontFamily:"Roboto,sans-serif",fontSize:11}}>
+                                  {s.name.split(" ")[0]}
+                                </button>
+                              ))}
+                              <button className="action-btn" onClick={()=>setShareAllFor(null)} style={{marginLeft:"auto"}}><X size={13}/></button>
+                            </div>
+                          )}
                           {!isCollapsed&&(
                             <div style={{padding:"10px"}}>
                               {custTasks.map(task=>{
@@ -1665,6 +1702,21 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
   const canAddCampaign = canCreateCampaigns(session?.user?.email||"");
+  const [shareAllFor, setShareAllFor] = useState(null);
+
+  const shareAllCampaigns=async(custTasksToShare,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+    for(const t of custTasksToShare){
+      const newShared=[...(t.sharedWith||[])];
+      if(!newShared.includes(profile.id)) newShared.push(profile.id);
+      await updateCampaign(t.id,{sharedWith:newShared});
+      logActivity&&logActivity(t.customerId,t.id,"campaign_shared",`Kampanje "${t.title}" delt med ${staff.name} (del alt)`);
+    }
+    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+    await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte alle kampanjer for en kunde med deg",brief_id:null,read:false});
+    setShareAllFor(null);
+  };
 
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers
@@ -1743,6 +1795,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorSecondary||(customer.colorPrimary?"rgba(255,255,255,.85)":C.ink3),marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
               </div>
               <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center"}}>
+                {canAddCampaign&&custTasks.length>0&&<button className="action-btn" onClick={()=>setShareAllFor(shareAllFor===customer.id?null:customer.id)}><Share2 size={13}/> Del alt</button>}
                 {canAddCampaign&&custTasks.length>0&&<button className="action-btn danger" onClick={()=>{
                   if(confirm(`Slett ALLE ${custTasks.length} kampanje(r) for ${customer.name}?\nDette kan ikke angres.`)){
                     (async()=>{ for(const t of custTasks) await deleteCampaign(t.id); })();
@@ -1753,6 +1806,17 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 </button>}
               </div>
             </div>
+            {shareAllFor===customer.id&&(
+              <div className="action-stripe" style={{flexWrap:"wrap"}}>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>Del alle {custTasks.length} kampanje(r) med:</span>
+                {AMIDAYS_STAFF.slice().sort((a,b)=>a.name.localeCompare(b.name,"nb")).map(s=>(
+                  <button key={s.id} className="action-btn" onClick={()=>shareAllCampaigns(custTasks,s)} style={{fontFamily:"Roboto,sans-serif",fontSize:11}}>
+                    {s.name.split(" ")[0]}
+                  </button>
+                ))}
+                <button className="action-btn" onClick={()=>setShareAllFor(null)} style={{marginLeft:"auto"}}><X size={13}/></button>
+              </div>
+            )}
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
               <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch,existingTask)=>{
                 if(existingTask) {
@@ -3366,12 +3430,15 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
     if(!form.end) return alert("Fyll inn sluttdato");
     if(selectedChannels.length===0) return alert("Velg minst én kanal");
     if(baseBudget<=0&&restAmount<=0) return alert("Legg inn budsjett på minst én linje");
-    const channelBudgets={};
-    const channelDates={};
-    const channels={};
-    selectedChannels.forEach(ch=>{
+
+    // Én kanal = én kampanje-rad, slik at linjer for samme kanal alltid holdes samlet
+    // og deling/administrasjon kan gjøres rent per kanal.
+    const campaigns=selectedChannels.map(ch=>{
       const base=ch.split(" · ")[0];
-      channels[base]=[];
+      const channels={[base]:[]};
+      const channelBudgets={};
+      const channelDates={};
+      let restspendForChannel=0;
       channelLines[ch].forEach(l=>{
         const lineName=l.name||form.title;
         if(l.useAdGroups&&l.adGroups?.filter(g=>+g.budget>0).length>0) {
@@ -3385,6 +3452,7 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
           if(+l.restspend>0) {
             const firstKey=Object.keys(channelBudgets).find(k=>k.startsWith(ch+" — "+lineName+" / "));
             if(firstKey) channelBudgets[firstKey]+=(+l.restspend);
+            restspendForChannel+=(+l.restspend);
           }
         } else {
           const lineBudget=(+l.budget||0)+(+l.restspend||0);
@@ -3392,16 +3460,21 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
             const key=ch+" — "+lineName;
             channelBudgets[key]=lineBudget;
           }
+          restspendForChannel+=(+l.restspend||0);
         }
       });
-    });
-    onSave({
-      id:uid(),customerId:cust.id,title:form.title,
-      start:form.start,end:form.end,budget:total,
-      status:"green",channels,channelBudgets,
-      spent:{},channelDates,archived:false,fromBriefId:null,
-      restspendUsed:restAmount,
-    });
+      const channelBudgetTotal=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
+      return {
+        id:uid(),customerId:cust.id,title:form.title,
+        start:form.start,end:form.end,budget:channelBudgetTotal,
+        status:"green",channels,channelBudgets,
+        spent:{},channelDates,archived:false,fromBriefId:null,
+        restspendUsed:restspendForChannel,
+      };
+    }).filter(c=>Object.keys(c.channelBudgets).length>0);
+
+    if(campaigns.length===0) return alert("Legg inn budsjett på minst én linje");
+    onSave(campaigns);
   };
 
   return (
@@ -3624,13 +3697,24 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
 
   const save=()=>{
     if(!form.title||!form.end) return alert("Fyll inn tittel og sluttdato");
-    // Build channels object from brief
-    onSave({
+    // Én kanal = én kampanje-rad, samme regel som ved manuell kampanjeopprettelse.
+    const byChannel={};
+    Object.entries(channelBudgets).forEach(([key,val])=>{
+      if(!val) return;
+      const base=key.split(" — ")[0].split(" · ")[0];
+      if(!byChannel[base]) byChannel[base]={};
+      byChannel[base][key]=val;
+    });
+    const campaigns=Object.entries(byChannel).map(([base,budgets])=>({
       id:uid(),customerId:brief.customerId,title:form.title,
-      start:form.start,end:form.end,budget:total,status:"green",
-      channels:brief.channels||{},channelBudgets,
-      spent:{},channelDates:{},archived:false,fromBriefId:brief.id
-    },brief.id);
+      start:form.start,end:form.end,
+      budget:Object.values(budgets).reduce((a,b)=>a+b,0),
+      status:"green",
+      channels:{[base]:(brief.channels?.[base]||[])},channelBudgets:budgets,
+      spent:{},channelDates:{},archived:false,fromBriefId:brief.id,
+    }));
+    if(campaigns.length===0) return alert("Legg inn budsjett på minst én linje");
+    onSave(campaigns,brief.id);
   };
 
   const lineEntries = Object.entries(channelBudgets);
