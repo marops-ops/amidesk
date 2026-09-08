@@ -83,6 +83,17 @@ function staffForChannel(channelName) {
   return AMIDAYS_STAFF.filter(s=>s.depts.includes(dept));
 }
 
+// Rådgivere kan opprette oppgaver (delegere), men ikke opprette kampanjer/linjer direkte —
+// det gjør ressursene selv når de konverterer oppgaven. Kanal-heads, super-admin og øvrige
+// admins beholder full tilgang.
+function canCreateCampaigns(email) {
+  if(!ADMIN_EMAILS.includes(email)) return false;
+  if(SUPER_ADMIN_EMAILS.includes(email)) return true;
+  const staff = AMIDAYS_STAFF.find(s=>s.email===email);
+  if(staff?.depts?.includes("Rådgiver")) return false;
+  return true;
+}
+
 const C = {
   // flater
   bg:         "#F4F1EB",
@@ -642,7 +653,7 @@ const slugify = (name) => (name||"").toLowerCase()
         .action-btn.settle{color:${C.okFg};border-color:${C.okBg}}.action-btn.settle:hover{border-color:${C.okFg};background:${C.okBg}}
       `}</style>
 
-      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} session={session} isAdmin={isAdmin} notifications={notifications} onMarkRead={async(id)=>{
+      <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} onAddCampaign={()=>setAddCampaignTarget({customer:null,presetChannel:null})} session={session} isAdmin={isAdmin} notifications={notifications} onMarkRead={async(id)=>{
         await sb.from("notifications").update({read:true}).eq("id",id);
         setNotifications(p=>p.filter(n=>n.id!==id));
       }}/>
@@ -652,7 +663,7 @@ const slugify = (name) => (name||"").toLowerCase()
         {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder} logActivity={logActivity}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
-        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite}/>}
+        {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite} session={session}/>}
         {(page==="customer-detail"&&activeCustomer)
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
@@ -663,6 +674,7 @@ const slugify = (name) => (name||"").toLowerCase()
 
       {addCampaignTarget&&<AddCampaignModal
         customer={addCampaignTarget.customer}
+        customers={customers}
         presetChannel={addCampaignTarget.presetChannel}
         tasks={tasks}
         onClose={()=>setAddCampaignTarget(null)}
@@ -720,13 +732,14 @@ const slugify = (name) => (name||"").toLowerCase()
 }
 
 // ══ Sidebar ════════════════════════════════════════════════════════
-function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifications=[], onMarkRead}) {
+function Sidebar({page, navigate, setShowCreateBrief, onAddCampaign, session, isAdmin, notifications=[], onMarkRead}) {
   const user = session?.user;
   const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Bruker";
   const avatar = user?.user_metadata?.avatar_url;
   const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
   const [showNotifs,setShowNotifs]=useState(false);
   const unread=notifications.length;
+  const canAddCampaign = canCreateCampaigns(user?.email||"");
 
   const navItems = [
     {id:"dashboard",   label:"Dashboard",       Icon:LayoutDashboard},
@@ -753,6 +766,12 @@ function Sidebar({page, navigate, setShowCreateBrief, session, isAdmin, notifica
 
       <div style={{flex:1}}/>
 
+      {canAddCampaign&&(
+        <button className="btn" onClick={onAddCampaign}
+          style={{background:C.card,color:C.ink,padding:"11px 14px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:12.5,display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:8,border:"1px solid "+C.border}}>
+          <Plus size={15} strokeWidth={2}/> Ny kampanje
+        </button>
+      )}
       <button className="btn" onClick={()=>setShowCreateBrief(true)}
         style={{background:C.sand,color:"#fff",padding:"11px 14px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:12.5,display:"flex",alignItems:"center",justifyContent:"center",gap:7,marginBottom:10}}>
         <Plus size={15} strokeWidth={2}/> Ny oppgave
@@ -1635,6 +1654,7 @@ function AddLineModal({task, channel, onClose, onSave}) {
 function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity}) {
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
+  const canAddCampaign = canCreateCampaigns(session?.user?.email||"");
 
   const active=tasks.filter(t=>!t.archived);
   const grouped=customers
@@ -1713,9 +1733,9 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:customer.colorSecondary||(customer.colorPrimary?"rgba(255,255,255,.85)":C.ink3),marginTop:4}}>{lineCount} aktive linje{lineCount!==1?"r":""}</div>
               </div>
               <div style={{display:"flex",gap:7,flexShrink:0,alignItems:"center"}}>
-                <button className="action-btn" onClick={()=>onAddCampaign(customer,null)} style={{background:customer.colorPrimary?"rgba(255,255,255,.2)":C.sand,color:customer.colorPrimary?customer.colorSecondary||"#fff":"#fff",borderColor:customer.colorPrimary?"rgba(255,255,255,.3)":C.sand}}>
+                {canAddCampaign&&<button className="action-btn" onClick={()=>onAddCampaign(customer,null)} style={{background:customer.colorPrimary?"rgba(255,255,255,.2)":C.sand,color:customer.colorPrimary?customer.colorSecondary||"#fff":"#fff",borderColor:customer.colorPrimary?"rgba(255,255,255,.3)":C.sand}}>
                   <Plus size={13}/> Kampanje
-                </button>
+                </button>}
               </div>
             </div>
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
@@ -2428,9 +2448,10 @@ function TaskDetail({task, customers, updateCampaign, deleteCampaign, navigate})
 }
 
 // ══ Customer List ══════════════════════════════════════════════════
-function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer, onAddCampaign, favoriteCustomers=[], toggleFavorite}) {
+function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer, onAddCampaign, favoriteCustomers=[], toggleFavorite, session}) {
   const [search,setSearch]=useState("");
   const [showOnlyFavorites,setShowOnlyFavorites]=useState(favoriteCustomers.length>0);
+  const canAddCampaign = canCreateCampaigns(session?.user?.email||"");
   const hasFavorites=favoriteCustomers.length>0;
 
   const filtered=customers
@@ -2487,7 +2508,7 @@ function CustomerList({customers, tasks, briefs, navigate, setShowCreateCustomer
               <div style={{display:"flex",gap:6,alignItems:"center"}}>
                 <span style={{background:C.borderSoft,color:C.ink2,padding:"3px 10px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:11,whiteSpace:"nowrap"}}>{cTasks.length} kampanjer</span>
                 {cBriefs.length>0&&<span style={{background:C.sandBg,color:C.sandDeep,padding:"3px 10px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:11,whiteSpace:"nowrap"}}>{cBriefs.length} oppgaver</span>}
-                {onAddCampaign&&<button className="btn" onClick={e=>{e.stopPropagation();onAddCampaign(c);}}
+                {onAddCampaign&&canAddCampaign&&<button className="btn" onClick={e=>{e.stopPropagation();onAddCampaign(c);}}
                   style={{background:C.sand,color:"#fff",padding:"3px 11px",borderRadius:99,fontFamily:"Roboto,sans-serif",fontSize:11,marginLeft:"auto",display:"flex",alignItems:"center",gap:4}}><Plus size={11}/> Kampanje</button>}
               </div>
             </div>
@@ -2698,6 +2719,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
   const userId=session?.user?.id;
   const userProfile=teamMembers.find(m=>m.id===userId);
   const isAdmin=ADMIN_EMAILS.includes(session?.user?.email||"");
+  const canAddCampaign=canCreateCampaigns(session?.user?.email||"");
   const userDepts=userProfile?.departments||[];
 
   // Which depts can this user edit
@@ -2749,8 +2771,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
           </div>
           <div style={{display:"flex",flexDirection:"column",alignItems:"flex-end",gap:8}}>
             {updateCustomer&&<div style={{display:"flex",gap:8}}>
-              <button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
-                style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>
+              {canAddCampaign&&<button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
+                style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>}
               <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>
             </div>}
           {/* Bank */}
@@ -3266,7 +3288,9 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
 }
 
 // ══ Add Campaign Modal (standalone, no brief) ════════════════════
-function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) {
+function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSave, tasks=[]}) {
+  const [selectedCustomerId,setSelectedCustomerId]=useState(customer?.id||"");
+  const cust = customer || customers.find(c=>c.id===selectedCustomerId);
   const [form,setForm]=useState({title:"",start:today(),end:""});
   const [openCohort,setOpenCohort]=useState(null);
   const [channelLines,setChannelLines]=useState(
@@ -3281,20 +3305,20 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
   };
 
   // Tilgode for this customer — include archived tasks' archivedLines
-  const allCustomerTasks=tasks.filter(t=>t.customerId===customer?.id);
+  const allCustomerTasks=tasks.filter(t=>t.customerId===cust?.id);
   const tilgode=Math.max(0,
     allCustomerTasks.reduce((sum,t)=>{
       return sum+(t.archivedLines||[]).reduce((a,l)=>a+((l.budget||0)-(l.spent||0)),0);
     },0)
     - allCustomerTasks.reduce((sum,t)=>sum+(t.restspendUsed||0),0)
-    - tasks.filter(b=>b.customerId===customer?.id).reduce((s,b)=>s+(b.restspendUsed||0),0)
+    - tasks.filter(b=>b.customerId===cust?.id).reduce((s,b)=>s+(b.restspendUsed||0),0)
   );
 
   const selectedChannels=Object.keys(channelLines);
   const baseBudget=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.budget||0),0);
   const restAmount=Object.values(channelLines).flat().reduce((a,l)=>a+(+l.restspend||0),0);
   const total=baseBudget+restAmount;
-  const bankAfter=(customer?.bank||0)-total;
+  const bankAfter=(cust?.bank||0)-total;
 
   const toggleChannel=(ch)=>{
     setChannelLines(prev=>{
@@ -3315,6 +3339,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
   }));
 
   const save=()=>{
+    if(!cust) return alert("Velg kunde");
     if(!form.title) return alert("Fyll inn kampanjenavn");
     if(!form.end) return alert("Fyll inn sluttdato");
     if(selectedChannels.length===0) return alert("Velg minst én kanal");
@@ -3349,7 +3374,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
       });
     });
     onSave({
-      id:uid(),customerId:customer.id,title:form.title,
+      id:uid(),customerId:cust.id,title:form.title,
       start:form.start,end:form.end,budget:total,
       status:"green",channels,channelBudgets,
       spent:{},channelDates,archived:false,fromBriefId:null,
@@ -3361,13 +3386,24 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny kampanje — {customer.name}</h2>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Ny kampanje{cust?" — "+cust.name:""}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
+        {!customer&&(
+          <div style={{marginBottom:16}}>
+            <label>Kunde</label>
+            <select value={selectedCustomerId} onChange={e=>setSelectedCustomerId(e.target.value)} style={{width:"100%"}} autoFocus>
+              <option value="">Velg kunde...</option>
+              {customers.map(c=><option key={c.id} value={c.id}>{c.name} — Bank: {fmtNOK(c.bank||0)}</option>)}
+            </select>
+          </div>
+        )}
+
+        {cust&&(<>
         {/* Bank */}
         <div style={{background:C.cardAlt,borderRadius:9,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12,border:"1px solid "+C.borderSoft}}>
-          <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(customer.bank||0)}</strong></span>
+          <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(cust.bank||0)}</strong></span>
           <span style={{color:bankAfter<0?C.badFg:C.okFg}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
         </div>
 
@@ -3549,6 +3585,7 @@ function AddCampaignModal({customer, presetChannel, onClose, onSave, tasks=[]}) 
           style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>
           Opprett kampanje
         </button>
+        </>)}
       </div>
     </div>
   );
