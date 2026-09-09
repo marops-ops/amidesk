@@ -697,9 +697,14 @@ const slugify = (name) => (name||"").toLowerCase()
         onSave={async campaignsArr=>{
           for(const campaign of campaignsArr){
             const withOwner={...campaign,ownerId:session.user.id};
+            const {error:campaignError} = await sb.from("campaigns").upsert(campaignToRow(withOwner));
+            if (campaignError) {
+              alert(`Kunne ikke opprette kampanje "${campaign.title}": ${campaignError.message}`);
+              console.error("Campaign save failed:", campaignError);
+              continue;
+            }
             await adjustBank(campaign.customerId,-campaign.budget);
             setTasks(p=>[...p,withOwner]);
-            await sb.from("campaigns").upsert(campaignToRow(withOwner));
             const channelName=Object.keys(campaign.channels)[0]||"";
             logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Ny kampanje opprettet: "${campaign.title}" (${channelName}) — ${fmtNOK(campaign.budget)}`);
           }
@@ -707,6 +712,13 @@ const slugify = (name) => (name||"").toLowerCase()
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} tasks={tasks} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
+          const withOwner = {...b, ownerId: session.user.id, sharedWith:[]};
+          const {error:briefError} = await sb.from("briefs").upsert(briefToRow(withOwner));
+          if (briefError) {
+            alert("Kunne ikke lagre oppgaven: "+briefError.message);
+            console.error("Brief save failed:", briefError);
+            return;
+          }
           // Varsle alle unike ressurser tildelt på tvers av kanaler/avdelinger
           const staffIds=[...new Set(Object.values(b.channelAssignments||{}).filter(Boolean))];
           let sharedWith=[];
@@ -716,7 +728,7 @@ const slugify = (name) => (name||"").toLowerCase()
             const {data:profile}=await sb.from("profiles").select("id").eq("email",staffMember.email).single();
             if(profile && profile.id!==session.user.id && !sharedWith.includes(profile.id)){
               sharedWith.push(profile.id);
-              await sb.from("notifications").insert({
+              const {error:notifError} = await sb.from("notifications").insert({
                 id: uid(),
                 user_id: profile.id,
                 type: "brief_assigned",
@@ -724,11 +736,11 @@ const slugify = (name) => (name||"").toLowerCase()
                 brief_id: b.id,
                 read: false,
               });
+              if (notifError) console.error("Notification failed for", staffMember.name, notifError);
             }
           }
-          const withOwner = {...b, ownerId: session.user.id, sharedWith};
-          setBriefs(p=>[...p,withOwner]);
-          await sb.from("briefs").upsert(briefToRow(withOwner));
+          if (sharedWith.length>0) await sb.from("briefs").update({shared_with:sharedWith}).eq("id",b.id);
+          setBriefs(p=>[...p,{...withOwner,sharedWith}]);
           setShowCreateBrief(false);
         }}/>}
       {showCreateCustomer&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
@@ -738,10 +750,15 @@ const slugify = (name) => (name||"").toLowerCase()
         onSave={async (campaignsArr,briefId)=>{
           for(const campaign of campaignsArr){
             const withOwner = {...campaign, ownerId: session.user.id};
+            const {error:campaignError} = await sb.from("campaigns").upsert(campaignToRow(withOwner));
+            if (campaignError) {
+              alert(`Kunne ikke opprette kampanje "${campaign.title}": ${campaignError.message}`);
+              console.error("Campaign save failed:", campaignError);
+              continue;
+            }
             const cust = customers.find(c=>c.id===campaign.customerId);
             if (cust) await adjustBank(campaign.customerId, -campaign.budget);
             setTasks(p=>[...p,withOwner]);
-            await sb.from("campaigns").upsert(campaignToRow(withOwner));
             const channelName=Object.keys(campaign.channels)[0]||"";
             logActivity&&logActivity(campaign.customerId,campaign.id,"campaign_created",`Kampanje opprettet fra oppgave: "${campaign.title}" (${channelName}) — ${fmtNOK(campaign.budget)}`);
           }
@@ -3350,6 +3367,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
 
   const save=()=>{
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
+    if(!form.start) return alert("Fyll inn startdato");
     if(!form.end) return alert("Fyll inn sluttdato");
     if(selectedLines.length===0) return alert("Velg minst én kanal");
     const channelBudgets={};
