@@ -238,6 +238,7 @@ const rowToBrief = r => ({
   id:r.id, customerId:r.customer_id, title:r.title, description:r.description,
   start:r.start_date, end:r.end_date, assignedTo:r.assigned_to?[r.assigned_to]:[],
   channels:r.channels||{}, channelBudgets:r.channel_budgets||{},
+  channelAssignments:r.channel_assignments||{},
   status:r.status, archived:r.archived, ownerId:r.owner_id,
   sharedWith:r.shared_with||[],
   restspendUsed:r.restspend_used||0,
@@ -284,6 +285,7 @@ const briefToRow = b => ({
   id:b.id, customer_id:b.customerId, title:b.title, description:b.description,
   start_date:b.start, end_date:b.end, assigned_to:b.assignedTo?.[0]||null,
   channels:b.channels, channel_budgets:b.channelBudgets,
+  channel_assignments:b.channelAssignments||{},
   status:b.status, archived:b.archived, owner_id:b.ownerId||null,
   shared_with:b.sharedWith||[],
   restspend_used:b.restspendUsed||0,
@@ -705,16 +707,15 @@ const slugify = (name) => (name||"").toLowerCase()
         }}/>}
       {showCreateBrief&&<CreateBriefModal customers={customers} tasks={tasks} onClose={()=>setShowCreateBrief(false)}
         onSave={async b=>{
-          // Find if assigned resource maps to a known profile
-          const staffMember = b.assignedTo?.[0]
-            ? AMIDAYS_STAFF.find(s=>s.id===b.assignedTo[0])
-            : null;
-          let sharedWith = [];
-          if(staffMember) {
-            const {data:profile} = await sb.from("profiles").select("id").eq("email",staffMember.email).single();
-            if(profile && profile.id !== session.user.id) {
-              sharedWith = [profile.id];
-              // Create notification
+          // Varsle alle unike ressurser tildelt på tvers av kanaler/avdelinger
+          const staffIds=[...new Set(Object.values(b.channelAssignments||{}).filter(Boolean))];
+          let sharedWith=[];
+          for(const staffId of staffIds){
+            const staffMember=AMIDAYS_STAFF.find(s=>s.id===staffId);
+            if(!staffMember) continue;
+            const {data:profile}=await sb.from("profiles").select("id").eq("email",staffMember.email).single();
+            if(profile && profile.id!==session.user.id && !sharedWith.includes(profile.id)){
+              sharedWith.push(profile.id);
               await sb.from("notifications").insert({
                 id: uid(),
                 user_id: profile.id,
@@ -3292,8 +3293,12 @@ function getSelectedLines(channels) {
 
 // ══ Create Brief Modal ════════════════════════════════════════════
 function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
-  const [form,setForm]=useState({customerId:"",title:"",description:"",start:today(),end:"",assignedTo:"",channels:{}});
-  const [channelAmounts,setChannelAmounts]=useState({}); // flatKey -> budget (rådgivers ramme per kanal)
+  const [form,setForm]=useState({customerId:"",title:"",description:"",start:today(),end:"",channels:{}});
+  const [channelAmounts,setChannelAmounts]=useState({}); // flatKey -> budget (manuell modus)
+  const [channelPercents,setChannelPercents]=useState({}); // flatKey -> prosent (prosentmodus)
+  const [channelAssignments,setChannelAssignments]=useState({}); // flatKey -> staffId
+  const [useSplitMode,setUseSplitMode]=useState(false);
+  const [totalBudgetInput,setTotalBudgetInput]=useState("");
   const [useRestspend,setUseRestspend]=useState(false);
   const [restspendAmount,setRestspendAmount]=useState("");
 
@@ -3311,28 +3316,51 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
   const selectedLines=getSelectedLines(form.channels);
   const handleChannelChange=newChannels=>{
     const newLines=getSelectedLines(newChannels);
-    setChannelAmounts(prev=>{
-      const next={};
-      newLines.forEach(l=>{ next[l.flatKey]=prev[l.flatKey]||0; });
-      return next;
-    });
+    const keep=(prev)=>{ const next={}; newLines.forEach(l=>{ next[l.flatKey]=prev[l.flatKey]; }); return next; };
+    setChannelAmounts(prev=>{ const n={}; newLines.forEach(l=>{n[l.flatKey]=prev[l.flatKey]||0;}); return n; });
+    setChannelPercents(prev=>keep(prev));
+    setChannelAssignments(prev=>keep(prev));
     setForm(f=>({...f,channels:newChannels}));
   };
-  const baseBudget=Object.values(channelAmounts).reduce((a,b)=>a+(+b||0),0);
+
+  const amountFor=(flatKey)=> useSplitMode
+    ? Math.round((+totalBudgetInput||0) * (+channelPercents[flatKey]||0) / 100)
+    : (+channelAmounts[flatKey]||0);
+
+  const baseBudget=selectedLines.reduce((a,l)=>a+amountFor(l.flatKey),0);
+  const percentSum=selectedLines.reduce((a,l)=>a+(+channelPercents[l.flatKey]||0),0);
   const restAmount=useRestspend?(+restspendAmount||0):0;
   const total=baseBudget+restAmount;
+
+  // Grupper valgte kanaler per avdeling (SOME/SEM/Programmatisk)
+  const groupedByDept={};
+  selectedLines.forEach(l=>{
+    const dept=deptForChannel(l.flatKey.split(" · ")[0])||"Annet";
+    if(!groupedByDept[dept]) groupedByDept[dept]=[];
+    groupedByDept[dept].push(l);
+  });
+
+  const assignWholeDept=(dept,staffId)=>{
+    setChannelAssignments(prev=>{
+      const next={...prev};
+      (groupedByDept[dept]||[]).forEach(l=>{ next[l.flatKey]=staffId; });
+      return next;
+    });
+  };
 
   const save=()=>{
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
     if(!form.end) return alert("Fyll inn sluttdato");
     if(selectedLines.length===0) return alert("Velg minst én kanal");
     const channelBudgets={};
-    selectedLines.forEach(l=>{ if(+channelAmounts[l.flatKey]>0) channelBudgets[l.flatKey]=+channelAmounts[l.flatKey]; });
+    selectedLines.forEach(l=>{ const amt=amountFor(l.flatKey); if(amt>0) channelBudgets[l.flatKey]=amt; });
     if(Object.keys(channelBudgets).length===0&&restAmount<=0) return alert("Legg inn budsjett på minst én kanal");
+    const channelAssignmentsClean={};
+    Object.entries(channelAssignments).forEach(([k,v])=>{ if(v) channelAssignmentsClean[k]=v; });
     onSave({
       id:uid(),...form,
-      assignedTo:form.assignedTo?[form.assignedTo]:[],
-      channels:form.channels,channelBudgets,status:"ny",archived:false,
+      channels:form.channels,channelBudgets,channelAssignments:channelAssignmentsClean,
+      status:"ny",archived:false,
       restspendUsed:restAmount,
     });
   };
@@ -3345,19 +3373,11 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
 
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
-          <div><label>Kunde</label>
-            <select value={form.customerId} onChange={e=>setForm(f=>({...f,customerId:e.target.value}))} style={{width:"100%"}}>
-              <option value="">Velg kunde...</option>
-              {customers.map(c=><option key={c.id} value={c.id}>{c.name} — Bank: {fmtNOK(c.bank||0)}</option>)}
-            </select>
-          </div>
-          <div><label>Ressurs</label>
-            <select value={form.assignedTo} onChange={e=>setForm(f=>({...f,assignedTo:e.target.value}))} style={{width:"100%"}}>
-              <option value="">Ikke tildelt</option>
-              {CHANNEL_STAFF.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
-          </div>
+        <div style={{marginBottom:12}}><label>Kunde</label>
+          <select value={form.customerId} onChange={e=>setForm(f=>({...f,customerId:e.target.value}))} style={{width:"100%"}}>
+            <option value="">Velg kunde...</option>
+            {customers.map(c=><option key={c.id} value={c.id}>{c.name} — Bank: {fmtNOK(c.bank||0)}</option>)}
+          </select>
         </div>
 
         {selectedCustomer&&(
@@ -3383,25 +3403,70 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
 
         {selectedLines.length>0&&(
           <div style={{marginBottom:16}}>
-            <label>Budsjett per kanal</label>
-            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:8,marginTop:-4}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+              <label style={{marginBottom:0}}>Budsjett per kanal</label>
+              <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",marginBottom:0}}>
+                <input type="checkbox" checked={useSplitMode} onChange={e=>setUseSplitMode(e.target.checked)} style={{width:"auto"}}/>
+                <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Prosentfordeling</span>
+              </label>
+            </div>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:8}}>
               Ressursen som får oppgaven bygger selv ut konkrete kampanjelinjer og ad groups innenfor disse rammene.
             </div>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {selectedLines.map(line=>{
-                const iconKey=line.flatKey.split(" · ")[0];
-                return (
-                  <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:10,background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft,padding:"8px 12px"}}>
-                    <span style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink,display:"flex",alignItems:"center",gap:6}}>
-                      {CHANNEL_ICONS[iconKey]&&<img src={CHANNEL_ICONS[iconKey]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                      {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% fee</span>}
-                    </span>
-                    <input type="number" value={channelAmounts[line.flatKey]||""} onChange={e=>setChannelAmounts(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:140,textAlign:"right"}} placeholder="0"/>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>NOK</span>
+
+            {useSplitMode&&(
+              <div style={{marginBottom:10}}>
+                <label>Totalbudsjett</label>
+                <input type="number" value={totalBudgetInput} onChange={e=>setTotalBudgetInput(e.target.value)} placeholder="0" style={{textAlign:"right"}}/>
+              </div>
+            )}
+
+            <div style={{display:"flex",flexDirection:"column",gap:14}}>
+              {Object.entries(groupedByDept).map(([dept,lines])=>(
+                <div key={dept} style={{border:"1px solid "+C.borderSoft,borderRadius:9,overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft}}>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink,flex:1}}>{dept}</span>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:10.5,color:C.ink3}}>Tildel hele {dept}:</span>
+                    <select onChange={e=>{ if(e.target.value) assignWholeDept(dept,e.target.value); }} defaultValue="" style={{width:170,padding:"4px 8px",fontSize:11}}>
+                      <option value="">Velg ressurs...</option>
+                      {(dept==="Annet"?AMIDAYS_STAFF:AMIDAYS_STAFF.filter(s=>s.depts.includes(dept))).map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                    </select>
                   </div>
-                );
-              })}
+                  <div style={{padding:"10px 12px",display:"flex",flexDirection:"column",gap:8}}>
+                    {lines.map(line=>{
+                      const iconKey=line.flatKey.split(" · ")[0];
+                      const staffOptions=dept==="Annet"?AMIDAYS_STAFF:AMIDAYS_STAFF.filter(s=>s.depts.includes(dept));
+                      return (
+                        <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:9,border:"1px solid "+C.borderSoft,padding:"8px 12px",flexWrap:"wrap"}}>
+                          <span style={{flex:"1 1 160px",fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink,display:"flex",alignItems:"center",gap:6}}>
+                            {CHANNEL_ICONS[iconKey]&&<img src={CHANNEL_ICONS[iconKey]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
+                            {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% fee</span>}
+                          </span>
+                          {!useSplitMode&&<>
+                            <input type="number" value={channelAmounts[line.flatKey]||""} onChange={e=>setChannelAmounts(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
+                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>NOK</span>
+                          </>}
+                          {useSplitMode&&<>
+                            <input type="number" value={channelPercents[line.flatKey]||""} onChange={e=>setChannelPercents(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:70,textAlign:"right"}} placeholder="0"/>
+                            <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>% = {fmtNOK(amountFor(line.flatKey))}</span>
+                          </>}
+                          <select value={channelAssignments[line.flatKey]||""} onChange={e=>setChannelAssignments(p=>({...p,[line.flatKey]:e.target.value}))} style={{width:150,padding:"4px 8px",fontSize:11,marginLeft:"auto"}}>
+                            <option value="">Ikke tildelt</option>
+                            {staffOptions.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
+                          </select>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
+
+            {useSplitMode&&percentSum!==100&&selectedLines.length>0&&(
+              <div style={{marginTop:8,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.badFg}}>
+                Prosentene summerer til {percentSum}%, ikke 100%.
+              </div>
+            )}
 
             {/* Restspend */}
             {selectedCustomer&&tilgode>0&&(
