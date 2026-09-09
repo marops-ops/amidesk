@@ -523,13 +523,9 @@ const slugify = (name) => (name||"").toLowerCase()
   };
 
   const adjustBank = async (customerId, delta) => {
-    let updated;
-    setCustomers(prev => {
-      const next = prev.map(c => c.id===customerId ? {...c, bank:(c.bank||0)+delta} : c);
-      updated = next.find(c=>c.id===customerId);
-      return next;
-    });
-    if (updated) await sb.from("customers").update({bank: updated.bank}).eq("id", customerId);
+    const {data, error} = await sb.rpc("increment_bank", {p_customer_id: customerId, p_delta: delta});
+    if (error) { console.error("adjustBank failed:", error); return; }
+    setCustomers(prev => prev.map(c => c.id===customerId ? {...c, bank: data} : c));
   };
 
   const logActivity = async (customerId, campaignId, type, description) => {
@@ -683,7 +679,7 @@ const slugify = (name) => (name||"").toLowerCase()
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite} session={session}/>}
         {(page==="customer-detail"&&activeCustomer)
-          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
+          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} adjustBank={adjustBank} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
         {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign} logActivity={logActivity}/>}
@@ -2872,7 +2868,7 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer, editable
   );
 }
 
-function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, navigate, onAddCampaign, session, teamMembers=[]}) {
+function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, adjustBank, navigate, onAddCampaign, session, teamMembers=[]}) {
   const [tab,setTab]=useState("active");
   const [bankMode,setBankMode]=useState(null); // null | "deposit"
   const [bankDept,setBankDept]=useState("");
@@ -2916,7 +2912,8 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
     const dept=DEPTS.find(d=>d.key===bankDept);
     if(!dept) return;
     const newDeptBudgets={...(customer.deptBudgets||{}),[bankDept]:(customer.deptBudgets?.[bankDept]||0)+val};
-    updateCustomer(customer.id,{deptBudgets:newDeptBudgets,bank:(customer.bank||0)+val});
+    updateCustomer(customer.id,{deptBudgets:newDeptBudgets});
+    adjustBank&&adjustBank(customer.id,val);
     setBankMode(null);setBankInput("");setBankDept("");
   };
 
