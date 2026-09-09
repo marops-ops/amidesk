@@ -3748,86 +3748,201 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
 // ══ Convert Brief → Campaign Modal ════════════════════════════════
 function ConvertBriefModal({brief, customers, onClose, onSave}) {
   const cust=customers.find(c=>c.id===brief.customerId);
-  // Use brief.channelBudgets directly — these have the named lines + amounts already set
-  const [channelBudgets,setChannelBudgets]=useState({...brief.channelBudgets});
   const [form,setForm]=useState({title:brief.title,start:brief.start||today(),end:brief.end||""});
-  const total=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
+  const envelopeChannels=Object.keys(brief.channelBudgets||{});
+  const [channelLines,setChannelLines]=useState(()=>{
+    const init={};
+    envelopeChannels.forEach(ch=>{
+      init[ch]=[{id:uid(),name:"",budget:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:"",start:"",end:""}]}];
+    });
+    return init;
+  });
+
+  const addLine=(ch)=>setChannelLines(prev=>({...prev,[ch]:[...prev[ch],{id:uid(),name:"",budget:"",useAdGroups:false,adGroups:[{id:uid(),name:"",budget:"",start:"",end:""}]}]}));
+  const removeLine=(ch,id)=>setChannelLines(prev=>({...prev,[ch]:prev[ch].filter(l=>l.id!==id)}));
+  const updateLine=(ch,id,field,val)=>setChannelLines(prev=>({...prev,[ch]:prev[ch].map(l=>l.id===id?{...l,[field]:val}:l)}));
+
+  const allocatedFor=(ch)=>(channelLines[ch]||[]).reduce((a,l)=>a+(l.useAdGroups?(l.adGroups||[]).reduce((x,g)=>x+(+g.budget||0),0):(+l.budget||0)),0);
+  const total=envelopeChannels.reduce((a,ch)=>a+allocatedFor(ch),0);
   const bankAfter=(cust?.bank||0)-total;
 
   const save=()=>{
-    if(!form.title||!form.end) return alert("Fyll inn tittel og sluttdato");
+    if(!form.title) return alert("Fyll inn kampanjenavn");
+    if(!form.end) return alert("Fyll inn sluttdato");
     // Én kanal = én kampanje-rad, samme regel som ved manuell kampanjeopprettelse.
-    const byChannel={};
-    Object.entries(channelBudgets).forEach(([key,val])=>{
-      if(!val) return;
-      const base=key.split(" — ")[0].split(" · ")[0];
-      if(!byChannel[base]) byChannel[base]={};
-      byChannel[base][key]=val;
-    });
-    const campaigns=Object.entries(byChannel).map(([base,budgets])=>({
-      id:uid(),customerId:brief.customerId,title:form.title,
-      start:form.start,end:form.end,
-      budget:Object.values(budgets).reduce((a,b)=>a+b,0),
-      status:"green",
-      channels:{[base]:(brief.channels?.[base]||[])},channelBudgets:budgets,
-      spent:{},channelDates:{},archived:false,fromBriefId:brief.id,
-    }));
+    const campaigns=envelopeChannels.map((ch,idx)=>{
+      const base=ch.split(" — ")[0].split(" · ")[0];
+      const channels={[base]:[]};
+      const channelBudgets={};
+      const channelDates={};
+      (channelLines[ch]||[]).forEach(l=>{
+        const lineName=l.name||form.title;
+        if(l.useAdGroups&&l.adGroups?.filter(g=>+g.budget>0).length>0) {
+          l.adGroups.forEach(g=>{
+            if(+g.budget>0) {
+              const key=ch+" — "+lineName+" / "+(g.name||"Ad set");
+              channelBudgets[key]=+g.budget;
+              if(g.start||g.end) channelDates[key]={start:g.start||form.start,end:g.end||form.end};
+            }
+          });
+        } else {
+          const lineBudget=+l.budget||0;
+          if(lineBudget>0) {
+            const key=ch+" — "+lineName;
+            channelBudgets[key]=lineBudget;
+          }
+        }
+      });
+      const channelBudgetTotal=Object.values(channelBudgets).reduce((a,b)=>a+b,0);
+      return {
+        id:uid(),customerId:brief.customerId,title:form.title,
+        start:form.start,end:form.end,budget:channelBudgetTotal,
+        status:"green",channels,channelBudgets,
+        spent:{},channelDates,archived:false,fromBriefId:brief.id,
+        restspendUsed:idx===0?(brief.restspendUsed||0):0,
+      };
+    }).filter(c=>Object.keys(c.channelBudgets).length>0);
+
     if(campaigns.length===0) return alert("Legg inn budsjett på minst én linje");
     onSave(campaigns,brief.id);
   };
 
-  const lineEntries = Object.entries(channelBudgets);
-
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
-      <div className="modal modal-lg">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
-          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:26,fontWeight:500,color:C.ink}}>Lag kampanje fra oppgave</h2>
+      <div className="modal modal-lg" style={{maxHeight:"92vh"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:22,fontWeight:600,color:C.ink}}>Lag kampanje fra oppgave{cust?" — "+cust.name:""}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
         </div>
+
         {cust&&(
-          <div style={{background:C.bg,borderRadius:4,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12}}>
+          <div style={{background:C.cardAlt,borderRadius:9,padding:"10px 14px",marginBottom:16,display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:12,border:"1px solid "+C.borderSoft}}>
             <span style={{color:C.ink3}}>Kundebank: <strong style={{color:C.ink}}>{fmtNOK(cust.bank||0)}</strong></span>
             <span style={{color:bankAfter<0?C.badFg:C.okFg}}>Etter kampanje: <strong>{fmtNOK(bankAfter)}</strong></span>
           </div>
         )}
-        <div style={{marginBottom:14}}><label>Kampanjenavn</label><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} style={{width:"100%"}}/></div>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:18}}>
-          <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))} style={{width:"100%"}}/></div>
-          <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))} style={{width:"100%"}}/></div>
+
+        <div style={{marginBottom:12}}>
+          <label>Kampanjenavn</label>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} autoFocus/>
         </div>
-        {lineEntries.length>0&&(
-          <div style={{marginBottom:18}}>
-            <label style={{marginBottom:8,display:"block"}}>Kampanjelinjer og budsjett</label>
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {lineEntries.map(([key,val])=>{
-                const baseCh = key.split(" — ")[0];
-                const hunch = isHunch(baseCh);
-                const icon = getChannelIcon(baseCh);
-                return (
-                  <div key={key} style={{display:"flex",alignItems:"center",gap:10,background:C.bg,borderRadius:3,padding:"8px 12px",border:"1px solid "+C.border}}>
-                    <div style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink2,display:"flex",alignItems:"center",gap:6}}>
-                      {icon&&<img src={icon} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
-                      {key}
-                      {hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:4}}>−5% fee</span>}
-                    </div>
-                    <input type="number" value={val||""} onChange={e=>setChannelBudgets(p=>({...p,[key]:+e.target.value}))} style={{width:120,textAlign:"right"}} placeholder="0"/>
-                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>NOK</span>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:20}}>
+          <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/></div>
+          <div><label>Sluttdato</label><input type="date" value={form.end} onChange={e=>setForm(f=>({...f,end:e.target.value}))}/></div>
+        </div>
+
+        {envelopeChannels.length===0&&(
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:18,padding:"12px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+            Ingen kanalrammer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt etterpå.
+          </div>
+        )}
+
+        {envelopeChannels.length>0&&(
+          <div style={{display:"flex",flexDirection:"column",gap:12,marginBottom:16}}>
+            {envelopeChannels.map(ch=>{
+              const iconKey=ch.split(" — ")[0].split(" · ")[0];
+              const icon=CHANNEL_ICONS[iconKey];
+              const hunch=isHunch(ch);
+              const envelope=brief.channelBudgets[ch]||0;
+              const allocated=allocatedFor(ch);
+              const remaining=envelope-allocated;
+              return (
+                <div key={ch} style={{border:"1px solid "+C.border,borderRadius:12,overflow:"hidden"}}>
+                  <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",background:C.cardAlt,borderBottom:"1px solid "+C.borderSoft,flexWrap:"wrap"}}>
+                    {icon&&<div style={{width:22,height:22,borderRadius:5,overflow:"hidden",background:"#fff",flexShrink:0}}>
+                      <img src={icon} alt="" style={{width:"100%",height:"100%",objectFit:"contain"}}/>
+                    </div>}
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink,flex:1}}>{ch}</span>
+                    {hunch&&<span style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.badFg,background:C.badBg,padding:"2px 8px",borderRadius:99}}>−5% fee</span>}
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Tildelt: <strong style={{color:C.ink}}>{fmtNOK(envelope)}</strong></span>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:remaining<0?C.badFg:C.okFg}}>Gjenstår: <strong>{fmtNOK(remaining)}</strong></span>
                   </div>
-                );
-              })}
-              <div style={{display:"flex",justifyContent:"flex-end",fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,paddingRight:36}}>
-                Totalt: <strong style={{color:C.ink,marginLeft:6}}>{fmtNOK(total)}</strong>
-              </div>
-            </div>
+                  <div style={{padding:"10px 14px",display:"flex",flexDirection:"column",gap:8}}>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:6,alignItems:"center",marginBottom:4,padding:"0 0 4px"}}>
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,color:C.ink4,letterSpacing:".08em",textTransform:"uppercase"}}>Kampanjenavn</div>
+                      <div style={{fontFamily:"Roboto,sans-serif",fontSize:9.5,color:C.ink4,letterSpacing:".08em",textTransform:"uppercase",textAlign:"right"}}>Budsjett</div>
+                      <div/>
+                    </div>
+                    {(channelLines[ch]||[]).map(l=>(
+                      <div key={l.id} style={{background:C.bg,borderRadius:9,padding:"10px 12px",marginBottom:6}}>
+                        <div style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center",marginBottom:6}}>
+                          <input value={l.name} onChange={e=>updateLine(ch,l.id,"name",e.target.value)} placeholder={form.title||"Kampanjenavn"}/>
+                          <input type="number" value={l.useAdGroups?l.adGroups.reduce((a,g)=>a+(+g.budget||0),0)||"":l.budget}
+                            onChange={e=>!l.useAdGroups&&updateLine(ch,l.id,"budget",e.target.value)}
+                            placeholder="0" style={{textAlign:"right",background:l.useAdGroups?C.borderSoft:"",color:l.useAdGroups?C.ink3:C.ink}}
+                            readOnly={l.useAdGroups}/>
+                          {(channelLines[ch]||[]).length>1&&(
+                            <button className="btn" onClick={()=>removeLine(ch,l.id)}
+                              style={{background:"none",color:C.badFg,padding:"4px 8px",border:"1px solid "+C.badBg,borderRadius:8}}><X size={12}/></button>
+                          )}
+                        </div>
+                        <label style={{display:"flex",alignItems:"center",gap:6,cursor:"pointer",marginBottom:l.useAdGroups?8:0}}>
+                          <input type="checkbox" checked={l.useAdGroups||false} onChange={e=>updateLine(ch,l.id,"useAdGroups",e.target.checked)} style={{width:"auto"}}/>
+                          <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>Legg til {adGroupLabel(ch).toLowerCase()}</span>
+                        </label>
+                        {l.useAdGroups&&(
+                          <div style={{marginLeft:16,display:"flex",flexDirection:"column",gap:6}}>
+                            <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink4,letterSpacing:".07em",textTransform:"uppercase",marginBottom:2}}>{adGroupLabel(ch)}</div>
+                            {(l.adGroups||[]).map((g,gi)=>(
+                              <div key={g.id} style={{background:C.cardAlt,borderRadius:8,padding:"8px 10px",marginBottom:6,border:"1px solid "+C.borderSoft}}>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 110px auto",gap:6,alignItems:"center",marginBottom:6}}>
+                                  <input value={g.name} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,name:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} placeholder={adGroupLabel(ch).slice(0,-1)+" "+(gi+1)} style={{fontSize:12}}/>
+                                  <input type="number" value={g.budget||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,budget:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                    const newTotal=newGroups.reduce((a,ag)=>a+(+ag.budget||0),0);
+                                    updateLine(ch,l.id,"budget",newTotal||"");
+                                  }} placeholder="0" style={{textAlign:"right",fontSize:12}}/>
+                                  {(l.adGroups||[]).length>1&&<button className="btn" onClick={()=>{
+                                    const newGroups=l.adGroups.filter((_,ai)=>ai!==gi);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                    updateLine(ch,l.id,"budget",newGroups.reduce((a,ag)=>a+(+ag.budget||0),0)||"");
+                                  }} style={{background:"none",color:C.badFg,padding:"2px 6px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={10}/></button>}
+                                </div>
+                                <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                                  <input type="date" value={g.start||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,start:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} style={{fontSize:11,padding:"4px 7px"}}/>
+                                  <input type="date" value={g.end||""} onChange={e=>{
+                                    const newGroups=l.adGroups.map((ag,ai)=>ai===gi?{...ag,end:e.target.value}:ag);
+                                    updateLine(ch,l.id,"adGroups",newGroups);
+                                  }} style={{fontSize:11,padding:"4px 7px"}}/>
+                                </div>
+                              </div>
+                            ))}
+                            <button className="action-btn" style={{alignSelf:"flex-start"}} onClick={()=>{
+                              updateLine(ch,l.id,"adGroups",[...(l.adGroups||[]),{id:uid(),name:"",budget:"",start:"",end:""}]);
+                            }}><Plus size={11}/> Legg til</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <button className="action-btn" onClick={()=>addLine(ch)} style={{alignSelf:"flex-start"}}>
+                      <Plus size={12}/> Legg til linje
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
-        {lineEntries.length===0&&(
-          <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:18,padding:"12px",background:C.bg,borderRadius:4,border:"1px solid "+C.border}}>
-            Ingen kampanjelinjer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt.
+
+        {brief.restspendUsed>0&&(
+          <div style={{marginBottom:14,padding:"8px 14px",background:C.sandBg,borderRadius:9,border:"1px solid "+C.sandBd,fontFamily:"Roboto,sans-serif",fontSize:12,color:C.sandDeep}}>
+            Inkluderer {fmtNOK(brief.restspendUsed)} restspend fra oppgaven (lagt på {envelopeChannels[0]||"første kanal"})
           </div>
         )}
-        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:4,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
+
+        {total>0&&<div style={{display:"flex",justifyContent:"space-between",fontFamily:"Roboto,sans-serif",fontSize:13,marginBottom:14,padding:"10px 14px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+          <span style={{color:C.ink3}}>Totalt budsjett</span>
+          <strong style={{color:C.ink}}>{fmtNOK(total)}</strong>
+        </div>}
+
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%"}}>Opprett kampanje</button>
       </div>
     </div>
   );
