@@ -3296,7 +3296,7 @@ function getSelectedLines(channels) {
 // ══ Create Brief Modal ════════════════════════════════════════════
 function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
   const [form,setForm]=useState({customerId:"",title:"",description:"",start:today(),end:"",assignedTo:"",channels:{}});
-  const [campaignLines,setCampaignLines]=useState([]);
+  const [channelAmounts,setChannelAmounts]=useState({}); // flatKey -> budget (rådgivers ramme per kanal)
   const [useRestspend,setUseRestspend]=useState(false);
   const [restspendAmount,setRestspendAmount]=useState("");
 
@@ -3314,29 +3314,24 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
   const selectedLines=getSelectedLines(form.channels);
   const handleChannelChange=newChannels=>{
     const newLines=getSelectedLines(newChannels);
-    setCampaignLines(prev=>{
-      const kept=prev.filter(cl=>newLines.some(l=>l.flatKey===cl.flatKey));
-      const existing=new Set(kept.map(cl=>cl.flatKey));
-      const added=newLines.filter(l=>!existing.has(l.flatKey)).map(l=>({id:uid(),flatKey:l.flatKey,name:"Kampanje 1",budget:0,hunch:l.hunch}));
-      return [...kept,...added];
+    setChannelAmounts(prev=>{
+      const next={};
+      newLines.forEach(l=>{ next[l.flatKey]=prev[l.flatKey]||0; });
+      return next;
     });
     setForm(f=>({...f,channels:newChannels}));
   };
-  const addLine=flatKey=>{
-    const count=campaignLines.filter(cl=>cl.flatKey===flatKey).length;
-    setCampaignLines(prev=>[...prev,{id:uid(),flatKey,name:"Kampanje "+(count+1),budget:0,hunch:isHunch(flatKey)}]);
-  };
-  const removeLine=id=>setCampaignLines(prev=>prev.filter(cl=>cl.id!==id));
-  const updateLine=(id,changes)=>setCampaignLines(prev=>prev.map(cl=>cl.id===id?{...cl,...changes}:cl));
-  const baseBudget=campaignLines.reduce((a,cl)=>a+(cl.budget||0),0);
+  const baseBudget=Object.values(channelAmounts).reduce((a,b)=>a+(+b||0),0);
   const restAmount=useRestspend?(+restspendAmount||0):0;
   const total=baseBudget+restAmount;
 
   const save=()=>{
     if(!form.customerId||!form.title) return alert("Fyll inn kunde og tittel");
     if(!form.end) return alert("Fyll inn sluttdato");
+    if(selectedLines.length===0) return alert("Velg minst én kanal");
     const channelBudgets={};
-    campaignLines.forEach(cl=>{channelBudgets[cl.flatKey+" — "+cl.name]=cl.budget||0;});
+    selectedLines.forEach(l=>{ if(+channelAmounts[l.flatKey]>0) channelBudgets[l.flatKey]=+channelAmounts[l.flatKey]; });
+    if(Object.keys(channelBudgets).length===0&&restAmount<=0) return alert("Legg inn budsjett på minst én kanal");
     onSave({
       id:uid(),...form,
       assignedTo:form.assignedTo?[form.assignedTo]:[],
@@ -3376,7 +3371,7 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
         )}
 
         <div style={{marginBottom:12}}><label>Tittel</label>
-          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="f.eks. Meta | Always On | Oktober 2026"/>
+          <input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="f.eks. Høstkampanje"/>
         </div>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
           <div><label>Startdato</label><input type="date" value={form.start} onChange={e=>setForm(f=>({...f,start:e.target.value}))}/></div>
@@ -3391,27 +3386,21 @@ function CreateBriefModal({customers, tasks=[], onClose, onSave}) {
 
         {selectedLines.length>0&&(
           <div style={{marginBottom:16}}>
-            <label>Kampanjelinjer og budsjett</label>
-            <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
+            <label>Budsjett per kanal</label>
+            <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:8,marginTop:-4}}>
+              Ressursen som får oppgaven bygger selv ut konkrete kampanjelinjer og ad groups innenfor disse rammene.
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
               {selectedLines.map(line=>{
-                const linesForChannel=campaignLines.filter(cl=>cl.flatKey===line.flatKey);
+                const iconKey=line.flatKey.split(" · ")[0];
                 return (
-                  <div key={line.flatKey} style={{background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft,padding:"10px 12px"}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                      <span style={{fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink}}>
-                        {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% fee</span>}
-                      </span>
-                      <button className="action-btn" onClick={()=>addLine(line.flatKey)}><Plus size={11}/> Legg til linje</button>
-                    </div>
-                    <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                      {linesForChannel.map(cl=>(
-                        <div key={cl.id} style={{display:"grid",gridTemplateColumns:"1fr 120px auto",gap:8,alignItems:"center"}}>
-                          <input value={cl.name} onChange={e=>updateLine(cl.id,{name:e.target.value})} placeholder="Linjenavn"/>
-                          <input type="number" value={cl.budget||""} onChange={e=>updateLine(cl.id,{budget:+e.target.value})} style={{textAlign:"right"}} placeholder="0"/>
-                          {linesForChannel.length>1&&<button className="btn" onClick={()=>removeLine(cl.id)} style={{background:"none",color:C.badFg,padding:"2px 4px",border:"1px solid "+C.badBg,borderRadius:6}}><X size={13}/></button>}
-                        </div>
-                      ))}
-                    </div>
+                  <div key={line.flatKey} style={{display:"flex",alignItems:"center",gap:10,background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft,padding:"8px 12px"}}>
+                    <span style={{flex:1,fontFamily:"Roboto,sans-serif",fontSize:12,fontWeight:600,color:C.ink,display:"flex",alignItems:"center",gap:6}}>
+                      {CHANNEL_ICONS[iconKey]&&<img src={CHANNEL_ICONS[iconKey]} alt="" style={{width:16,height:16,borderRadius:3,objectFit:"contain"}}/>}
+                      {line.label}{line.hunch&&<span style={{color:C.badFg,fontSize:10,marginLeft:6}}>−5% fee</span>}
+                    </span>
+                    <input type="number" value={channelAmounts[line.flatKey]||""} onChange={e=>setChannelAmounts(p=>({...p,[line.flatKey]:+e.target.value}))} style={{width:140,textAlign:"right"}} placeholder="0"/>
+                    <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>NOK</span>
                   </div>
                 );
               })}
