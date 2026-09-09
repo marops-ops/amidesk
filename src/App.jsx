@@ -726,7 +726,8 @@ const slugify = (name) => (name||"").toLowerCase()
             const staffMember=AMIDAYS_STAFF.find(s=>s.id===staffId);
             if(!staffMember) continue;
             const {data:profile}=await sb.from("profiles").select("id").eq("email",staffMember.email).single();
-            if(profile && profile.id!==session.user.id && !sharedWith.includes(profile.id)){
+            if(!profile){ console.warn(staffMember.name+" har ikke logget inn i AmiDesk ennå — får ikke varsel."); continue; }
+            if(!sharedWith.includes(profile.id)){
               sharedWith.push(profile.id);
               const {error:notifError} = await sb.from("notifications").insert({
                 id: uid(),
