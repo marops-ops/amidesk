@@ -745,7 +745,7 @@ const slugify = (name) => (name||"").toLowerCase()
         }}/>}
       {showCreateCustomer&&<CreateCustomerModal onClose={()=>setShowCreateCustomer(false)}
         onSave={async c=>{setCustomers(p=>[...p,c]);await sb.from("customers").upsert(customerToRow(c));setShowCreateCustomer(false);}}/>}
-      {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers}
+      {briefToConvert&&<ConvertBriefModal brief={briefToConvert} customers={customers} session={session}
         onClose={()=>setBriefToConvert(null)}
         onSave={async (campaignsArr,briefId)=>{
           for(const campaign of campaignsArr){
@@ -3826,10 +3826,16 @@ function AddCampaignModal({customer, customers=[], presetChannel, onClose, onSav
 }
 
 // ══ Convert Brief → Campaign Modal ════════════════════════════════
-function ConvertBriefModal({brief, customers, onClose, onSave}) {
+function ConvertBriefModal({brief, customers, session, onClose, onSave}) {
   const cust=customers.find(c=>c.id===brief.customerId);
   const [form,setForm]=useState({title:brief.title,start:brief.start||today(),end:brief.end||""});
-  const envelopeChannels=Object.keys(brief.channelBudgets||{});
+  const myStaffId=AMIDAYS_STAFF.find(s=>s.email===session?.user?.email)?.id;
+  const allEnvelopeChannels=Object.keys(brief.channelBudgets||{});
+  const envelopeChannels=allEnvelopeChannels.filter(ch=>{
+    const assignedTo=brief.channelAssignments?.[ch];
+    return !assignedTo||assignedTo===myStaffId;
+  });
+  const hiddenChannels=allEnvelopeChannels.filter(ch=>!envelopeChannels.includes(ch));
   const [channelLines,setChannelLines]=useState(()=>{
     const init={};
     envelopeChannels.forEach(ch=>{
@@ -3913,7 +3919,19 @@ function ConvertBriefModal({brief, customers, onClose, onSave}) {
 
         {envelopeChannels.length===0&&(
           <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:18,padding:"12px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
-            Ingen kanalrammer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt etterpå.
+            {hiddenChannels.length>0
+              ? "Ingen av kanalene i denne oppgaven er tildelt deg. Be den som opprettet oppgaven om å tildele deg en kanal, eller be en admin om hjelp."
+              : "Ingen kanalrammer satt opp på oppgaven. Opprett kampanjen og legg til linjer manuelt etterpå."}
+          </div>
+        )}
+
+        {hiddenChannels.length>0&&(
+          <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:14,padding:"10px 14px",background:C.cardAlt,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+            {hiddenChannels.length} kanal{hiddenChannels.length!==1?"er":""} i denne oppgaven er tildelt noen andre og vises ikke her: {hiddenChannels.map(ch=>{
+              const staffId=brief.channelAssignments?.[ch];
+              const staffName=AMIDAYS_STAFF.find(s=>s.id===staffId)?.name||"ukjent";
+              return `${ch} (${staffName})`;
+            }).join(", ")}
           </div>
         )}
 
