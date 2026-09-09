@@ -684,7 +684,7 @@ const slugify = (name) => (name||"").toLowerCase()
           ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} adjustBank={adjustBank} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
-        {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign} logActivity={logActivity}/>}
+        {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign} adjustBank={adjustBank} logActivity={logActivity}/>}
         {page==="team-member"&&<TeamMemberPage userId={viewingUserId} teamMembers={teamMembers} customers={customers} navigate={navigate} session={session} isAdmin={isAdmin} onUpdateProfile={(id,changes)=>setTeamMembers(prev=>prev.map(m=>m.id===id?{...m,...changes}:m))}/>}
       </main>
 
@@ -869,7 +869,7 @@ function Sidebar({page, navigate, setShowCreateBrief, onAddCampaign, session, is
 }
 
 // ══ Team Page (admin only) ═════════════════════════════════════════
-function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, updateCampaign, logActivity}) {
+function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, updateCampaign, adjustBank, logActivity}) {
   const isSuperAdmin = SUPER_ADMIN_EMAILS.includes(session?.user?.email||"");
   const userEmail = session?.user?.email||"";
   const userStaff = AMIDAYS_STAFF.find(s=>s.email===userEmail);
@@ -877,6 +877,48 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
   const toggleCollapse = (key) => setCollapsedCustomers(prev=>({...prev,[key]: prev[key]===undefined ? false : !prev[key]}));
   const [shareModalTarget, setShareModalTarget] = useState(null); // {tasks, name} | null
+
+  const handleDeleteLineFor=(task,flatKey)=>{
+    if(!confirm("Slett linjen permanent?")) return;
+    const lineBudget=task.channelBudgets?.[flatKey]||0;
+    const lineLabel=flatKey.includes(" — ")?flatKey.split(" — ").slice(1).join(" — "):flatKey;
+    if(adjustBank&&lineBudget>0) adjustBank(task.customerId, lineBudget);
+    const newBudgets={...task.channelBudgets};
+    const newSpent={...task.spent};
+    const newDates={...task.channelDates};
+    delete newBudgets[flatKey];
+    delete newSpent[flatKey];
+    delete newDates[flatKey];
+    const base=flatKey.split(" — ")[0].split(" · ")[0];
+    const remaining=Object.keys(newBudgets).filter(k=>k.split(" — ")[0].split(" · ")[0]===base);
+    const newChannels={...task.channels};
+    if(remaining.length===0) delete newChannels[base];
+    const totalRemaining=Object.keys(newBudgets).length;
+    const updates={channelBudgets:newBudgets,spent:newSpent,channelDates:newDates,channels:newChannels,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
+    if(totalRemaining===0) updates.archived=true;
+    updateCampaign(task.id,updates);
+    logActivity&&logActivity(task.customerId,task.id,"line_deleted",`Linje slettet: "${lineLabel}" — ${fmtNOK(lineBudget)} returnert til bank`);
+  };
+
+  const handleEndChannelFor=(task,line)=>{
+    if(!confirm("Avslutt linjen og send differansen til bank?")) return;
+    const diff=line.budget-line.spent;
+    const newBudgets={...task.channelBudgets};
+    const newSpent={...task.spent};
+    delete newBudgets[line.flatKey];
+    delete newSpent[line.flatKey];
+    const archivedLines=[...(task.archivedLines||[]),{
+      flatKey:line.flatKey, label:line.label,
+      budget:line.budget, spent:line.spent,
+      start:line.chStart, end:today(), settledAt:today(),
+    }];
+    const remainingLines=Object.keys(newBudgets).length;
+    const updates={channelBudgets:newBudgets,spent:newSpent,archivedLines,budget:Object.values(newBudgets).reduce((a,b)=>a+b,0)};
+    if(remainingLines===0) updates.archived=true;
+    logActivity&&logActivity(task.customerId,task.id,"line_settled",`Linje avsluttet: "${line.label}" — ${diff>=0?"Rest "+fmtNOK(diff)+" returnert":"Overspend "+fmtNOK(Math.abs(diff))}`);
+    updateCampaign(task.id,updates);
+    if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
+  };
 
   const shareAllCampaigns=async(custTasksToShare,staff)=>{
     const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
@@ -1007,8 +1049,8 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                                           {channelLines.map(line=>(
                                             <CampaignLineRow key={line.flatKey} line={line} task={task}
                                               updateCampaign={updateCampaign}
-                                              onEndChannel={()=>{}}
-                                              onDeleteLine={()=>{}}/>
+                                              onEndChannel={(l)=>handleEndChannelFor(task,l)}
+                                              onDeleteLine={(flatKey)=>handleDeleteLineFor(task,flatKey)}/>
                                           ))}
                                         </div>
                                       );
@@ -1209,7 +1251,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Tildel til…</option>
-                            {staffForChannel(line.flatKey.split(" — ")[0]).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                            {AMIDAYS_STAFF.slice().sort((a,b)=>a.name.localeCompare(b.name,"nb")).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
                           </select>
                           <select onChange={async e=>{
                             const targetEmail=e.target.value;
@@ -1225,7 +1267,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
                             e.target.value="";
                           }} style={{flex:1,padding:"4px 8px",fontSize:11,borderRadius:7}}>
                             <option value="">Del med…</option>
-                            {staffForChannel(line.flatKey.split(" — ")[0]).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
+                            {AMIDAYS_STAFF.slice().sort((a,b)=>a.name.localeCompare(b.name,"nb")).map(s=><option key={s.id} value={s.email}>{s.name}</option>)}
                           </select>
                         </div>
                       )}
