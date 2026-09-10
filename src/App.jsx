@@ -2460,6 +2460,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
   const [budgetVal,setBudgetVal]=useState(line.budget||"");
   const [showActions,setShowActions]=useState(false);
   const [showDateEdit,setShowDateEdit]=useState(false);
+  const [showAllStaff,setShowAllStaff]=useState(false);
   const [pickMode,setPickMode]=useState(null); // null | "assign" | "share"
   const [dateVal,setDateVal]=useState({start:line.chStart,end:line.chEnd});
 
@@ -2627,9 +2628,9 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
             <button className="action-btn" onClick={()=>{setShowActions(false);setPickMode(null);}} style={{marginLeft:"auto"}}><X size={13}/></button>
           </div>
           {pickMode&&(
-            <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 0"}}>
+            <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 0",alignItems:"center"}}>
               <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>{pickMode==="assign"?"Gi til:":"Del med:"}</span>
-              {(staffOverrideList||staffForChannel(line.flatKey.split(" — ")[0])).map(s=>(
+              {(showAllStaff&&staffOverrideList?staffOverrideList:staffForChannel(line.flatKey.split(" — ")[0])).map(s=>(
                 <button key={s.id} className="action-btn" onClick={()=>{
                   if(pickMode==="assign") onAssignLine&&onAssignLine(s);
                   else onShareLine&&onShareLine(s);
@@ -2638,6 +2639,11 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
                   {s.name.split(" ")[0]}
                 </button>
               ))}
+              {staffOverrideList&&(
+                <button className="action-btn" onClick={()=>setShowAllStaff(v=>!v)} style={{fontFamily:"Roboto,sans-serif",fontSize:10.5,color:C.ink3,background:"none",border:"1px dashed "+C.border}}>
+                  {showAllStaff?"Vis kun avdeling":"Vis alle ansatte"}
+                </button>
+              )}
             </div>
           )}
         </div>
