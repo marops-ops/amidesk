@@ -1773,6 +1773,57 @@ function AddLineModal({task, channel, onClose, onSave}) {
   );
 }
 
+function AddAdGroupModal({task, parentFlatKey, parentLabel, channel, onClose, onSave}) {
+  const adLabel=adGroupLabel(channel);
+  const singular=adLabel.slice(0,-1).toLowerCase();
+  const [groups,setGroups]=useState([{id:uid(),name:"",budget:"",start:task.start||"",end:task.end||""}]);
+  const addGroup=()=>setGroups(p=>[...p,{id:uid(),name:"",budget:"",start:task.start||"",end:task.end||""}]);
+  const removeGroup=id=>setGroups(p=>p.filter(g=>g.id!==id));
+  const updateGroup=(id,field,val)=>setGroups(p=>p.map(g=>g.id===id?{...g,[field]:val}:g));
+  const total=groups.reduce((a,g)=>a+(+g.budget||0),0);
+
+  const save=()=>{
+    const lines=groups.filter(g=>+g.budget>0).map((g,i)=>({
+      key:parentFlatKey+" / "+(g.name||adLabel.slice(0,-1)+" "+(i+1)),
+      budget:+g.budget, start:g.start, end:g.end,
+    }));
+    if(!lines.length) return alert("Legg inn budsjett på minst én "+singular);
+    onSave(lines);
+  };
+
+  return (
+    <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
+      <div className="modal" style={{maxWidth:520,maxHeight:"92vh"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:18,fontWeight:600,color:C.ink}}>Ny {singular} — {parentLabel}</h2>
+          <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={18}/></button>
+        </div>
+        <div style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,marginBottom:14}}>
+          Legges til på denne kampanjen. Budsjettet trekkes som nye kroner fra banken. Vil du heller flytte penger fra en pauset {singular}, reduser budsjettet der først (refunderes automatisk), og legg til her etterpå.
+        </div>
+        {groups.map((g,i)=>(
+          <div key={g.id} style={{background:C.cardAlt,borderRadius:9,padding:"10px 12px",marginBottom:8,border:"1px solid "+C.borderSoft}}>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 100px auto",gap:8,marginBottom:8,alignItems:"center"}}>
+              <input value={g.name} onChange={e=>updateGroup(g.id,"name",e.target.value)} placeholder={adLabel.slice(0,-1)+" "+(i+1)} style={{fontSize:12}} autoFocus={i===0}/>
+              <input type="number" value={g.budget||""} onChange={e=>updateGroup(g.id,"budget",e.target.value)} placeholder="0" style={{textAlign:"right",fontSize:12}}/>
+              {groups.length>1&&<button className="btn" onClick={()=>removeGroup(g.id)} style={{background:"none",color:C.badFg,padding:"3px 6px",border:"1px solid "+C.badBg,borderRadius:7}}><X size={11}/></button>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              <div><label style={{fontSize:9}}>Startdato</label><input type="date" value={g.start} onChange={e=>updateGroup(g.id,"start",e.target.value)} style={{fontSize:11}}/></div>
+              <div><label style={{fontSize:9}}>Sluttdato</label><input type="date" value={g.end} onChange={e=>updateGroup(g.id,"end",e.target.value)} style={{fontSize:11}}/></div>
+            </div>
+          </div>
+        ))}
+        <button className="action-btn" onClick={addGroup}><Plus size={11}/> Legg til {singular}</button>
+        {total>0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,margin:"10px 0"}}>Nytt budsjett: <strong style={{color:C.ink}}>{fmtNOK(total)}</strong> (trekkes fra bank)</div>}
+        <button className="btn" onClick={save} style={{background:C.sand,color:"#fff",padding:"11px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:13,width:"100%",marginTop:8}}>
+          Legg til {singular}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity}) {
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
@@ -1809,6 +1860,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
 
   const [collapsedCustomers, setCollapsedCustomers] = useState({});
   const [addLineTarget, setAddLineTarget] = useState(null);
+  const [addAdGroupTarget, setAddAdGroupTarget] = useState(null);
   const toggleCollapse = (id) => setCollapsedCustomers(prev=>({...prev,[id]:!prev[id]}));
   const handleDragStart=(e,id)=>{dragSrc.current=id;e.dataTransfer.effectAllowed="move";};
   const handleDragOver=(e,id)=>{e.preventDefault();setDragOver(id);};
@@ -1845,6 +1897,27 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
           updateCampaign(addLineTarget.task.id,{channelBudgets:newBudgets,channelDates:newDates,budget:newTotal});
           adjustBank&&adjustBank(addLineTarget.task.customerId,-totalAdded);
           setAddLineTarget(null);
+        }}
+      />}
+      {addAdGroupTarget&&<AddAdGroupModal
+        task={addAdGroupTarget.task}
+        parentFlatKey={addAdGroupTarget.parentFlatKey}
+        parentLabel={addAdGroupTarget.parentLabel}
+        channel={addAdGroupTarget.channel}
+        onClose={()=>setAddAdGroupTarget(null)}
+        onSave={(lines)=>{
+          const newBudgets={...addAdGroupTarget.task.channelBudgets};
+          const newDates={...(addAdGroupTarget.task.channelDates||{})};
+          let totalAdded=0;
+          lines.forEach(({key,budget,start,end})=>{
+            newBudgets[key]=budget;
+            totalAdded+=budget;
+            if(start||end) newDates[key]={start:start||addAdGroupTarget.task.start,end:end||addAdGroupTarget.task.end};
+          });
+          const newTotal=Object.entries(newBudgets).filter(([k])=>!k.endsWith("__parent__")).reduce((a,[,b])=>a+b,0);
+          updateCampaign(addAdGroupTarget.task.id,{channelBudgets:newBudgets,channelDates:newDates,budget:newTotal});
+          adjustBank&&adjustBank(addAdGroupTarget.task.customerId,-totalAdded);
+          setAddAdGroupTarget(null);
         }}
       />}
       {grouped.map(({customer,tasks:custTasks},groupIdx)=>{
@@ -1888,7 +1961,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
                 } else {
                   onAddCampaign(customer,{task,channel:ch});
                 }
-              }} session={session} logActivity={logActivity}/>
+              }} onAddAdGroup={(target)=>setAddAdGroupTarget(target)} session={session} logActivity={logActivity}/>
             ))}
             {!collapsedCustomers[customer.id]&&custTasks.length>0&&(()=>{
               const allLines=custTasks.flatMap(t=>getChannelLines(t)).filter(l=>!l.isParent);
@@ -2012,7 +2085,7 @@ function TransferModal({line, custTasks, currentTaskId, onClose, onTransfer, onR
     </div>
   );
 }
-function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, session, logActivity}) {
+function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, onAddAdGroup, session, logActivity}) {
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(task.title);
   const [editingMeta,setEditingMeta]=useState(false);
@@ -2200,9 +2273,12 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                         return (
                           <div key={line.flatKey} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"8px 12px 4px",borderBottom:"1px dashed "+C.borderDash,marginBottom:4,marginTop:6}}>
                             <span style={{fontFamily:"Roboto,sans-serif",fontSize:13,fontWeight:600,color:C.ink}}>{line.label}</span>
-                            <div style={{display:"flex",gap:16,fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
+                            <div style={{display:"flex",gap:16,alignItems:"center",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
                               <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(line.spent)}</strong></span>
                               <span>Totalt: <strong style={{color:C.ink}}>{fmtNOK(line.budget)}</strong></span>
+                              <button className="action-btn" onClick={()=>onAddAdGroup&&onAddAdGroup({task,parentFlatKey:line.flatKey,parentLabel:line.label,channel:channelName})}>
+                                <Plus size={11}/> {adGroupLabel(channelName).slice(0,-1)}
+                              </button>
                             </div>
                           </div>
                         );
