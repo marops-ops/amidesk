@@ -2276,7 +2276,7 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
                             <div style={{display:"flex",gap:16,alignItems:"center",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3}}>
                               <span>Brukt: <strong style={{color:C.ink}}>{fmtNOK(line.spent)}</strong></span>
                               <span>Totalt: <strong style={{color:C.ink}}>{fmtNOK(line.budget)}</strong></span>
-                              <button className="action-btn" onClick={()=>onAddAdGroup&&onAddAdGroup({task,parentFlatKey:line.flatKey,parentLabel:line.label,channel:channelName})}>
+                              <button className="action-btn" onClick={()=>onAddAdGroup&&onAddAdGroup({task,parentFlatKey:line.flatKey.replace(/__parent__$/,""),parentLabel:line.label,channel:channelName})}>
                                 <Plus size={11}/> {adGroupLabel(channelName).slice(0,-1)}
                               </button>
                             </div>
