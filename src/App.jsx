@@ -681,7 +681,7 @@ const slugify = (name) => (name||"").toLowerCase()
 
       <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px",background:C.bg,color:C.ink}}>
         {page==="dashboard"&&<Dashboard tasks={tasks} customers={customers} briefs={briefs} updateBrief={updateBrief} deleteBrief={deleteBrief} navigate={navigate} setBriefToConvert={setBriefToConvert} session={session}/>}
-        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder} logActivity={logActivity}/>}
+        {page==="campaigns"&&<CampaignPage tasks={tasks} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(customer,ctx)=>setAddCampaignTarget({customer,presetChannel:ctx?.channel||null})} briefs={briefs} setShowCreateBrief={setShowCreateBrief} isAdmin={isAdmin} session={session} customerOrder={customerOrder} onReorder={saveCustomerOrder} logActivity={logActivity} teamMembers={teamMembers}/>}
         {page==="briefs"&&<BriefsPage briefs={briefs} customers={customers} navigate={navigate} setShowCreateBrief={setShowCreateBrief} setBriefToConvert={setBriefToConvert}/>}
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite} session={session}/>}
@@ -960,6 +960,19 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
     alert("Delt! Oppdatering vises ved neste innlasting av siden.");
   };
 
+  const assignAllCampaigns=async(custTasksToAssign,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+    for(const t of custTasksToAssign){
+      await sb.from("campaigns").update({owner_id:profile.id}).eq("id",t.id);
+      logActivity&&logActivity(t.customerId,t.id,"campaign_transferred",`Kampanje "${t.title}" overført til ${staff.name} (del flere)`);
+    }
+    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+    await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_given",message:senderName+" ga deg kampanjer for en kunde",brief_id:null,read:false});
+    setShareModalTarget(null);
+    alert("Overført! Oppdatering vises ved neste innlasting av siden.");
+  };
+
   // Determine which dept channels this admin manages
   const managedChannels = isSuperAdmin ? null : // null = all
     Object.entries(CHANNEL_DEPT_MAP)
@@ -1101,7 +1114,7 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
         <div style={{fontFamily:"Roboto,sans-serif",fontSize:13,color:C.ink3,textAlign:"center",padding:"60px 0"}}>Ingen andres kampanjelinjer å vise.</div>
       )}
       {shareModalTarget&&<ShareCampaignsModal custTasks={shareModalTarget.tasks} custName={shareModalTarget.name}
-        onClose={()=>setShareModalTarget(null)} onShare={shareAllCampaigns}/>}
+        onClose={()=>setShareModalTarget(null)} onShare={shareAllCampaigns} onAssign={assignAllCampaigns}/>}
     </div>
   );
 }
@@ -1830,7 +1843,7 @@ function AddAdGroupModal({task, parentFlatKey, parentLabel, channel, onClose, on
   );
 }
 
-function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity}) {
+function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, briefs=[], setShowCreateBrief, isAdmin, session, customerOrder=[], onReorder, logActivity, teamMembers=[]}) {
   const [dragOver, setDragOver] = useState(null);
   const dragSrc = useRef(null);
   const canAddCampaign = canCreateCampaigns(session?.user?.email||"");
@@ -1847,6 +1860,18 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
     }
     const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
     await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_shared",message:senderName+" delte kampanjer for en kunde med deg",brief_id:null,read:false});
+    setShareModalTarget(null);
+  };
+
+  const assignAllCampaigns=async(custTasksToAssign,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
+    for(const t of custTasksToAssign){
+      await updateCampaign(t.id,{ownerId:profile.id});
+      logActivity&&logActivity(t.customerId,t.id,"campaign_transferred",`Kampanje "${t.title}" overført til ${staff.name} (del flere)`);
+    }
+    const senderName=session?.user?.user_metadata?.full_name||session?.user?.email||"Noen";
+    await sb.from("notifications").insert({id:uid(),user_id:profile.id,type:"campaign_given",message:senderName+" ga deg kampanjer for en kunde",brief_id:null,read:false});
     setShareModalTarget(null);
   };
 
@@ -1961,7 +1986,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
               </div>
             </div>
             {!collapsedCustomers[customer.id]&&custTasks.map((task,taskIdx)=>(
-              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} onAddCampaign={(ch,existingTask)=>{
+              <TaskBlock key={task.id} task={task} taskIdx={taskIdx} custTasks={custTasks} accent={accent} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate} adjustBank={adjustBank} teamMembers={teamMembers} onAddCampaign={(ch,existingTask)=>{
                 if(existingTask) {
                   setAddLineTarget({task:existingTask,channel:ch});
                 } else {
@@ -1997,7 +2022,7 @@ function CampaignPage({tasks, customers, updateCampaign, deleteCampaign, navigat
         );
       })}
       {shareModalTarget&&<ShareCampaignsModal custTasks={shareModalTarget.tasks} custName={shareModalTarget.name}
-        onClose={()=>setShareModalTarget(null)} onShare={shareAllCampaigns}/>}
+        onClose={()=>setShareModalTarget(null)} onShare={shareAllCampaigns} onAssign={assignAllCampaigns}/>}
     </div>
   );
 }
@@ -2091,7 +2116,7 @@ function TransferModal({line, custTasks, currentTaskId, onClose, onTransfer, onR
     </div>
   );
 }
-function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, onAddAdGroup, session, logActivity}) {
+function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCampaign, navigate, adjustBank, onAddCampaign, onAddAdGroup, session, logActivity, teamMembers=[]}) {
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(task.title);
   const [editingMeta,setEditingMeta]=useState(false);
@@ -2248,6 +2273,34 @@ function TaskBlock({task, taskIdx, custTasks, accent, updateCampaign, deleteCamp
           <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.badFg,flex:1}}>Gjøre opp bank og arkivere?</span>
           <button className="action-btn settle" onClick={handleEndCampaign}>Ja, avslutt</button>
           <button className="action-btn" onClick={()=>setShowEndConfirm(false)}><X size={11}/></button>
+        </div>
+      )}
+
+      {(task.sharedWith?.length>0||(task.ownerId&&task.ownerId!==session?.user?.id))&&(
+        <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap",padding:"7px 14px",background:C.sandBg,borderBottom:"1px solid "+C.sandBd}}>
+          {task.ownerId&&task.ownerId!==session?.user?.id&&(()=>{
+            const owner=teamMembers.find(m=>m.id===task.ownerId);
+            return <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep}}>Eies av: <strong>{owner?.display_name||owner?.email||"ukjent"}</strong></span>;
+          })()}
+          {task.sharedWith?.length>0&&(
+            <>
+              <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.sandDeep}}>Delt med:</span>
+              {task.sharedWith.map(uid=>{
+                const member=teamMembers.find(m=>m.id===uid);
+                const memberName=member?.display_name||member?.email||"ukjent";
+                return (
+                  <span key={uid} style={{display:"inline-flex",alignItems:"center",gap:4,background:C.card,border:"1px solid "+C.sandBd,borderRadius:99,padding:"2px 4px 2px 9px",fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink}}>
+                    {memberName}
+                    <button onClick={()=>{
+                      if(confirm("Slutte å dele med "+memberName+"?")){
+                        updateCampaign(task.id,{sharedWith:task.sharedWith.filter(id=>id!==uid)});
+                      }
+                    }} style={{background:"none",border:"none",cursor:"pointer",color:C.ink3,padding:3,display:"flex",borderRadius:"50%"}}><X size={10}/></button>
+                  </span>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 
@@ -2443,8 +2496,9 @@ function groupLinesByChannel(lines) {
 const LINE_GRID = "minmax(160px,1fr) minmax(180px,1.8fr) 100px 110px 130px 115px 30px";
 
 // ══ Share Campaigns Modal (Del flere) ══════════════════════════════
-function ShareCampaignsModal({custTasks, custName, onClose, onShare}) {
+function ShareCampaignsModal({custTasks, custName, onClose, onShare, onAssign}) {
   const [scope,setScope]=useState(null); // "all" | "SOME" | "SEM" | "Programmatisk" | {channel}
+  const [mode,setMode]=useState("share"); // "share" | "assign"
 
   const allChannels = Object.values(CHANNEL_DEPT_MAP).flat();
 
@@ -2470,9 +2524,14 @@ function ShareCampaignsModal({custTasks, custName, onClose, onShare}) {
   return (
     <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&onClose()}>
       <div className="modal">
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
           <h2 style={{fontFamily:"'Montserrat',sans-serif",fontSize:19,fontWeight:600,color:C.ink}}>Del flere{custName?" — "+custName:""}</h2>
           <button className="btn" onClick={onClose} style={{background:"none",color:C.ink3,padding:"4px"}}><X size={20}/></button>
+        </div>
+
+        <div style={{display:"flex",gap:6,marginBottom:18,background:C.cardAlt,padding:4,borderRadius:9,border:"1px solid "+C.borderSoft}}>
+          <button onClick={()=>setMode("share")} style={{flex:1,padding:"7px",borderRadius:7,border:"none",cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12.5,fontWeight:600,background:mode==="share"?C.sand:"transparent",color:mode==="share"?"#fff":C.ink3}}>Del (behold begge)</button>
+          <button onClick={()=>setMode("assign")} style={{flex:1,padding:"7px",borderRadius:7,border:"none",cursor:"pointer",fontFamily:"Roboto,sans-serif",fontSize:12.5,fontWeight:600,background:mode==="assign"?C.sand:"transparent",color:mode==="assign"?"#fff":C.ink3}}>Tildel (overfør eierskap)</button>
         </div>
 
         {!scope&&(
@@ -2503,7 +2562,7 @@ function ShareCampaignsModal({custTasks, custName, onClose, onShare}) {
           <div>
             <button className="btn" onClick={()=>setScope(null)} style={{background:"none",color:C.ink3,fontFamily:"Roboto,sans-serif",fontSize:12,padding:0,marginBottom:14}}>← Tilbake</button>
             <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,marginBottom:10}}>
-              Del {matchingTasks.length} kampanje{matchingTasks.length!==1?"r":""} ({scopeLabel}) med:
+              {mode==="share"?"Del":"Tildel"} {matchingTasks.length} kampanje{matchingTasks.length!==1?"r":""} ({scopeLabel}) {mode==="share"?"med":"til"}:
             </div>
             {matchingTasks.length===0&&(
               <div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,padding:"10px 0"}}>Ingen kampanjer matcher dette valget.</div>
@@ -2511,7 +2570,7 @@ function ShareCampaignsModal({custTasks, custName, onClose, onShare}) {
             {matchingTasks.length>0&&(
               <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
                 {staffList.map(s=>(
-                  <button key={s.id} className="action-btn" onClick={()=>onShare(matchingTasks,s)} style={{fontFamily:"Roboto,sans-serif",fontSize:12}}>
+                  <button key={s.id} className="action-btn" onClick={()=>mode==="share"?onShare(matchingTasks,s):onAssign(matchingTasks,s)} style={{fontFamily:"Roboto,sans-serif",fontSize:12}}>
                     {s.name}
                   </button>
                 ))}
