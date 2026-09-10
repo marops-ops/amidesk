@@ -611,6 +611,14 @@ const slugify = (name) => (name||"").toLowerCase()
         return;
       }
     }
+    // Slett varsler knyttet til oppgaven, ellers feiler slettingen på
+    // notifications_brief_id_fkey uten synlig feilmelding.
+    const {error:notifErr} = await sb.from("notifications").delete().eq("brief_id",id);
+    if (notifErr) {
+      alert("Kunne ikke slette varsler knyttet til oppgaven: "+notifErr.message);
+      console.error("Notification delete failed:", notifErr);
+      return;
+    }
     const {error:briefErr} = await sb.from("briefs").delete().eq("id",id);
     if (briefErr) {
       alert("Kunne ikke slette oppgaven: "+briefErr.message);
