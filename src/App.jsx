@@ -601,10 +601,24 @@ const slugify = (name) => (name||"").toLowerCase()
     for(const t of linked) {
       if(t.budget>0) await adjustBank(t.customerId, t.budget);
     }
+    // Slett tilknyttede kampanjer FØR selve oppgaven, ellers feiler
+    // slettingen på campaigns_from_brief_id_fkey uten synlig feilmelding.
+    for (const t of linked) {
+      const {error:campErr} = await sb.from("campaigns").delete().eq("id",t.id);
+      if (campErr) {
+        alert(`Kunne ikke slette tilknyttet kampanje "${t.title}": ${campErr.message}`);
+        console.error("Campaign delete failed:", campErr);
+        return;
+      }
+    }
+    const {error:briefErr} = await sb.from("briefs").delete().eq("id",id);
+    if (briefErr) {
+      alert("Kunne ikke slette oppgaven: "+briefErr.message);
+      console.error("Brief delete failed:", briefErr);
+      return;
+    }
     setBriefs(prev=>prev.filter(b=>b.id!==id));
     setTasks(prev=>prev.filter(t=>t.fromBriefId!==id));
-    await sb.from("briefs").delete().eq("id",id);
-    for (const t of linked) await sb.from("campaigns").delete().eq("id",t.id);
   };
 
   const deleteCampaign = async (id) => {
