@@ -444,7 +444,7 @@ const slugify = (name) => (name||"").toLowerCase()
         sb.from("customers").select("*"),
         sb.from("briefs").select("*").eq("owner_id", userId),
         sb.from("briefs").select("*").filter("shared_with", "cs", `["${userId}"]`),
-        sb.from("notifications").select("*").eq("user_id", userId).eq("read", false).order("created_at", {ascending:false}),
+        sb.from("notifications").select("*").eq("user_id", userId).order("created_at", {ascending:false}).limit(30),
       ]);
 
       // Own campaigns + shared
@@ -671,7 +671,12 @@ const slugify = (name) => (name||"").toLowerCase()
 
       <Sidebar page={page} navigate={navigate} setShowCreateBrief={setShowCreateBrief} onAddCampaign={()=>setAddCampaignTarget({customer:null,presetChannel:null})} session={session} isAdmin={isAdmin} notifications={notifications} onMarkRead={async(id)=>{
         await sb.from("notifications").update({read:true}).eq("id",id);
-        setNotifications(p=>p.filter(n=>n.id!==id));
+        setNotifications(p=>p.map(n=>n.id===id?{...n,read:true}:n));
+      }} onClearAll={async()=>{
+        const ids=notifications.map(n=>n.id);
+        if(ids.length===0) return;
+        await sb.from("notifications").delete().in("id",ids);
+        setNotifications([]);
       }}/>
 
       <main style={{flex:1,overflow:"auto",padding:"34px 44px 80px",background:C.bg,color:C.ink}}>
@@ -771,13 +776,13 @@ const slugify = (name) => (name||"").toLowerCase()
 }
 
 // ══ Sidebar ════════════════════════════════════════════════════════
-function Sidebar({page, navigate, setShowCreateBrief, onAddCampaign, session, isAdmin, notifications=[], onMarkRead}) {
+function Sidebar({page, navigate, setShowCreateBrief, onAddCampaign, session, isAdmin, notifications=[], onMarkRead, onClearAll}) {
   const user = session?.user;
   const name = user?.user_metadata?.full_name || user?.email?.split("@")[0] || "Bruker";
   const avatar = user?.user_metadata?.avatar_url;
   const initials = name.split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
   const [showNotifs,setShowNotifs]=useState(false);
-  const unread=notifications.length;
+  const unread=notifications.filter(n=>!n.read).length;
   const canAddCampaign = canCreateCampaigns(user?.email||"");
 
   const navItems = [
@@ -825,27 +830,28 @@ function Sidebar({page, navigate, setShowCreateBrief, onAddCampaign, session, is
           {unread>0&&<span style={{marginLeft:"auto",background:"#C48374",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700}}>{unread}</span>}
         </button>
         {showNotifs&&(
-          <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:8,marginBottom:4,maxHeight:300,overflowY:"auto",zIndex:50,boxShadow:"0 8px 24px rgba(43,47,54,.12)"}}>
-            {unread===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,padding:10,textAlign:"center"}}>Ingen nye varsler</div>}
+          <div style={{position:"absolute",bottom:"100%",left:0,right:0,background:C.card,border:`1px solid ${C.border}`,borderRadius:12,padding:8,marginBottom:4,maxHeight:340,overflowY:"auto",zIndex:50,boxShadow:"0 8px 24px rgba(43,47,54,.12)"}}>
+            {notifications.length===0&&<div style={{fontFamily:"Roboto,sans-serif",fontSize:12,color:C.ink3,padding:10,textAlign:"center"}}>Ingen varsler</div>}
             {notifications.map(n=>{
               const Icon = n.type==="brief_assigned"?UserPlus:n.type==="campaign_shared"?Share2:ArrowRight;
               const bg = n.type==="brief_assigned"?C.sandBg:n.type==="campaign_shared"?C.infoBg:C.okBg;
               const fg = n.type==="brief_assigned"?C.sandDeep:n.type==="campaign_shared"?C.infoFg:C.okFg;
+              const isRead=!!n.read;
               return (
-                <div key={n.id} style={{padding:"10px 10px",borderRadius:8,background:C.cardAlt,marginBottom:4,cursor:"pointer",border:`1px solid ${C.borderSoft}`,display:"flex",gap:10,alignItems:"flex-start"}}
+                <div key={n.id} style={{padding:"10px 10px",borderRadius:8,background:isRead?C.bg:C.cardAlt,marginBottom:4,cursor:"pointer",border:`1px solid ${C.borderSoft}`,display:"flex",gap:10,alignItems:"flex-start",opacity:isRead?.55:1}}
                   onClick={()=>{onMarkRead(n.id);if(n.brief_id)navigate("brief-detail",{briefId:n.brief_id});setShowNotifs(false);}}>
-                  <div style={{width:26,height:26,borderRadius:8,background:bg,color:fg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                  <div style={{width:26,height:26,borderRadius:8,background:isRead?C.borderSoft:bg,color:isRead?C.ink3:fg,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                     <Icon size={13} strokeWidth={1.75}/>
                   </div>
                   <div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11.5,color:C.ink,lineHeight:1.4}}>{n.message}</div>
-                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink3,marginTop:2}}>Trykk for å åpne</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:11.5,color:isRead?C.ink3:C.ink,lineHeight:1.4}}>{n.message}</div>
+                    <div style={{fontFamily:"Roboto,sans-serif",fontSize:10,color:C.ink4,marginTop:2}}>{isRead?"Lest":"Trykk for å åpne"}</div>
                   </div>
                 </div>
               );
             })}
-            {unread>0&&<button className="btn" onClick={async()=>{for(const n of notifications)await onMarkRead(n.id);setShowNotifs(false);}}
-              style={{background:C.borderSoft,color:C.ink3,padding:"6px",borderRadius:8,fontFamily:"Roboto,sans-serif",fontSize:11,width:"100%",marginTop:2}}>Merk alle som lest</button>}
+            {notifications.length>0&&<button className="btn" onClick={()=>{if(confirm("Tøm alle varsler?"))onClearAll&&onClearAll();}}
+              style={{background:C.borderSoft,color:C.ink3,padding:"6px",borderRadius:8,fontFamily:"Roboto,sans-serif",fontSize:11,width:"100%",marginTop:2}}>Tøm alle</button>}
           </div>
         )}
       </div>
