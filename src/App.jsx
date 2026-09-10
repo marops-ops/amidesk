@@ -920,6 +920,24 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
     if(adjustBank&&diff!==0) adjustBank(task.customerId, diff);
   };
 
+  const assignTaskTo=async(task,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn ennå.");return;}
+    await sb.from("campaigns").update({owner_id:profile.id}).eq("id",task.id);
+    logActivity&&logActivity(task.customerId,task.id,"campaign_transferred",`Kampanje "${task.title}" overført til ${staff.name}`);
+    alert("Overført! Oppdatering vises ved neste innlasting av siden.");
+  };
+  const shareTaskWith=async(task,staff)=>{
+    const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
+    if(!profile){alert(staff.name+" har ikke logget inn ennå.");return;}
+    const cur=(await sb.from("campaigns").select("shared_with").eq("id",task.id).single()).data;
+    const sw=[...((cur?.shared_with)||[])];
+    if(!sw.includes(profile.id)) sw.push(profile.id);
+    await sb.from("campaigns").update({shared_with:sw}).eq("id",task.id);
+    logActivity&&logActivity(task.customerId,task.id,"campaign_shared",`Kampanje "${task.title}" delt med ${staff.name}`);
+    alert("Delt! Oppdatering vises ved neste innlasting av siden.");
+  };
+
   const shareAllCampaigns=async(custTasksToShare,staff)=>{
     const {data:profile}=await sb.from("profiles").select("id").eq("email",staff.email).single();
     if(!profile){alert(staff.name+" har ikke logget inn i AmiDesk ennå.");return;}
@@ -1050,7 +1068,10 @@ function OthersCampaignPage({tasks, customers, teamMembers, session, navigate, u
                                             <CampaignLineRow key={line.flatKey} line={line} task={task}
                                               updateCampaign={updateCampaign}
                                               onEndChannel={(l)=>handleEndChannelFor(task,l)}
-                                              onDeleteLine={(flatKey)=>handleDeleteLineFor(task,flatKey)}/>
+                                              onDeleteLine={(flatKey)=>handleDeleteLineFor(task,flatKey)}
+                                              onAssignLine={(s)=>assignTaskTo(task,s)}
+                                              onShareLine={(s)=>shareTaskWith(task,s)}
+                                              staffOverrideList={AMIDAYS_STAFF.slice().sort((a,b)=>a.name.localeCompare(b.name,"nb"))}/>
                                           ))}
                                         </div>
                                       );
@@ -2429,7 +2450,7 @@ function PacingBadge({status}) {
   return <span className="pacing-bad"><TrendingUp size={12} strokeWidth={2}/> Overspend</span>;
 }
 
-function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine, onBudgetAdjust, logActivity, session}) {
+function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine, onAssignLine, onShareLine, onBudgetAdjust, logActivity, session, staffOverrideList}) {
   const [spentVal,setSpentVal]=useState(line.spent||"");
   const [editingName,setEditingName]=useState(false);
   const [nameVal,setNameVal]=useState(
@@ -2608,7 +2629,7 @@ function CampaignLineRow({line, task, updateCampaign, onEndChannel, onDeleteLine
           {pickMode&&(
             <div style={{display:"flex",flexWrap:"wrap",gap:6,padding:"6px 0"}}>
               <span style={{fontFamily:"Roboto,sans-serif",fontSize:11,color:C.ink3,alignSelf:"center"}}>{pickMode==="assign"?"Gi til:":"Del med:"}</span>
-              {staffForChannel(line.flatKey.split(" — ")[0]).map(s=>(
+              {(staffOverrideList||staffForChannel(line.flatKey.split(" — ")[0])).map(s=>(
                 <button key={s.id} className="action-btn" onClick={()=>{
                   if(pickMode==="assign") onAssignLine&&onAssignLine(s);
                   else onShareLine&&onShareLine(s);
