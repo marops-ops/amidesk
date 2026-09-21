@@ -90,13 +90,12 @@ function deptForChannel(channelName) {
 }
 
 // Rådgivere kan opprette oppgaver (delegere), men ikke opprette kampanjer/linjer direkte —
-// det gjør ressursene selv når de konverterer oppgaven. Kanal-heads, super-admin og øvrige
-// admins beholder full tilgang.
+// det gjør ressursene selv når de konverterer oppgaven. Alle andre (kanal-ressurser,
+// kanal-heads, super-admin osv.) kan trykke "+ Kampanje" som normalt.
 function canCreateCampaigns(email) {
-  if(!ADMIN_EMAILS.includes(email)) return false;
-  if(SUPER_ADMIN_EMAILS.includes(email)) return true;
   const staff = AMIDAYS_STAFF.find(s=>s.email===email);
-  if(staff?.depts?.includes("Rådgiver")) return false;
+  if(!staff) return ADMIN_EMAILS.includes(email); // ukjent/ikke-ansatt-konto: krev admin
+  if(staff.depts?.includes("Rådgiver")) return false;
   return true;
 }
 
