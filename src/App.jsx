@@ -1279,7 +1279,7 @@ function TeamMemberPage({userId, teamMembers, customers, navigate, session, onUp
               {activeTasks.flatMap(t=>{
                 const cust=customers.find(c=>c.id===t.customerId);
                 return getChannelLines(t).map(line=>{
-                  const icon=getChannelIcon(line.label.split(" — ")[0]);
+                  const icon=getChannelIcon(line.baseChannel);
                   const lineName=line.label.includes(" — ")?line.label.split(" — ").slice(1).join(" — "):line.label;
                   const pct=line.budget>0?Math.min(100,Math.round(line.spent/line.budget*100)):0;
                   return (
@@ -3274,7 +3274,7 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
                   {activeTasks.flatMap(task=>{
                     const lines=getChannelLines(task);
                     return lines.map(line=>{
-                      const icon=getChannelIcon(line.label.split(" — ")[0]);
+                      const icon=getChannelIcon(line.baseChannel);
                       const pct=line.budget>0?Math.min(100,Math.round(line.spent/line.budget*100)):0;
                       return (
                         <div key={line.flatKey} className="card" style={{padding:"10px 14px",display:"flex",alignItems:"center",gap:12}}>
