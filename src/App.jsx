@@ -4064,10 +4064,11 @@ function ConvertBriefModal({brief, customers, session, onClose, onSave}) {
   const myStaffId=AMIDAYS_STAFF.find(s=>s.email===session?.user?.email)?.id;
   const allEnvelopeChannels=Object.keys(brief.channelBudgets||{});
   const envelopeChannels=allEnvelopeChannels.filter(ch=>{
+    if(!myStaffId) return true; // ukjent bruker ser alt
     const assignedTo=brief.channelAssignments?.[ch];
     return !assignedTo||assignedTo===myStaffId;
   });
-  const hiddenChannels=allEnvelopeChannels.filter(ch=>!envelopeChannels.includes(ch));
+  const hiddenChannels=!myStaffId?[]:allEnvelopeChannels.filter(ch=>!envelopeChannels.includes(ch));
   const [channelLines,setChannelLines]=useState(()=>{
     const init={};
     envelopeChannels.forEach(ch=>{
