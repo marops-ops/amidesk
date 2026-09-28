@@ -628,6 +628,15 @@ const slugify = (name) => (name||"").toLowerCase()
     setTasks(prev=>prev.filter(t=>t.fromBriefId!==id));
   };
 
+  const resetCustomer = async (customerId) => {
+    const customerTasks = tasks.filter(t=>t.customerId===customerId&&!t.archived);
+    for(const t of customerTasks) {
+      await sb.from("campaigns").delete().eq("id",t.id);
+    }
+    setTasks(prev=>prev.filter(t=>t.customerId!==customerId||t.archived));
+    await updateCustomer(customerId,{bank:0,deptBudgets:{}});
+  };
+
   const deleteCampaign = async (id) => {
     const task = [...tasks, ...othersTasks].find(t=>t.id===id);
     if(task) {
@@ -707,7 +716,7 @@ const slugify = (name) => (name||"").toLowerCase()
         {page==="brief-detail"&&activeBrief&&<BriefDetail brief={activeBrief} updateBrief={updateBrief} deleteBrief={deleteBrief} customers={customers} navigate={navigate} setBriefToConvert={setBriefToConvert}/>}
         {page==="customers"&&!selectedCustomerId&&<CustomerList customers={customers} tasks={tasks} briefs={briefs} navigate={navigate} setShowCreateCustomer={()=>setShowCreateCustomer(true)} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} favoriteCustomers={favoriteCustomers} toggleFavorite={toggleFavorite} session={session}/>}
         {(page==="customer-detail"&&activeCustomer)
-          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} adjustBank={adjustBank} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers}/>:null}
+          ?<CustomerDetail customer={activeCustomer} tasks={tasks} briefs={briefs} updateCampaign={updateCampaign} updateCustomer={isAdmin?updateCustomer:updateCustomer} adjustBank={adjustBank} navigate={navigate} onAddCampaign={c=>setAddCampaignTarget({customer:c,presetChannel:null})} session={session} teamMembers={teamMembers} resetCustomer={resetCustomer}/>:null}
         {page==="task-detail"&&activeTask&&<TaskDetail task={activeTask} customers={customers} updateCampaign={updateCampaign} deleteCampaign={deleteCampaign} navigate={navigate}/>}
         {page==="team"&&<TeamPage teamMembers={teamMembers} navigate={navigate}/>}
         {page==="others"&&isAdmin&&<OthersCampaignPage tasks={othersTasks} customers={customers} teamMembers={teamMembers} session={session} navigate={navigate} updateCampaign={updateCampaign} adjustBank={adjustBank} logActivity={logActivity}/>}
@@ -3118,7 +3127,7 @@ function BankTab({customer, activeTasks, archivedTasks, updateCustomer, editable
   );
 }
 
-function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, adjustBank, navigate, onAddCampaign, session, teamMembers=[]}) {
+function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer, adjustBank, navigate, onAddCampaign, session, teamMembers=[], resetCustomer}) {
   const [tab,setTab]=useState("active");
   const [bankMode,setBankMode]=useState(null); // null | "deposit"
   const [bankDept,setBankDept]=useState("");
@@ -3184,6 +3193,11 @@ function CustomerDetail({customer, tasks, briefs, updateCampaign, updateCustomer
               {canAddCampaign&&<button className="btn" onClick={()=>onAddCampaign&&onAddCampaign(customer)}
                 style={{background:C.sand,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>+ Lag kampanje</button>}
               <button className="btn" onClick={()=>setShowEdit(true)} style={{background:C.borderSoft,color:C.ink,padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11,border:"1px solid "+C.border}}>Rediger kunde</button>
+              {resetCustomer&&<button className="btn" onClick={()=>{
+                if(confirm(`Nullstill ${customer.name}?\n\nDette sletter alle aktive kampanjer og setter banken til 0. Kan ikke angres.`)){
+                  resetCustomer(customer.id);
+                }
+              }} style={{background:C.badFg,color:"#fff",padding:"5px 12px",borderRadius:9,fontFamily:"Roboto,sans-serif",fontSize:11}}>Nullstill</button>}
             </div>}
           {/* Bank */}
           <div style={{textAlign:"right"}}>
